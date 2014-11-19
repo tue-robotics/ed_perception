@@ -249,7 +249,7 @@ void TypeAggregator::collect_features(tue::Configuration& entity_conf, std::map<
                 // close the group just read
                 entity_conf.endGroup();
             }else{
-                std::cout << "Didnt find group " << *pluginName << std::endl;
+//                std::cout << "Didnt find group " << *pluginName << std::endl;
             }
         }
 
