@@ -102,7 +102,7 @@ class OduFinderLearner{
     // ----------------------------------------------------------------------------------------------------
 
     OduFinderLearner(){
-        moduleName_ = "Odu_Finder_learner";
+        moduleName_ = "odu_Finder_learner";
 
         tree_builder = vt::TreeBuilder<Feature> (Feature::Zero());
         tree_k = 5;
@@ -338,7 +338,7 @@ class OduFinderLearner{
 //        IplImage *image = cvLoadImage((char*) filename.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
         Keypoint keypoints = extract_keypoints(image, false);
 
-        std::cout << "[" << moduleName_ << "] " << "Keypoints extracted" << std::endl;
+//        std::cout << "[" << moduleName_ << "] " << "Keypoints extracted" << std::endl;
 
         FeatureVector features;
         Keypoint p = keypoints;
@@ -366,7 +366,8 @@ class OduFinderLearner{
 
 //        cvReleaseImage(&image);       // TODO cannot release the image after copying it from cv::Mat, do i really need this?
         FreeKeypoints(keypoints);
-        std::cout << "[" << moduleName_ << "] " << count << " features found" << std::endl;
+
+//        std::cout << "[" << moduleName_ << "] " << count << " features found" << std::endl;
     }
 
     // ----------------------------------------------------------------------------------------------------
