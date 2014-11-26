@@ -25,12 +25,13 @@ public:
 
     void loadModel(const std::string& model_name, const std::string& model_path);
 
+    void loadConfig(const std::string& config_path);
+
     void process(ed::EntityConstPtr e, tue::Configuration& result) const;
 
 private:
 
     ColorNameTable& color_table_;
-
 
     // module configuration
     bool init_success_;
@@ -43,13 +44,15 @@ private:
     std::string getHighestProbColor(std::map<std::string, double>& map) const;
 
     // Object colors
-    std::map<std::string, std::map<std::string, double> > object_colors_;
-
-    std::string GenerateID() const;
+    std::map<std::string, std::vector<std::map<std::string, double> > > models_colors_;
 
     void CleanDebugFolder(const std::string& folder) const;
 
     void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
+
+    bool load_learning(std::string path, std::string model_name);
+
+    void getHypothesis(std::map<std::string, double>& color_prob, std::map<std::string, double>& hypothesis) const;
 };
 
 

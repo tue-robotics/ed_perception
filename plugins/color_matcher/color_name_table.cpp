@@ -123,7 +123,10 @@ void colorToRGB(Color color, int& r, int& g, int& b)
     default:
         r=0; g=0; b=0;
     }
+}
 
+const Color& operator++(Color& eValue){
+    return (eValue = (Color)(eValue+1));
 }
 
 }

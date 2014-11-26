@@ -37,6 +37,8 @@ struct ColorNamePoint
     int r_, g_, b_;
 };
 
+//----------------------------------------------------------------------------------------------
+
 /// Namespace for ColorNames enum, so that it does not pollute global namespace
 namespace ColorNames
 {
@@ -60,7 +62,11 @@ Color stringToColor(std::string name);
 /// Color enun to RGB
 void colorToRGB(Color color, int& r, int& g, int& b);
 
+const Color& operator++(Color& eValue);
+
 }
+
+//----------------------------------------------------------------------------------------------
 
 /**
  * @brief Container for containing a probability associated with a name and an index
