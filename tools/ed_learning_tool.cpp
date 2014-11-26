@@ -21,6 +21,7 @@
 // Show measurement
 #include <opencv2/highgui/highgui.hpp>
 
+// odu_finder
 #include "odu_finder_learner.cpp"
 
 // RGBD
@@ -31,6 +32,8 @@
 #include <fstream>
 #include <string>
 #include <iostream>
+
+#include <boost/filesystem.hpp>
 
 std::string kModuleName;
 
@@ -57,12 +60,16 @@ void showMeasurement(const ed::Measurement& msr)
 // ----------------------------------------------------------------------------------------------------
 
 void config_to_file(tue::Configuration& config, const std::string &model_name, const std::string &save_directory){
-    std::string filename = save_directory + "/" + model_name + ".yaml";
 
-    std::cout << "[" << kModuleName << "] " << "Saving config for '" << model_name << "' at " << filename << std::endl;
-//    std::cout << "[" << kModuleName << "] \n" << config << std::endl;
+    std::string file_dir = save_directory + "/" + model_name + "/" + model_name + ".yml";
 
-    std::ofstream out(filename.c_str(), std::ofstream::out);
+    boost::filesystem::path dir(save_directory + "/" + model_name);
+    boost::filesystem::create_directories(dir);
+
+    std::cout << "[" << kModuleName << "] " << "Saving config for '" << model_name << "' at " << file_dir << std::endl;
+
+
+    std::ofstream out(file_dir.c_str(), std::ofstream::out);
     if (out.is_open()){
         out << config.toYAMLString();
         out.close();
@@ -96,20 +103,23 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
     float amount;
     std::map<std::string, float> color_info;
 
-    std::cout << "[" << kModuleName << "] " << "Parsing " << module_name << " group" << std::endl;
+//    std::cout << "[" << kModuleName << "] " << "Parsing " << module_name << " group" << std::endl;
 
     // parse information from current config
     if(module_name.compare("size_matcher") == 0){
+    // PARSE SIZE MATCHER
         if (config.readGroup("size")){
             if (config.value("height", height) && config.value("width", width)){
+                // height and width saved just by reading
 //                std::cout << "[" << kModuleName << "] " << "Read HxW " << height << " x " << width << std::endl;
             }
             config.endGroup(); // close size group
         }
     }else if(module_name.compare("color_matcher") == 0){
-        if (config.readArray("hypothesis")){
+    // PARSE COLOR MATCHER
+        if (config.readArray("colors")){
             while(config.nextArrayItem()){
-                if (config.value("name", color_name) && config.value("score", amount)){
+                if (config.value("name", color_name) && config.value("value", amount)){
 //                    std::cout << "[" << kModuleName << "] " << "Read color: " << color_name << " (" << amount << ")" << std::endl;
                     color_info[color_name] = amount;
                 }
@@ -132,7 +142,7 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
 
     final_config.setValue("name", model_name);
 
-    // save size information if it was parsed
+    // save size information
     if (height > 0 && width > 0){
         if (!final_config.readArray("size", tue::OPTIONAL)){
             final_config.writeArray("size");
@@ -146,20 +156,24 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
         final_config.endArray();
     }
 
-    // save color information if it was parsed
+    // save color information
     if(!color_info.empty()){
         if (!final_config.readArray("color", tue::OPTIONAL)){
             final_config.writeArray("color");
         }
 
+        final_config.addArrayItem();
+        final_config.writeArray("set");
+
         for(std::map<std::string, float>::const_iterator color_it = color_info.begin(); color_it != color_info.end(); ++color_it) {
             final_config.addArrayItem();
-            final_config.setValue("name", color_it->first);
-            final_config.setValue("amount", color_it->second);
+            final_config.setValue(color_it->first, color_it->second);
             final_config.endArrayItem();
         }
 
-        final_config.endArray();
+        final_config.endArray();    // close set array
+        final_config.endArrayItem();// close array item
+        final_config.endArray();    // close color array
     }
 
     final_config.endGroup(); // close model group
@@ -311,10 +325,8 @@ int main(int argc, char **argv) {
         }
 
         // get info on model name from path
-        parent_dir = filename.withoutExtension().string().substr(0, filename.withoutExtension().string().find_last_of("/")-1);
-        model_name = parent_dir;      // create copy of the path
-        model_name = model_name.substr(1, model_name.find_last_of("/") - 1);    // remove last folder name
-        model_name = model_name.substr(model_name.find_last_of("/") + 1);    // remove last folder name
+        model_name = filename.withoutExtension().string().substr(0, filename.withoutExtension().string().find_last_of("/"));    // remove measurement ID
+        model_name = model_name.substr(model_name.find_last_of("/")+1);     // get parent folder name / model name
 
         // get the name of the first model, when found
         if(first_model){
@@ -333,7 +345,7 @@ int main(int argc, char **argv) {
         ed::EntityPtr e(new ed::Entity(model_name + "-entity", "", 5, 0));
         e->addMeasurement(msr);
 
-        std::cout << "[" << kModuleName << "] " << "Entity '" << model_name << "' on " << filename.withoutExtension() << std::endl;
+        std::cout << "[" << kModuleName << "] " << "Processing measurement for '" << model_name << "' on " << filename.withoutExtension() << std::endl;
 
         // ---------------- PROCESS MEASUREMENTS WITH LIBRARIES----------------
         for(std::vector<ed::PerceptionModulePtr>::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
