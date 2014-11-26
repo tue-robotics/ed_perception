@@ -36,7 +36,7 @@ void ODUFinderModule::process(ed::EntityConstPtr e, tue::Configuration& result) 
 {
 
     // Get the best measurement from the entity
-    ed::MeasurementConstPtr msr = e->bestMeasurement();
+    ed::MeasurementConstPtr msr = e->lastMeasurement();
     if (!msr)
         return;
 
@@ -109,7 +109,7 @@ void ODUFinderModule::process(ed::EntityConstPtr e, tue::Configuration& result) 
         for(std::map<std::string, float>::const_iterator it = results.begin(); it != results.end(); ++it)
         {
             result.addArrayItem();
-            result.setValue("name", it->first + "_odu");
+            result.setValue("name", it->first);
             result.setValue("score", it->second);
             result.endArrayItem();
         }
