@@ -31,15 +31,10 @@ FaceDetector::~FaceDetector()
 
 void FaceDetector::loadModel(const std::string& model_name, const std::string& model_path)
 {
-    /*
-    Load any model specific data here
-        model_name: the name of the model (e.g. 'human')
-        model_path: the directory in which the models are stored
-    */
     if (model_name.compare("face") == 0){
         kModuleName = "face_detector";
         kModelName = model_name;
-        kCascadePath = model_path + "/cascade_classifiers/";
+        kCascadePath = model_path + "/face_detector/cascade_classifiers/";
         kDebugMode = false;
 
         kClassFrontScaleFactor = 1.2;
@@ -56,7 +51,8 @@ void FaceDetector::loadModel(const std::string& model_name, const std::string& m
 
             std::cout << "[" << kModuleName << "] " << "Unable to load all haar cascade files ("<< kCascadePath << ")" << std::endl;
             return;
-        }
+        }else
+            std::cout << "[" << kModuleName << "] " << "Loaded Cascade Classifier." << std::endl;
 
         if (kDebugMode){
             kDebugFolder = "/tmp/face_detector/";
@@ -66,6 +62,7 @@ void FaceDetector::loadModel(const std::string& model_name, const std::string& m
 //            cv::namedWindow("Face Detector Output", CV_WINDOW_AUTOSIZE);
         }
 
+        std::cout << "[" << kModuleName << "] " << "Ready!" << std::endl;
         init_success_ = true;
     }
 }
