@@ -28,7 +28,7 @@ void HumanContourMatcher::loadModel(const std::string& model_name, const std::st
     if (model_name.compare("human") == 0){
         kModuleName = "human_contour_matcher";
 
-        init_success_ = human_classifier_.Initializations(model_name, model_path + "/");
+        init_success_ = human_classifier_.Initializations(model_name, model_path + "/human_contour_matcher/");
 
         std::cout << "[" << kModuleName << "] " << "Ready!" << std::endl;
     }
