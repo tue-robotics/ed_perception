@@ -40,12 +40,16 @@ void SizeMatcher::loadConfig(const std::string& config_path) {
 void SizeMatcher::loadModel(const std::string& model_name, const std::string& model_path)
 {
 
-    std::string filename = model_path + "/sizes.txt"; 
+    std::string models_folder = model_path.substr(0, model_path.find_last_of("/") - 1); // remove last slash
+    models_folder = models_folder.substr(0, models_folder.find_last_of("/"));   // remove size_matcher from path
 
-//    std::cout << "[" << kModuleName << "] " << "Loading sizes from model " << model_name << std::endl;
+    std::string path = models_folder + "/models/" + model_name +  "/" +  model_name + ".yml";
 
-    if (!load_size(filename, model_name))
-        std::cout << "[" << kModuleName << "] " << "Could not load sizes from" << model_path + "/sizes.txt" << std::endl;
+    if (load_learning(path, model_name))
+        std::cout << "[" << kModuleName << "] " << "Loaded sizes for " << model_name << "!" << std::endl;
+    else{
+//        std::cout << "[" << kModuleName << "] " << "Couldn not load sizes for " << path << "!" << std::endl;
+    }
 }
 
 
@@ -54,11 +58,14 @@ void SizeMatcher::loadModel(const std::string& model_name, const std::string& mo
 void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) const
 {
     // Get the best measurement from the entity
-    ed::MeasurementConstPtr msr = e->bestMeasurement();
+    ed::MeasurementConstPtr msr = e->lastMeasurement();
     if (!msr)
         return;
 
     const cv::Mat& rgb_image = msr->image()->getRGBImage();
+
+    std::map<std::string, double> hypothesis;
+    double best_err;
 
     // initialize min and max coordinates
     geo::Vector3 min(1e10, 1e10, 1e10);
@@ -74,8 +81,8 @@ void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) cons
         geo::Vector3 p;
         if (view.getPoint3D(p_2d.x, p_2d.y, p))
         {
-            geo::Vector3 p_MAP = msr->sensorPose() * p;
-//            geo::Vector3 p_MAP = p;     // use this only when sensorPose is not available
+//            geo::Vector3 p_MAP = msr->sensorPose() * p;
+            geo::Vector3 p_MAP = p;     // use this only when sensorPose is not available
 
             min.x = std::min(min.x, p_MAP.x); max.x = std::max(max.x, p_MAP.x);
             min.y = std::min(min.y, p_MAP.y); max.y = std::max(max.y, p_MAP.y);
@@ -88,35 +95,29 @@ void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) cons
     double object_width = sqrt(size.x * size.x + size.z * size.z);
     double object_height = size.y;
 
-    std::vector<std::string> hyps;
-
-//    std::cout << "Obj HxW: " << object_height << " x " << object_width << std::endl;
-
     // compare object size to loaded models
     for(std::map<std::string, std::vector<ObjectSize> >::const_iterator it = models_.begin(); it != models_.end(); ++it)
     {
         const std::string& label = it->first;
         const std::vector<ObjectSize>& sizes = it->second;
 
-        bool match = false;
+        best_err = std::numeric_limits<double>::max();
+
         for(std::vector<ObjectSize>::const_iterator it_size = sizes.begin(); it_size != sizes.end(); ++it_size)
         {
             const ObjectSize& model_size = *it_size;
 
-//            std::cout << "Model " << label << " : " << model_size.min_height << "-" << model_size.max_height <<
-//                         " x " << model_size.min_width << "-" << model_size.max_width << std::endl;
+            double diff_h;
+            double diff_w;
 
-            // if the object size is within the min and max, add hypothesis
-            if (object_height >= model_size.min_height && object_height <= model_size.max_height &&
-                    object_width >= model_size.min_width && object_width <= model_size.max_width)
-            {
-                match = true;
-                break;
-            }
+            diff_h = std::abs(model_size.max_height - object_height) / std::max(model_size.max_height, object_height);
+            diff_w = std::abs(model_size.max_width - object_width) / std::max(model_size.max_width, object_width);
+
+            // error will be the highest diff
+            if (best_err > std::max(diff_h, diff_w)) best_err = std::max(diff_h, diff_w);
         }
 
-        if (match)
-            hyps.push_back(label);
+        hypothesis[label] = best_err;
     }
 
     // ----------------------- SAVE RESULTS -----------------------
@@ -144,26 +145,83 @@ void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) cons
 
     result.setValue("score", 1.0);
 
-    // if an hypothesis is found, assert it
-    if (!hyps.empty())
-    {
-        // probability depends on the number of hypothesis
-        double prob = 1.0 / hyps.size();
-
+    // assert hypothesis
+    if (!hypothesis.empty()){
         result.writeArray("hypothesis");
-        for(std::vector<std::string>::const_iterator it = hyps.begin(); it != hyps.end(); ++it)
+        for (std::map<std::string, double>::const_iterator it = hypothesis.begin(); it != hypothesis.end(); ++it)
         {
             result.addArrayItem();
-            result.setValue("name", *it + "_size");
-            result.setValue("score", prob);
+            result.setValue("name", it->first);
+            result.setValue("score", std::max(1 - it->second, 0.0));
             result.endArrayItem();
         }
         result.endArray();
     }
 
+    // if an hypothesis is found, assert it
+//    if (!hyps.empty())
+//    {
+//        // probability depends on the number of hypothesis
+//        double prob = 1.0 / hyps.size();
+
+//        result.writeArray("hypothesis");
+//        for(std::vector<std::string>::const_iterator it = hyps.begin(); it != hyps.end(); ++it)
+//        {
+//            result.addArrayItem();
+//            result.setValue("name", *it + "_size");
+//            result.setValue("score", prob);
+//            result.endArrayItem();
+//        }
+//        result.endArray();
+//    }
+
     result.endGroup();  // close size_matcher group
     result.endGroup();  // close perception_result group
 }
+
+// ----------------------------------------------------------------------------------------------------
+
+bool SizeMatcher::load_learning(std::string path, std::string model_name){
+    if (path.empty()){
+        std::cout << "[" << kModuleName << "] " << "Empty path!" << path << std::endl;
+        return false;
+    }else{
+        tue::Configuration conf;
+        float width;
+        float height;
+        std::vector<ObjectSize> model_sizes;
+
+        if (conf.loadFromYAMLFile(path)){       // read YAML configuration
+            if (conf.readGroup("model")){       // read Model group
+                if (conf.readArray("size")){    // read Size arary
+                    while(conf.nextArrayItem()){
+                        if (conf.value("height", height, tue::OPTIONAL) && conf.value("width", width, tue::OPTIONAL)){  // read height and width
+                            ObjectSize obj_sz(0, height, 0, width);
+                            model_sizes.push_back(obj_sz);
+                        }else
+                            std::cout << "[" << kModuleName << "] " << "Could not find 'height' and 'width' values" << std::endl;
+                    }
+
+                    if (!model_sizes.empty()){  // save sizes to map
+                        models_[model_name] = model_sizes;
+                    }else
+                        std::cout << "[" << kModuleName << "] " << "Could not read any sizes" << std::endl;
+
+                    conf.endArray();    // close Size array
+                }else
+                    std::cout << "[" << kModuleName << "] " << "Could not find 'size' group" << std::endl;
+
+              conf.endGroup();  // close Model group
+            }else
+                std::cout << "[" << kModuleName << "] " << "Could not find 'model' group" << std::endl;
+        }else{
+//            std::cout << "[" << kModuleName << "] " << "Didn't find configuration file." << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
 
 // ----------------------------------------------------------------------------------------------------
 

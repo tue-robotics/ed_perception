@@ -56,6 +56,8 @@ private:
     std::string	kModuleName;    /*!< Name of the module, for output */
 
     bool load_size(std::string path, std::string model_name);
+
+    bool load_learning(std::string path, std::string model_name);
 };
 
 }
