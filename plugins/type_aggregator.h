@@ -12,11 +12,22 @@ struct dictionary_match{
     uint matches;
     float score;
     std::string entry;
-} ;
+};
+
+struct Feature{
+    std::string name;
+    std::string plugin_name;
+    float score;
+
+    Feature(std::string name_local, std::string plugin_name_local, float score_local){
+        name = name_local;
+        plugin_name = plugin_name_local;
+        score = score_local;
+    }
+};
 
 class TypeAggregator : public ed::PerceptionModule
 {
-
 
 
 /*
@@ -53,15 +64,17 @@ private:
 
     float kPositiveTresh;
 
-    void collect_features(tue::Configuration &entity_conf,
-                          std::map<std::string, std::pair<std::string, float> >&features) const;
+    void collect_features(tue::Configuration& entity_conf,
+                          std::vector<Feature>& features) const;
 
-    void match_features(std::map<std::string, std::pair<std::string, float> >& features,
+    void match_features(std::vector<Feature>& features,
                         std::map<std::string, float>& type_histogram,
                         std::string& type,
-                        float& amount) const;
+                        float& amount, float min, float max) const;
 
     bool load_dictionary(const std::string path);
+
+    float normalize(float x, float min, float max) const;
 };
 
 #endif
