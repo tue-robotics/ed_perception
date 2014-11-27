@@ -90,7 +90,7 @@ ODUFinder::ODUFinder(const std::string& plugin_path, bool debug_mode) :
 
     // replace the parameter loading through ROS, migh override the previous
     if (!loadParams("load")){
-        std::cout << "[" << moduleName_ << "] " << "ERROR: loading parameters!" << std::endl;
+        std::cout << "[" << moduleName_ << "] " << "Error loading parameters!" << std::endl;
     }
 
     //color table - used for the visualization only
@@ -152,8 +152,8 @@ bool ODUFinder::loadParams(std::string mode) {
 
     // if init build and save the database
     if (mode.compare("build_database") == 0){
-        build_database(images_directory);   // (find pein_odufinder)/images/robotics_testlab_B/
-        save_database(database_location);   // (find pein_odufinder)/database/
+        build_database(images_directory);
+        save_database(database_location);
 
         std::cout << "[" << moduleName_ << "] " << "Done building the database!" << std::endl;
         std::cout << "[" << moduleName_ << "] " << "Loading new database!" << std::endl;
@@ -183,7 +183,7 @@ bool ODUFinder::loadParams(std::string mode) {
     tree_k = 5;
     tree_levels = 5;
 
-    object_threshold = 0.20;
+    object_threshold = 0.05;
     votes_count = 10;
 
     pein_vis_ = false;
@@ -281,7 +281,6 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
 
     matches_map.clear();
 
-
     // Search the whole image
 
     // vector of Matches
@@ -333,7 +332,7 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
 		{
 			//! Get name current object
             std::string name = documents_map[votes[i].first]->name;
-            size_t position = name.find_first_of("0123456789.");
+            size_t position = name.find_first_of("-");
             std::string short_name;
             if (position > 0 && position <= name.size()) short_name = std::string(name.c_str(), position);
             else short_name = name.c_str();
@@ -351,7 +350,6 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
     else {
         for (uint i = 0; (i < votes.size() && i < (uint) documents_map.size()); ++i)
         {
-            //ROS_INFO(" - %s, %f", documents_map[votes[i].first]->name.c_str(),	votes[i].second);
             if (votes[i].second > object_threshold)
             {
                 // For ease of writing
@@ -359,7 +357,7 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
                 std::string name = documents_map[votes[i].first]->name;
 
                 // Get short name
-                size_t position = name.find_first_of("0123456789.");
+                size_t position = name.find_first_of("-");
                 std::string short_name;
 
                 if (position > 0 && position <= name.size()) short_name = std::string(name.c_str(), position);
@@ -378,7 +376,8 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
                     results[short_name] = std::max(score, results[short_name]);
                 }
             }else{
-                if (debug_mode_) std::cout << "[" << moduleName_ << "] " << "Discarded " << documents_map[votes[i].first]->name << " with score " << votes[i].second << std::endl;
+                if (debug_mode_)
+                    std::cout << "[" << moduleName_ << "] " << "Discarded " << documents_map[votes[i].first]->name << " with score " << votes[i].second << std::endl;
             }
         }
 
@@ -396,7 +395,7 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
         if (!votes.empty())
         {
             DocumentInfo* d = documents_map[votes[0].first];
-            size_t position = d->name.find_first_of("0123456789.");
+            size_t position = d->name.find_first_of("-");
 
             //size_t position = std::min(position_us, position_dot);
 
@@ -443,38 +442,6 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
 
     return results;
 }
-
-////////////////////////
-//int ODUFinder::start() {
-
-//    std::cout << "Hey this was called!!" << std::endl;
-
-//    //! if init build and save the database
-//    if (command.compare("/init") == 0)
-//    {
-//        build_database(images_directory);
-//        save_database(database_location);
-//    }
-//    //! if load, load previously built database and perform recognition
-//    else if (command.compare("/load") == 0)
-//    {
-//        if (load_database(database_location) < 0)
-//        {
-//            return -1;
-//        }
-//    }
-//    //! if sift_only, only extract sift features and save them in a specified images_directory
-//    else if (command.compare("/sift_only") == 0)
-//    {
-//        process_images(images_directory);
-//    }
-//    else
-//    {
-//        return 1;
-//    }
-
-//    return 0;
-//}
 
 /////////////////////////////////////////////////////
 void ODUFinder::build_database(std::string directory) {
@@ -571,7 +538,7 @@ int ODUFinder::load_database(const std::string& directory) {
     }
     catch (std::runtime_error e)
     {
-        ROS_ERROR("Could not load tree file: %s", e.what());
+        std::cout << "[" << moduleName_ << "] " << "Could not load tree file: " << e.what() << std::endl;
         return -1;
     }
 
@@ -581,9 +548,15 @@ int ODUFinder::load_database(const std::string& directory) {
     std::string documents_file(directory);
     documents_file.append("/images.documents");
 
-    std::cout << "[" << moduleName_ << "] " << "Loading the documents... (" << documents_file.c_str() << ")" << std::endl;
+    std::cout << "[" << moduleName_ << "] " << "Loading documents..." << std::endl;
 
     std::ifstream in(documents_file.c_str(), std::ios::in | std::ios::binary);
+
+    if (!in.is_open()){
+        std::cout << "[" << moduleName_ << "] " << "Unable to load the documents from " << documents_file.c_str() << std::endl;
+        return -1;
+    }
+
     size_t map_size;
     in.read((char*) &map_size, sizeof(size_t));
     for (size_t i = 0; i < map_size; ++i) {
@@ -594,10 +567,7 @@ int ODUFinder::load_database(const std::string& directory) {
         vt::Document* doc = document_info->document;
         int d = db->insert(*doc);
         documents_map[d] = document_info;
-        //ROS_INFO("\tloaded %s", document_info->name.c_str());
     }
-
-//    std::cout << "[" << moduleName_ << "] " << "ODUFinder uses " << map_size << " images" << std::endl;
 
     counter_ = map_size+1; // to avoid overwriting previous images during learning add a unique number behind the image
 
