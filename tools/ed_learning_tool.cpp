@@ -196,11 +196,11 @@ void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized){
 // ----------------------------------------------------------------------------------------------------
 
 
-void imageToOduFinder(ed::EntityPtr& entity, OduFinderLearner& odu_learner){
+void imageToOduFinder(ed::EntityPtr& entity, OduFinderLearner& odu_learner, std::string model_name){
     // ---------- PREPARE MEASUREMENT ----------
 
     // Get the best measurement from the entity
-    ed::MeasurementConstPtr msr = entity->bestMeasurement();
+    ed::MeasurementConstPtr msr = entity->lastMeasurement();
     if (!msr)
         return;
 
@@ -247,9 +247,7 @@ void imageToOduFinder(ed::EntityPtr& entity, OduFinderLearner& odu_learner){
     cv::Mat roi (cropped_image(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
     cv::Mat roi_mask (mask(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
 
-//    cv::imwrite("/tmp/learner/" + entity->id() + "_learner.png", roi);
-
-    odu_learner.learnImage(entity->id(), roi);
+    odu_learner.learnImage(model_name + "-" + ed::Entity::generateID(), roi);
 }
 
 
@@ -356,7 +354,7 @@ int main(int argc, char **argv) {
         }
 
         // send the object image to OduFinder
-        imageToOduFinder(e, odu_learner);
+        imageToOduFinder(e, odu_learner, model_name);
 
         ++n_measurements;
 

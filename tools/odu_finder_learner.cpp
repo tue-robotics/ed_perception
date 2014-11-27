@@ -113,23 +113,24 @@ class OduFinderLearner{
     // ----------------------------------------------------------------------------------------------------
 
     void learnImage(std::string model_name, cv::Mat& image){
+
+        // convert to grayscale
+        cv::cvtColor(image, image, CV_BGR2GRAY);
+
+        // create compatible copy
         IplImage copy = image;
         IplImage* image_ipl = &copy;
 
-//        IplImage* image_ipl = cvCloneImage(&(IplImage)image);
-
-        process_file(image_ipl, images, false);
-        image_names.push_back(model_name);
+        if(process_file(image_ipl, images, false)){
+            image_names.push_back(model_name);
+        } else{
+            std::cout << "[" << moduleName_ << "] " << "No features found, ignoring image for model " << model_name << std::endl;
+        }
     }
 
     // ----------------------------------------------------------------------------------------------------
 
     void build_database(std::string database_directory) {
-
-//        std::cout << "[" << moduleName_ << "] " << "Scanning directories" << std::endl;
-//        trace_directory(directory.c_str(), "", images, false);
-
-//        std::cout << "[" << moduleName_ << "] " << "Preparing features for the tree..." << std::endl;
 
         FeatureVector all_features;
         for (unsigned int i = 0; i < images.size(); ++i)
@@ -141,11 +142,12 @@ class OduFinderLearner{
         tree_builder.build(all_features, tree_k, tree_levels);
         tree = tree_builder.tree();
 
-//        std::cout << "[" << moduleName_ << "] " << "Creating the documents..." << std::endl;
+        std::cout << "[" << moduleName_ << "] " << "Creating the documents..." << std::endl;
 
         docs.resize(images.size());
 
         for (unsigned int i = 0; i < images.size(); ++i) {
+
             for (unsigned int j = 0; j < images[i].size(); ++j) {
                 docs[i].push_back(tree.quantize(images[i][j]));
             }
@@ -154,15 +156,15 @@ class OduFinderLearner{
         std::cout << "[" << moduleName_ << "] " << "Creating database with " << images.size() << " images" <<std::endl;
         db = new vt::Database(tree.words());
 
-//        std::cout << "[" << moduleName_ << "] " << "Populating the database with the documents..." << std::endl;
+        std::cout << "[" << moduleName_ << "] " << "Populating the database with the documents..." << std::endl;
         for (unsigned int i = 0; i < images.size(); ++i) {
             documents_map[db->insert(docs[i])] = new DocumentInfo(&(docs[i]), image_names[i]);
         }
 
-//        std::cout << "[" << moduleName_ << "] " << "Training database..." << std::endl;
+        std::cout << "[" << moduleName_ << "] " << "Training database..." << std::endl;
         db->computeTfIdfWeights(1);
 
-//        std::cout << "[" << moduleName_ << "] " << "Database created!" << std::endl;
+        std::cout << "[" << moduleName_ << "] " << "Database created!" << std::endl;
 
         std::cout << "[" << moduleName_ << "] " << "Saving database to " << database_directory << std::endl;
         save_database(database_directory);
@@ -191,90 +193,9 @@ class OduFinderLearner{
         std::string database_directory;
         std::vector<FeatureVector> images;
 
+// ----------------------------------------------------------------------------------------------------
 
-
-    // ----------------------------------------------------------------------------------------------------
-/*
-    void trace_directory(const char* dir, const char* prefix, std::vector<FeatureVector>& images, bool onlySaveImages) {
-
-        std::cout << "[" << moduleName_ << "] " << "Tracing directory: " << dir << std::endl;
-
-        DIR *pdir = opendir(dir);
-        struct dirent *pent = NULL;
-
-        // return in case file or folder does not exist
-        if (pdir == NULL) {
-            std::cout << "[" << moduleName_ << "] " << "ERROR! Directory " << dir << " not found" << std::endl;
-            return;
-        }
-
-        // skip the rest of the directory in case it is not in the include list
-        if (!is_included_dir(prefix)){
-            std::cout << "[" << moduleName_ << "] " << "Model not in the included list, skipping." << std::endl;
-            closedir(pdir);
-            return;
-        }
-
-        // crawl through the directory
-        while ((pent = readdir(pdir))) {
-            if (strcmp(pent->d_name, ".") != 0 && strcmp(pent->d_name, "..") != 0
-                    && strcmp(pent->d_name, "IGNORE") != 0 && strcmp(pent->d_name, ".svn") != 0) {
-
-                std::string short_filename(prefix);
-                short_filename.append(pent->d_name);
-
-                std::string filename(dir);
-                filename.append(pent->d_name);
-
-                struct stat st_buf;
-                if (lstat(filename.c_str(), &st_buf) == -1) {
-                    std::cout << "[" << moduleName_ << "] " << "ERROR: Invalid file name " << filename.c_str() << std::endl;
-                    std::cout << "[" << moduleName_ << "] " << "Exiting" << std::endl;
-                    exit(2);
-                }
-
-                // if the item is a directory, go recursive
-                if (S_ISDIR(st_buf.st_mode)) {
-                    filename.append("/");
-                    short_filename.append("/");
-                    trace_directory(filename.c_str(), short_filename.c_str(), images, onlySaveImages);
-                } else {
-
-                    int curr_pos = 0;
-                    int prev_occur = 0;
-                    int last_occur = short_filename.find_last_of("/");
-                    std::vector<uint> occurrences;
-
-                    // get occurrences of '/' in the directory path
-                    while ((curr_pos = short_filename.find("/", curr_pos)) != std::string::npos && curr_pos < last_occur) {
-                        occurrences.push_back(curr_pos);
-                        curr_pos+=1;
-                        prev_occur = curr_pos;
-                    }
-
-                    // else process it
-                    std::string extension (short_filename.substr(short_filename.find_last_of(".") + 1));
-                    std::string image_name (short_filename.substr(short_filename.find_last_of("/") + 1, short_filename.find_last_of(".")));
-                    std::string parent_dir (short_filename.substr(prev_occur, last_occur - prev_occur));
-
-                    // if is has an allowed extention and the parent directory is odu_finder
-                    if((extension.compare("png") == 0 || extension.compare("jpg") == 0 ||
-                       extension.compare("PNG") == 0 || extension.compare("JPG") == 0) && parent_dir.compare("odu_finder") == 0) {
-                        process_file(filename, images, onlySaveImages);
-                        image_names.push_back(image_name);
-                    } else {
-                        std::cout << "[" << moduleName_ << "] " << "Not an image or not in folder 'odu_finder', skipping file " << filename << std::endl;
-                    }
-                }
-            }
-        }
-
-        closedir(pdir);
-    }
-*/
-    // ----------------------------------------------------------------------------------------------------
-
-    void save_database_without_tree(std::string& directory) {
+        void save_database_without_tree(std::string& directory) {
 //        std::cout << "[" << moduleName_ << "] " << "Saving documents..." << std::endl;
 
         std::string documents_file(directory);
@@ -286,10 +207,8 @@ class OduFinderLearner{
 
         for (iter = documents_map.begin(); iter != documents_map.end(); ++iter) {
             // TODO: sometimes the last iter->second->document has size 0, this is just a quick fix
-            if (iter->second->document->size() > 0){
-                out.write((char*) &iter->first, sizeof(int));
-                iter->second->write(out);
-            }
+            out.write((char*) &iter->first, sizeof(int));
+            iter->second->write(out);
         }
 
 //        std::cout << "[" << moduleName_ << "] " << "Saving weights..." << std::endl;
@@ -310,32 +229,10 @@ class OduFinderLearner{
         save_database_without_tree(directory);
     }
 
-
-
     // ----------------------------------------------------------------------------------------------------
 
-    bool is_included_dir(std::string dir){
+    bool process_file(IplImage* image, std::vector<FeatureVector>& images_learn, bool onlySaveImages) {
 
-        // if the name of the directory or the include list is empty, than accept it
-        if (dir.empty() || included_dirs.empty())
-            return true;
-
-        for(std::vector<std::string>::const_iterator it = included_dirs.begin(); it != included_dirs.end(); ++it) {
-            if (dir.find(*it) != std::string::npos){
-    //            std::cout << "[" << moduleName_ << "] " << "DIR INCLUDED: " << dir << std::endl;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    // ----------------------------------------------------------------------------------------------------
-
-    void process_file(IplImage* image, std::vector<FeatureVector>& images_learn, bool onlySaveImages) {
-//        std::cout << "[" << moduleName_ << "] " << "Processing file " << filename.c_str() << "..." << std::endl;
-
-//        IplImage *image = cvLoadImage((char*) filename.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
         Keypoint keypoints = extract_keypoints(image, false);
 
 //        std::cout << "[" << moduleName_ << "] " << "Keypoints extracted" << std::endl;
@@ -351,7 +248,9 @@ class OduFinderLearner{
             ++count;
         }
 
-        if (!onlySaveImages)
+//        std::cout << "[" << moduleName_ << "] " << count << " features found" << std::endl;
+
+        if (!onlySaveImages && count > 0)
             images_learn.push_back(features);
         else {
 //            IplImage *colour_image = cvLoadImage((char*) filename.c_str());
@@ -367,7 +266,8 @@ class OduFinderLearner{
 //        cvReleaseImage(&image);       // TODO cannot release the image after copying it from cv::Mat, do i really need this?
         FreeKeypoints(keypoints);
 
-//        std::cout << "[" << moduleName_ << "] " << count << " features found" << std::endl;
+        // if features were not found, return failure in learning
+        return count > 0;
     }
 
     // ----------------------------------------------------------------------------------------------------
