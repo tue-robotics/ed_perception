@@ -52,6 +52,7 @@ private:
 
     float small_tresh;
     float medium_tresh;
+    float diff_thresh;
 
     std::string	kModuleName;    /*!< Name of the module, for output */
 

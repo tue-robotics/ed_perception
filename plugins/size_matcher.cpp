@@ -31,6 +31,7 @@ void SizeMatcher::loadConfig(const std::string& config_path) {
 
     kModuleName = "size_matcher";
 
+    diff_thresh = 0.8;
     small_tresh = 0.5;
     medium_tresh = 0.7;
 }
@@ -114,10 +115,12 @@ void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) cons
             diff_w = std::abs(model_size.max_width - object_width) / std::max(model_size.max_width, object_width);
 
             // error will be the highest diff
-            if (best_err > std::max(diff_h, diff_w)) best_err = std::max(diff_h, diff_w);
+//            if (best_err > std::max(diff_h, diff_w)) best_err = std::max(diff_h, diff_w);
+            if (best_err > (diff_h + diff_w)) best_err = diff_h + diff_w;
         }
 
-        hypothesis[label] = best_err;
+        if (best_err < diff_thresh)
+            hypothesis[label] = 1 - best_err;
     }
 
     // ----------------------- SAVE RESULTS -----------------------
@@ -152,28 +155,11 @@ void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) cons
         {
             result.addArrayItem();
             result.setValue("name", it->first);
-            result.setValue("score", std::max(1 - it->second, 0.0));
+            result.setValue("score", std::max(it->second, 0.0));
             result.endArrayItem();
         }
         result.endArray();
     }
-
-    // if an hypothesis is found, assert it
-//    if (!hyps.empty())
-//    {
-//        // probability depends on the number of hypothesis
-//        double prob = 1.0 / hyps.size();
-
-//        result.writeArray("hypothesis");
-//        for(std::vector<std::string>::const_iterator it = hyps.begin(); it != hyps.end(); ++it)
-//        {
-//            result.addArrayItem();
-//            result.setValue("name", *it + "_size");
-//            result.setValue("score", prob);
-//            result.endArrayItem();
-//        }
-//        result.endArray();
-//    }
 
     result.endGroup();  // close size_matcher group
     result.endGroup();  // close perception_result group
