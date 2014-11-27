@@ -24,7 +24,24 @@ struct Feature{
         plugin_name = plugin_name_local;
         score = score_local;
     }
+
+    bool operator== (const Feature &f)
+    {
+        return f.name == name;
+    }
 };
+
+typedef std::pair<std::string, float> StringFloatPair;
+struct CompareValue
+{
+    bool operator()(const StringFloatPair& a, const StringFloatPair& b) const
+    {
+        return a.second < b.second;
+    }
+};
+
+
+
 
 class TypeAggregator : public ed::PerceptionModule
 {
@@ -65,12 +82,17 @@ private:
     float kPositiveTresh;
 
     void collect_features(tue::Configuration& entity_conf,
-                          std::vector<Feature>& features) const;
+                          std::vector<Feature>& features,
+                          std::vector<Feature>& hypothesis) const;
 
-    void match_features(std::vector<Feature>& features,
+    void match_hypothesis(std::vector<Feature>& features,
                         std::map<std::string, float>& type_histogram,
                         std::string& type,
-                        float& amount, float min, float max) const;
+                        float& score) const;
+
+    void discard_options(std::vector<Feature>& features,
+                         std::string& type,
+                         float& score) const;
 
     bool load_dictionary(const std::string path);
 

@@ -12,7 +12,8 @@
 // ----------------------------------------------------------------------------------------------------
 
 TypeAggregator::TypeAggregator():
-    PerceptionModule("type_aggregator")
+    PerceptionModule("type_aggregator"),
+    init_success_(false)
 {
 }
 
@@ -35,15 +36,8 @@ void TypeAggregator::loadConfig(const std::string& config_path) {
 
     kPositiveTresh = 0.5;
 
-//    std::cout << "[" << kModuleName << "] " << "Loading dictionary ..." << config_path + "/type_dictionary.yml" << std::endl;
-
-//    if (load_dictionary(config_path + "/type_dictionary.yml"))
-//        std::cout << "[" << kModuleName << "] " << "Ready!" << std::endl;
-//    else
-//        std::cout << "[" << kModuleName << "] " << "Unable to load dictionary from " << config_path + "/type_dictionary.yml" << std::endl;
-//        return;
-
     init_success_ = true;
+    std::cout << "[" << kModuleName << "] " << "Ready!" << std::endl;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -52,18 +46,18 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
 {
 
     // if initialization failed, return
-//    if (!init_success_)
-//        return;
+    if (!init_success_)
+        return;
 
-    std::map<std::string, std::map<std::string, float> > hypothesis;   // [label | [plugin who named it | score]]
-    std::vector<Feature> features;    // [hypothesis name | [plugin who named it | score]]
+    std::vector<Feature> features;
+    std::vector<Feature> hypothesis;
     std::map<std::string, float> type_histogram;
     std::string type = "";
     float best_score = 0;
     float min;
-    float max;
 
     tue::config::Reader old_entity_conf(e->data());
+
 
     // rebuild histogram from previous configuration
     if (old_entity_conf.readGroup("perception_result", tue::config::OPTIONAL))
@@ -79,7 +73,7 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
                 {
 //                    type_histogram.insert(std::pair<std::string, float>(type, amount));
                 }else{
-                    std::cout << "[" << kModuleName << "] " << "Malformed histogram entry." << type << ", " << amount << std::endl;
+                    std::cout << "[" << kModuleName << "] " << "Malformed histogram entry. type = " << type << ", amount = " << amount << std::endl;
                 }
             }
             old_entity_conf.endArray();
@@ -89,12 +83,15 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
 
 
     // collect features asserted by other perception plugins
-    collect_features(entity_conf, features);
+    collect_features(entity_conf, features, hypothesis);
 
-    // match these features against the features dictionary
-    match_features(features, type_histogram, type, best_score, min, max);
+    // match hypothesis from different plugins
+    match_hypothesis(hypothesis, type_histogram, type, best_score);
 
-    // assert type
+    // discard hypothesis based on the features
+    discard_options(features, type, best_score);
+
+    // assert general type
     if (!type.empty()){
         entity_conf.setValue("type", type);
     }
@@ -112,13 +109,13 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
         entity_conf.addArrayItem();
         entity_conf.setValue("type", it->first);
         entity_conf.setValue("amount", it->second);
-//        entity_conf.setValue("amount", normalize(it->second, min, max));
         entity_conf.endArrayItem();
     }
     entity_conf.endArray(); // close histogram array
 
     entity_conf.writeGroup("type_aggregator");
-    // assert type
+
+    // assert type_aggregator type
     if (!type.empty()){
         entity_conf.setValue("type", type);
         entity_conf.setValue("score", best_score);
@@ -132,19 +129,50 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
     entity_conf.endGroup(); // close perception_result group
 }
 
+// ----------------------------------------------------------------------------------------------------
+
+
+void TypeAggregator::discard_options(std::vector<Feature>& features,
+                                    std::string& type,
+                                    float& score) const{
+
+    std::vector<Feature>::iterator bla;
+    bool face = false;
+    bool human_shape = false;
+    bool small_size = false;
+    bool large_size = false;
+
+
+    for (std::vector<Feature>::iterator feat_it = features.begin() ; feat_it != features.end(); ++feat_it){
+        face = ((feat_it->name.compare("face") == 0 && feat_it->score == 1) || face == true);
+        human_shape = ((feat_it->name.compare("human_shape") == 0 && feat_it->score == 1) || human_shape == true);
+        small_size = ((feat_it->name.compare("small_size") == 0 && feat_it->score == 1) || small_size == true);
+        large_size = ((feat_it->name.compare("large_size") == 0 && feat_it->score == 1) || large_size == true);
+    }
+    if (face)
+        std::cout << "Found face" << std::endl;
+    if (human_shape)
+        std::cout << "Found human shape" << std::endl;
+
+//    bla = std::find(features.begin(), features.end(), Feature("face", "", 0));
+//    if (bla != features.end())
+//        std::cout << "Found face" << std::endl;
+
+}
 
 // ----------------------------------------------------------------------------------------------------
 
 
-void TypeAggregator::match_features(std::vector<Feature>& features,
+void TypeAggregator::match_hypothesis(std::vector<Feature>& features,
                                     std::map<std::string, float>& type_histogram,
                                     std::string& type,
-                                    float& best_score, float min, float max) const{
+                                    float& score) const{
 
     std::map<std::string, std::pair<std::string, float> >::const_iterator feat_it;
     std::map<std::string, std::vector<std::string> >::const_iterator dict_it;
     std::map<std::string, float>::iterator hist_it;
 
+    float min;
 
     for (std::vector<Feature>::iterator feat_it = features.begin() ; feat_it != features.end(); ++feat_it){
         // search for match with the dictionary
@@ -152,8 +180,7 @@ void TypeAggregator::match_features(std::vector<Feature>& features,
 
         // add a new entry or update the existing one
         if (hist_it != type_histogram.end()){
-//            std::cout << "[" << kModuleName << "] " << "Update entry: " << feat_it->name << ", " <<
-//                         hist_it->second  << " + " << feat_it->score << std::endl;
+//            std::cout << "[" << kModuleName << "] " << "Update entry: " << feat_it->name << ", " << hist_it->second  << " + " << feat_it->score << std::endl;
             hist_it->second += feat_it->score;
         }else{
 //            std::cout << "[" << kModuleName << "] " << "New entry: " << feat_it->name << ", " << feat_it->score << std::endl;
@@ -161,27 +188,27 @@ void TypeAggregator::match_features(std::vector<Feature>& features,
         }
     }
 
-    // find best, min and max result in the hystogram
-    max = 0;
+
     min = std::numeric_limits<float>::max();
+    score = 0;
     for(hist_it = type_histogram.begin(); hist_it != type_histogram.end(); ++hist_it) {
-        // remember best
-        if (best_score < hist_it->second){
-            best_score = hist_it->second;
-            type = hist_it->first;
-        }
-        // remember min
+//        hist_it->second /= 2;
+
+        // save min
         if (min > hist_it->second) min = hist_it->second;
 
-        // remember max
-        if (max < hist_it->second) max = hist_it->second;
+        // save max
+        if (score < hist_it->second){
+            type = hist_it->first;
+            score = hist_it->second;
+        }
     }
 }
 
 
 // ----------------------------------------------------------------------------------------------------
 
-void TypeAggregator::collect_features(tue::Configuration& entity_conf, std::vector<Feature>& features) const{
+void TypeAggregator::collect_features(tue::Configuration& entity_conf, std::vector<Feature>& features, std::vector<Feature>& hypothesis) const{
 
     float score = 0;
     std::string feat_name = "";
@@ -195,11 +222,8 @@ void TypeAggregator::collect_features(tue::Configuration& entity_conf, std::vect
             if (entity_conf.readGroup(*pluginName)){
 
                 // collect Features
-                if (entity_conf.value("score", score, tue::OPTIONAL) && entity_conf.value("label", feat_name, tue::OPTIONAL))
-                {
-                    std::pair<std::string, float> inner_pair (*pluginName, score);
-//                    features.insert(std::pair<std::string, std::pair<std::string, float> >(feat_name, inner_pair));
-//                    std::cout << "Feature " << feat_name << ", from " << *pluginName << " with " << score << std::endl;
+                if (entity_conf.value("score", score, tue::OPTIONAL) && entity_conf.value("label", feat_name, tue::OPTIONAL)){
+                    features.push_back(Feature(feat_name, *pluginName, score));
                 }
 
                 // collect Hypothesis
@@ -210,7 +234,7 @@ void TypeAggregator::collect_features(tue::Configuration& entity_conf, std::vect
                         // if the hypothesis has a name and score
                         if (entity_conf.value("name", feat_name, tue::OPTIONAL) && entity_conf.value("score", score, tue::OPTIONAL))
                         {
-                            features.push_back(Feature(feat_name, *pluginName, score));
+                            hypothesis.push_back(Feature(feat_name, *pluginName, score));
 //                            std::cout << "Feature " << feat_name << ", from " << *pluginName << " with " << score << std::endl;
                         }
                     }
@@ -284,6 +308,7 @@ bool TypeAggregator::load_dictionary(const std::string path) {
 
 float TypeAggregator::normalize(float x, float min, float max) const{
     return (x - min) * max;
+//    normalized = (x-min(x))/(max(x)-min(x))
 }
 
 ED_REGISTER_PERCEPTION_MODULE(TypeAggregator)
