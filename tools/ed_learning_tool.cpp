@@ -247,7 +247,7 @@ void imageToOduFinder(ed::EntityPtr& entity, OduFinderLearner& odu_learner, std:
     cv::Mat roi (cropped_image(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
     cv::Mat roi_mask (mask(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
 
-    odu_learner.learnImage(model_name + "-" + ed::Entity::generateID(), roi);
+    odu_learner.learnImage(model_name + "-" + ed::Entity::generateID().str(), roi);
 }
 
 

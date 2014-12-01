@@ -186,12 +186,12 @@ void ColorMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) con
 
     if (kDebugMode){
         cv::Mat temp;
-        std::string id = ed::Entity::generateID();
+        ed::UUID id = ed::Entity::generateID();
 
         roi.copyTo(temp, roi_mask);
 
-        cv::imwrite(kDebugFolder + id + "_color_matcher_full.png", roi);
-        cv::imwrite(kDebugFolder + id + "_color_matcher_masked.png", temp);
+        cv::imwrite(kDebugFolder + id.str() + "_color_matcher_full.png", roi);
+        cv::imwrite(kDebugFolder + id.str() + "_color_matcher_masked.png", temp);
     }
 }
 
