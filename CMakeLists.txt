@@ -92,10 +92,10 @@ add_library(color_matcher
 )
 target_link_libraries(color_matcher ${catkin_LIBRARIES})
 
-add_library(odu_finder_learner
-    tools/odu_finder_learner.cpp
+add_library(odu_finder_db_builder
+    tools/odu_finder_db_builder.cpp
 )
-target_link_libraries(odu_finder_learner ${catkin_LIBRARIES} /usr/local/lib/libsiftfast.so)
+target_link_libraries(odu_finder_db_builder ${catkin_LIBRARIES} /usr/local/lib/libsiftfast.so)
 
 # ------------------------------------------------------------------------------------------------
 #                                                TOOLS
@@ -110,9 +110,6 @@ target_link_libraries(test-perception ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_executable(create-rgbd-measurement tools/create_rgbd_measurement.cpp)
 target_link_libraries(create-rgbd-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
-add_executable(odu-finder-db-builder tools/odu_finder_db_builder.cpp)
-target_link_libraries(odu-finder-db-builder ${OpenCV_LIBRARIES} /usr/local/lib/libsiftfast.so ${catkin_LIBRARIES})
-
 add_executable(ed-learning-tool tools/ed_learning_tool.cpp)
-target_link_libraries(ed-learning-tool ${catkin_LIBRARIES} odu_finder_learner ${OpenCV_LIBRARIES})
+target_link_libraries(ed-learning-tool odu_finder_db_builder ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
