@@ -27,6 +27,26 @@ std::size_t hash_value(const ColorNamePoint &pt)
 namespace ColorNames
 {
 
+// update this if the number of different colors changes!
+int getTotalColorsNum() {return 11;}
+
+
+uint colorToInt(std::string color)
+{
+    if (color == "Black") return 10;
+    if (color == "Blue") return 1;
+    if (color == "Brown") return 2;
+    if (color == "Grey") return 9;
+    if (color == "Green") return 3;
+    if (color == "Orange") return 0;
+    if (color == "Purple") return 5;
+    if (color == "Red") return 6;
+    if (color == "White") return 8;
+    if (color == "Yellow") return 7;
+
+    return 0;
+}
+
 std::string colorToString(Color color)
 {
     switch(color)

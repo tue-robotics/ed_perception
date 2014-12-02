@@ -40,7 +40,8 @@ private:
     std::string kModuleName;
 
     // Module methods
-    std::map<std::string, double> getImageColorProbability(const cv::Mat &img, const cv::Mat &mask) const;
+    std::map<std::string, double> getImageColorProbability(const cv::Mat &img, const cv::Mat &mask, cv::Mat &histogram) const;
+
     std::string getHighestProbColor(std::map<std::string, double>& map) const;
 
     // Object colors
@@ -52,7 +53,7 @@ private:
 
     bool load_learning(std::string path, std::string model_name);
 
-    void getHypothesis(std::map<std::string, double>& color_prob, std::map<std::string, double>& hypothesis) const;
+    void getHypothesis(std::map<std::string, double>& color_prob, cv::Mat& color_hist, std::map<std::string, double>& hypothesis) const;
 };
 
 

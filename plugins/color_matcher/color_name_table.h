@@ -50,6 +50,8 @@ enum Color
     Red = 6, White = 8, Yellow = 7
 };
 
+int getTotalColorsNum();
+
 /**
  * @brief Convert color enum to std::string
  * @param color
@@ -58,6 +60,8 @@ enum Color
 std::string colorToString(Color color);
 
 Color stringToColor(std::string name);
+
+uint colorToInt(std::string color);
 
 /// Color enun to RGB
 void colorToRGB(Color color, int& r, int& g, int& b);
