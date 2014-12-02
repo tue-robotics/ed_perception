@@ -58,35 +58,12 @@ void DocumentInfo::read(std::istream& in) {
 ODUFinder::ODUFinder(const std::string& plugin_path, bool debug_mode) :
         camera_image(NULL), template_image(NULL), image(NULL), tree_builder(Feature::Zero()), visualization_mode_(FRAMES),
     tuning_object_(""), current_mode_(odu_finder::RECOGNITION)
-{ //SEQUENCES) {  //FRAMES) {   //SEQUENCES
-
-//    command = std::string("/load");
-//    database_location = std::string("database/germandeli");
-//    images_directory = std::string("data/germandeli");
+{
 
     debug_mode_ = debug_mode;
-
+    moduleName_ = "odu_finder";
     database_location = std::string(plugin_path);
     images_directory = std::string(plugin_path + "/../../models/");
-
-    images_for_visualization_directory = std::string("");
-    votes_count = 10;
-    tree_k = 5;
-    tree_levels = 5;
-    min_cluster_size = 30;
-    unknown_object_threshold = 0.3;
-    sliding_window_size = 10;
-    enable_clustering = 1;
-    enable_incremental_learning = 0;
-    enable_visualization = 0;
-    object_id = 700000;
-    frame_number = 0;
-    radius_adaptation_r_min = 200.0;
-    radius_adaptation_r_max = 600.9;
-    radius_adaptation_A = 800.0;
-    radius_adaptation_K = 0.02;
-    count_templates = 0;
-    moduleName_ = "odu_finder";
 
     // replace the parameter loading through ROS, migh override the previous
     if (!loadParams("load")){
@@ -114,8 +91,7 @@ void ODUFinder::set_visualization(bool enable_visualization_in) {
     enable_visualization = enable_visualization_in;
 
     if (enable_visualization) {
-        if (pein_vis_)
-        {
+        if (pein_vis_){
             cvNamedWindow("visualization", CV_WINDOW_AUTOSIZE);
             cvStartWindowThread();
         }
@@ -150,6 +126,31 @@ ODUFinder::~ODUFinder() {
 
 bool ODUFinder::loadParams(std::string mode) {
 
+    // For small databases, use 5, for large databases (3500+) use 7 -->
+    tree_k = 5;
+    tree_levels = 5;
+
+    object_threshold = 0.05;
+    votes_count = 10;
+
+    pein_vis_ = false;
+    extract_roi_ = false;
+    templates_to_show = 4;
+
+    images_for_visualization_directory = std::string("");
+    votes_count = 10;
+    min_cluster_size = 30;
+    sliding_window_size = 10;
+    enable_clustering = 1;
+    enable_incremental_learning = 0;
+    enable_visualization = 0;
+    frame_number = 0;
+    radius_adaptation_r_min = 200.0;
+    radius_adaptation_r_max = 600.9;
+    radius_adaptation_A = 800.0;
+    radius_adaptation_K = 0.02;
+    count_templates = 0;
+
     // if init build and save the database
     if (mode.compare("build_database") == 0){
         build_database(images_directory);
@@ -168,48 +169,15 @@ bool ODUFinder::loadParams(std::string mode) {
         if (load_database(database_location) < 0) return false;
 
         enable_visualization = 1;
-        enable_clustering = 1;      // No results if switched off (what?)
+        enable_clustering = 1;
 
     // if learn, only extract sift features and save them in a specified images_directory
     }else if (mode.compare("learn") == 0){
-//        name="images_folder" type="string" value="$(find objects_of_daily_use_finder)/images_with_keypoints/" />
-
         process_images(images_directory);
     }else{
         return false;
     }
 
-    // For small databases, use 5, for large databases (3500+) use 7 -->
-    tree_k = 5;
-    tree_levels = 5;
-
-    object_threshold = 0.05;
-    votes_count = 10;
-
-    pein_vis_ = false;
-    extract_roi_ = false;
-    templates_to_show = 4;
-
-    return true;
-}
-
-////////////////////////////////////////////////////////
-bool ODUFinder::srvCB(pein_srvs::TuningMode::Request req, pein_srvs::TuningMode::Response resp)
-{
-    if (req.object_class.empty())
-    {
-        current_mode_ = odu_finder::RECOGNITION;
-    }
-    else
-    {
-        current_mode_ = odu_finder::TUNING;
-        tuning_object_ = req.object_class;
-        // Reset statistics
-        obj_sum_.setLabel(tuning_object_);
-        // @todo: check if object is in the model set
-    }
-
-    resp.result = true;
     return true;
 }
 
@@ -220,7 +188,9 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
     std::map<std::string,float> results;
 
     // Extract keypoints in the whole image
+
     Keypoint keypoints = extract_keypoints(camera_image_in);
+
     Keypoint point = keypoints;
 
     camera_keypoints_count = 0;
@@ -593,8 +563,7 @@ void ODUFinder::add_image_to_database(vt::Document& doc, std::string& name) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
-void ODUFinder::trace_directory(const char* dir, const char* prefix,
-                                std::vector<FeatureVector>& images, bool onlySaveImages) {
+void ODUFinder::trace_directory(const char* dir, const char* prefix, std::vector<FeatureVector>& images, bool onlySaveImages) {
     std::cout << "[" << moduleName_ << "] " << "Tracing directory: " << dir << std::endl;
     DIR *pdir = opendir(dir);
     struct dirent *pent = NULL;
@@ -620,8 +589,7 @@ void ODUFinder::trace_directory(const char* dir, const char* prefix,
             if (S_ISDIR(st_buf.st_mode)) {
                 filename.append("/");
                 short_filename.append("/");
-                trace_directory(filename.c_str(), short_filename.c_str(),
-                                images, onlySaveImages);
+                trace_directory(filename.c_str(), short_filename.c_str(), images, onlySaveImages);
             } else {
                 process_file(filename, images, onlySaveImages);
                 image_names.push_back(short_filename);

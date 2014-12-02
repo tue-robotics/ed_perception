@@ -154,7 +154,6 @@ public:
     //! Mode
     Mode current_mode_;
 
-public:
     ODUFinder(const std::string& plugin_path, bool debug_mode);
 
     ~ODUFinder();
