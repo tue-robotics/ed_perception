@@ -4,6 +4,8 @@
 #include <ed/perception_modules/perception_module.h>
 #include <boost/thread.hpp>
 
+#include <opencv2/core/core.hpp>
+
 namespace odu_finder
 {
     class ODUFinder;
