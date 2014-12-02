@@ -22,7 +22,7 @@
 #include <opencv2/highgui/highgui.hpp>
 
 // odu_finder
-#include "odu_finder_learner.cpp"
+#include "odu_finder_db_builder.cpp"
 
 // RGBD
 #include <rgbd/Image.h>
@@ -66,8 +66,7 @@ void config_to_file(tue::Configuration& config, const std::string &model_name, c
     boost::filesystem::path dir(save_directory + "/" + model_name);
     boost::filesystem::create_directories(dir);
 
-    std::cout << "[" << kModuleName << "] " << "Saving config for '" << model_name << "' at " << file_dir << std::endl;
-
+    std::cout << "[" << kModuleName << "] " << "Saving model for '" << model_name << "' at " << file_dir << std::endl;
 
     std::ofstream out(file_dir.c_str(), std::ofstream::out);
     if (out.is_open()){
@@ -103,11 +102,8 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
     float amount;
     std::map<std::string, float> color_info;
 
-//    std::cout << "[" << kModuleName << "] " << "Parsing " << module_name << " group" << std::endl;
-
     // parse information from current config
-    if(module_name.compare("size_matcher") == 0){
-    // PARSE SIZE MATCHER
+    if(module_name.compare("size_matcher") == 0){       // PARSE SIZE MATCHER
         if (config.readGroup("size")){
             if (config.value("height", height) && config.value("width", width)){
                 // height and width saved just by reading
@@ -115,12 +111,10 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
             }
             config.endGroup(); // close size group
         }
-    }else if(module_name.compare("color_matcher") == 0){
-    // PARSE COLOR MATCHER
+    }else if(module_name.compare("color_matcher") == 0){    // PARSE COLOR MATCHER
         if (config.readArray("colors")){
             while(config.nextArrayItem()){
                 if (config.value("name", color_name) && config.value("value", amount)){
-//                    std::cout << "[" << kModuleName << "] " << "Read color: " << color_name << " (" << amount << ")" << std::endl;
                     color_info[color_name] = amount;
                 }
             }
@@ -196,7 +190,7 @@ void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized){
 // ----------------------------------------------------------------------------------------------------
 
 
-void imageToOduFinder(ed::EntityPtr& entity, OduFinderLearner& odu_learner, std::string model_name){
+void imageToOduFinder(ed::EntityPtr& entity, OduDBBuilder& odu_learner, std::string model_name){
     // ---------- PREPARE MEASUREMENT ----------
 
     // Get the best measurement from the entity
@@ -241,11 +235,9 @@ void imageToOduFinder(ed::EntityPtr& entity, OduFinderLearner& odu_learner, std:
 
     optimizeContourBlur(mask, mask);
 
-    // ---------- PROCESS MEASUREMENT ----------
+    // ---------- LEARN MEASUREMENT ----------
 
-    // Calculate img color prob
     cv::Mat roi (cropped_image(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
-    cv::Mat roi_mask (mask(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
 
     odu_learner.learnImage(model_name + "-" + ed::Entity::generateID(), roi);
 }
@@ -260,7 +252,10 @@ int main(int argc, char **argv) {
 
     if (argc < 3 || argc > 3)
     {
-        std::cout << "Usage for:\n\n   ed-learning-tool MEASUREMENT_DIRECTORY OUTPUT_DIRECTORY \n\n";
+        std::cout << "Usage for:\n\n   ed-learning-tool MEASUREMENT_DIRECTORY OUTPUT_DIRECTORY \n\n" << std::endl;
+        std::cout << "\tMEASUREMENT_DIRECTORY - directory with the measurements separated in sub-folders. Sub-folder name will be used as model name" << std::endl;
+        std::cout << "\tOUTPUT_DIRECTORY - directory where the learning files will be stored" << std::endl;
+        std::cout << "\n" << std::endl;
         return 1;
     }else if (argc == 3)
     {
@@ -272,12 +267,14 @@ int main(int argc, char **argv) {
     kModuleName = "ed_learning_tool";
 
     // used plugins
-    OduFinderLearner odu_learner = OduFinderLearner();
+    OduDBBuilder odu_learner = OduDBBuilder(output_dir + "/odu_debug/");
     perception_libs.push_back("/home/luisf/ros/hydro/dev/devel/lib/libsize_matcher.so");
     perception_libs.push_back("/home/luisf/ros/hydro/dev/devel/lib/libcolor_matcher.so");
 
 
     // ---------------- LOAD PERCEPTION LIBRARIES ----------------
+
+    std::cout << "[" << kModuleName << "] " << "Loading perception libraries" << std::endl;
 
     std::vector<ed::PerceptionModulePtr> modules;
 
@@ -300,6 +297,8 @@ int main(int argc, char **argv) {
 
     // ---------------- CRAWL THROUGH MEASUREMENTS ----------------
 
+    std::cout << "[" << kModuleName << "] " << "Finding measurements" << std::endl;
+
     tue::filesystem::Crawler crawler(measurement_dir);
 
     tue::Configuration parsed_conf;
@@ -307,7 +306,6 @@ int main(int argc, char **argv) {
     tue::filesystem::Path filename;
     std::string model_name;
     std::string last_model = "";
-    std::string parent_dir;
     bool first_model = true;
 
     while(crawler.nextPath(filename))
@@ -343,7 +341,7 @@ int main(int argc, char **argv) {
         ed::EntityPtr e(new ed::Entity(model_name + "-entity", "", 5, 0));
         e->addMeasurement(msr);
 
-        std::cout << "[" << kModuleName << "] " << "Processing measurement for '" << model_name << "' on " << filename.withoutExtension() << std::endl;
+//        std::cout << "[" << kModuleName << "] " << "Processing measurement for '" << model_name << "' on " << filename.withoutExtension() << std::endl;
 
         // ---------------- PROCESS MEASUREMENTS WITH LIBRARIES----------------
         for(std::vector<ed::PerceptionModulePtr>::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
@@ -353,13 +351,13 @@ int main(int argc, char **argv) {
             parse_config(entity_conf, (*it_mod)->name(), model_name, parsed_conf);
         }
 
-        // send the object image to OduFinder
+        // send the object image to the OduFinder database
         imageToOduFinder(e, odu_learner, model_name);
 
         ++n_measurements;
 
-        //showMeasurement(*msr);
-        //cv::waitKey();
+//        showMeasurement(*msr);
+//        cv::waitKey();
     }
 
     // save last parsed model
@@ -367,6 +365,7 @@ int main(int argc, char **argv) {
         std::cout << "No measurements found." << std::endl;
     else{
         config_to_file(parsed_conf, model_name, output_dir);
+        // compile Odu Finder database
         odu_learner.build_database(output_dir);
     }
 
@@ -381,6 +380,8 @@ int main(int argc, char **argv) {
     // Delete the class loaders (which will unload the libraries)
     for(unsigned int i = 0; i < perception_loaders.size(); ++i)
         delete perception_loaders[i];
+
+    std::cout << "[" << kModuleName << "] " << "Learning process complete!" << std::endl;
 
     return 0;
 }
