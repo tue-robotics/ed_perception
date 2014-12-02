@@ -140,23 +140,30 @@ void TypeAggregator::discard_options(std::vector<Feature>& features,
     bool face = false;
     bool human_shape = false;
     bool small_size = false;
+    bool medium_size = false;
     bool large_size = false;
 
 
+    // get booleans from features
     for (std::vector<Feature>::iterator feat_it = features.begin() ; feat_it != features.end(); ++feat_it){
         face = ((feat_it->name.compare("face") == 0 && feat_it->score == 1) || face == true);
         human_shape = ((feat_it->name.compare("human_shape") == 0 && feat_it->score == 1) || human_shape == true);
         small_size = ((feat_it->name.compare("small_size") == 0 && feat_it->score == 1) || small_size == true);
+        medium_size = ((feat_it->name.compare("medium_size") == 0 && feat_it->score == 1) || medium_size == true);
         large_size = ((feat_it->name.compare("large_size") == 0 && feat_it->score == 1) || large_size == true);
     }
-    if (face)
-        std::cout << "Found face" << std::endl;
-    if (human_shape)
-        std::cout << "Found human shape" << std::endl;
 
-//    bla = std::find(features.begin(), features.end(), Feature("face", "", 0));
-//    if (bla != features.end())
-//        std::cout << "Found face" << std::endl;
+
+    // assuming that hypothesis are only used for household objects, therefore small
+    //  anything medium or big cannot have an hypothesis
+
+    if ((human_shape || face) && !small_size){
+        type = "human";
+        score = 1;
+    }else if(!human_shape && !face && (medium_size || large_size)){
+        type = "";
+        score = 0;
+    }
 
 }
 
@@ -182,9 +189,11 @@ void TypeAggregator::match_hypothesis(std::vector<Feature>& features,
         if (hist_it != type_histogram.end()){
 //            std::cout << "[" << kModuleName << "] " << "Update entry: " << feat_it->name << ", " << hist_it->second  << " + " << feat_it->score << std::endl;
             hist_it->second += feat_it->score;
+//            hist_it->second = hist_it->second*0.33 + feat_it->score*0.66;
         }else{
 //            std::cout << "[" << kModuleName << "] " << "New entry: " << feat_it->name << ", " << feat_it->score << std::endl;
             type_histogram.insert(std::pair<std::string, float>(feat_it->name, feat_it->score));
+//            type_histogram.insert(std::pair<std::string, float>(feat_it->name, feat_it->score*0.66));
         }
     }
 
@@ -192,8 +201,6 @@ void TypeAggregator::match_hypothesis(std::vector<Feature>& features,
     min = std::numeric_limits<float>::max();
     score = 0;
     for(hist_it = type_histogram.begin(); hist_it != type_histogram.end(); ++hist_it) {
-//        hist_it->second /= 2;
-
         // save min
         if (min > hist_it->second) min = hist_it->second;
 
