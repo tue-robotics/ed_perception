@@ -47,7 +47,7 @@ void SizeMatcher::loadModel(const std::string& model_name, const std::string& mo
     std::string path = models_folder + "/models/" + model_name +  "/" +  model_name + ".yml";
 
     if (load_learning(path, model_name))
-        std::cout << "[" << kModuleName << "] " << "Loaded sizes for " << model_name << "!" << std::endl;
+        std::cout << "[" << kModuleName << "] " << "Loaded sizes for " << model_name << std::endl;
     else{
 //        std::cout << "[" << kModuleName << "] " << "Couldn not load sizes for " << path << "!" << std::endl;
     }
@@ -111,16 +111,16 @@ void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) cons
             double diff_h;
             double diff_w;
 
+            // difference in height and width, between 0 and 1
             diff_h = std::abs(model_size.max_height - object_height) / std::max(model_size.max_height, object_height);
             diff_w = std::abs(model_size.max_width - object_width) / std::max(model_size.max_width, object_width);
 
-            // error will be the highest diff
-//            if (best_err > std::max(diff_h, diff_w)) best_err = std::max(diff_h, diff_w);
-            if (best_err > (diff_h + diff_w)) best_err = diff_h + diff_w;
+            // error will be the highest average diff
+            if (best_err > (diff_h + diff_w) / 2) best_err = (diff_h + diff_w) / 2;
         }
 
         if (best_err < diff_thresh)
-            hypothesis[label] = 1 - best_err;
+            hypothesis[label] = std::max(1 - best_err, 0.0);
     }
 
     // ----------------------- SAVE RESULTS -----------------------
