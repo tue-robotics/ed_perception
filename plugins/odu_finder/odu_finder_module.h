@@ -33,8 +33,6 @@ private:
 protected:
 
     mutable boost::mutex mutex_update_;
-
-
 };
 
 #endif
