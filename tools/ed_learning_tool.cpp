@@ -35,7 +35,7 @@
 
 #include <boost/filesystem.hpp>
 
-std::string kModuleName;
+std::string module_name_;
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -65,7 +65,7 @@ void config_to_file(tue::Configuration& config, const std::string &model_name, c
 
     try {
         boost::filesystem::path dir(save_directory + "/" + model_name);
-        boost::filesystem::remove_all(dir);
+//        boost::filesystem::remove_all(dir);
         boost::filesystem::create_directories(dir);
     } catch(const boost::filesystem::filesystem_error& e){
        if(e.code() == boost::system::errc::permission_denied)
@@ -74,14 +74,14 @@ void config_to_file(tue::Configuration& config, const std::string &model_name, c
            std::cout << "boost::filesystem failed with error: " << e.code().message() << std::endl;
     }
 
-    std::cout << "[" << kModuleName << "] " << "Saving model for '" << model_name << "' at " << file_dir << std::endl;
+    std::cout << "[" << module_name_ << "] " << "Saving model for '" << model_name << "' at " << file_dir << std::endl;
 
     std::ofstream out(file_dir.c_str(), std::ofstream::out);
     if (out.is_open()){
         out << config.toYAMLString();
         out.close();
     }else
-        std::cout << "[" << kModuleName << "]" << "Could not create file" << std::endl;
+        std::cout << "[" << module_name_ << "]" << "Could not create file" << std::endl;
 }
 
 
@@ -93,13 +93,13 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
 
     // step into perception_result group
     if (!config.readGroup("perception_result")){
-        std::cout << "[" << kModuleName << "] " << "Could not find the perception_result group" << std::endl;
+        std::cout << "[" << module_name_ << "] " << "Could not find the perception_result group" << std::endl;
         return;
     }
 
     // step into the group being parsed
     if (!config.readGroup(module_name)){
-        std::cout << "[" << kModuleName << "] " << "Could not find the " << module_name << "group" << std::endl;
+        std::cout << "[" << module_name_ << "] " << "Could not find the " << module_name << "group" << std::endl;
         config.endGroup(); // close type_aggregator group in case this one fails
         return;
     }
@@ -253,6 +253,32 @@ void imageToOduFinder(ed::EntityPtr& entity, OduDBBuilder& odu_learner, std::str
     odu_learner.learnImage(model_name + "-" + ed::Entity::generateID().str(), roi);
 }
 
+// ----------------------------------------------------------------------------------------------------
+
+bool loadModelList(std::string& model_list_path, std::vector<std::string>& model_list){
+    tue::Configuration conf;
+    std::string model_name;
+
+    if (conf.loadFromYAMLFile(model_list_path)){    // read YAML configuration
+        if (conf.readArray("models")){              // read Model group
+
+            while(conf.nextArrayItem()){
+                if(conf.value("name", model_name))
+                    model_list.push_back(model_name);
+            }
+
+            conf.endArray();    // close Models group
+        }else{
+            std::cout << "[" << "perception_module" << "] " << "Could not find 'models' group" << std::endl;
+            return false;
+        }
+    }else{
+//        std::cout << "[" << "perception_module" << "] " << "Could not load YML file." << std::endl;
+        return false;
+    }
+
+    return true;
+}
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -261,11 +287,13 @@ int main(int argc, char **argv) {
     std::string measurement_dir;
     std::string model_output_dir;
     std::string db_output_dir;
+    std::string model_list_path;
 
-    if (argc != 4)
+    if (argc != 5)
     {
-        std::cout << "Usage for:\n\n   ed-learning-tool MEASUREMENTS_DIRECTORY MODEL_LEARNING_DIRECTORY ODU_DB_DIRECTORY \n\n" << std::endl;
+        std::cout << "Usage for:\n\n   ed-learning-tool MEASUREMENTS_DIRECTORY MODEL_LIST MODEL_LEARNING_DIRECTORY ODU_DB_DIRECTORY \n\n" << std::endl;
         std::cout << "\tMEASUREMENT_DIRECTORY - directory with the measurements separated in sub-folders. Sub-folder name will be used as model name" << std::endl;
+        std::cout << "\tMODEL_LIST - List of models to be learned, from the available in the measurements directory (YML file)" << std::endl;
         std::cout << "\tMODEL_LEARNING_DIRECTORY - directory where the model learning files will be stored" << std::endl;
         std::cout << "\tODU_DB_DIRECTORY - directory where the ODU Finder database will be stored" << std::endl;
         std::cout << "\n" << std::endl;
@@ -273,13 +301,19 @@ int main(int argc, char **argv) {
     }else
     {
         measurement_dir = argv[1];
-        model_output_dir = argv[2];
-        db_output_dir = argv[3];
+        model_list_path = argv[2];
+        model_output_dir = argv[3];
+        db_output_dir = argv[4];
     }
 
     std::vector<std::string> perception_libs;
-    kModuleName = "ed_learning_tool";
+    std::vector<std::string> model_list;
+    module_name_ = "ed_learning_tool";
 
+    if (loadModelList(model_list_path, model_list))
+        std::cout << "[" << module_name_ << "] " << "Model list loaded." << std::endl;
+    else
+        std::cout << "[" << module_name_ << "] " << "Could not load model list from " << model_list_path << std::endl;
 
     // ---------------- LOAD PERCEPTION LIBRARIES ----------------
 
@@ -287,7 +321,7 @@ int main(int argc, char **argv) {
     perception_libs.push_back("/home/luisf/ros/hydro/dev/devel/lib/libsize_matcher.so");
     perception_libs.push_back("/home/luisf/ros/hydro/dev/devel/lib/libcolor_matcher.so");
 
-    std::cout << "[" << kModuleName << "] " << "Loading perception libraries" << std::endl;
+    std::cout << "[" << module_name_ << "] " << "Loading perception libraries" << std::endl;
 
     std::vector<ed::PerceptionModulePtr> modules;
 
@@ -304,38 +338,44 @@ int main(int argc, char **argv) {
         }
         else
         {
-            std::cout << "Unable to load perception module " << perception_libs[i] << std::endl;
+            std::cout << "[" << module_name_ << "] " << "Unable to load perception module " << perception_libs[i] << std::endl;
         }
     }
 
     // ---------------- CRAWL THROUGH MEASUREMENTS ----------------
 
-    std::cout << "[" << kModuleName << "] " << "Finding measurements" << std::endl;
+    std::cout << "[" << module_name_ << "] " << "Finding measurements" << std::endl;
 
     tue::filesystem::Crawler crawler(measurement_dir);
 
     tue::Configuration parsed_conf;
     int n_measurements = 0;
-    tue::filesystem::Path filename;
+    tue::filesystem::Path model_path;
     std::string model_name;
     std::string last_model = "";
     bool first_model = true;
 
-    while(crawler.nextPath(filename))
+    while(crawler.nextPath(model_path))
     {
-        if (filename.extension() != ".mask")
+        if (model_path.extension() != ".mask")
             continue;
 
         // load measurement onto an dummy entity
         ed::MeasurementPtr msr(new ed::Measurement);
-        if (!ed::read(filename.withoutExtension().string(), *msr))
+        if (!ed::read(model_path.withoutExtension().string(), *msr))
         {
             continue;
         }
 
         // get info on model name from path
-        model_name = filename.withoutExtension().string().substr(0, filename.withoutExtension().string().find_last_of("/"));    // remove measurement ID
+        model_name = model_path.withoutExtension().string().substr(0, model_path.withoutExtension().string().find_last_of("/"));    // remove measurement ID
         model_name = model_name.substr(model_name.find_last_of("/")+1);     // get parent folder name / model name
+
+        // skip model if its not on the model list
+        if (!(std::find(model_list.begin(), model_list.end(), model_name) != model_list.end() || model_list.empty())){
+            model_name = last_model;
+            continue;
+        }
 
         // get the name of the first model, when found
         if(first_model){
@@ -353,8 +393,6 @@ int main(int argc, char **argv) {
 
         ed::EntityPtr e(new ed::Entity(model_name + "-entity", "", 5, 0));
         e->addMeasurement(msr);
-
-//        std::cout << "[" << kModuleName << "] " << "Processing measurement for '" << model_name << "' on " << filename.withoutExtension() << std::endl;
 
         // ---------------- PROCESS MEASUREMENTS WITH LIBRARIES----------------
         for(std::vector<ed::PerceptionModulePtr>::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
@@ -394,7 +432,7 @@ int main(int argc, char **argv) {
     for(unsigned int i = 0; i < perception_loaders.size(); ++i)
         delete perception_loaders[i];
 
-    std::cout << "[" << kModuleName << "] " << "Learning process complete!" << std::endl;
+    std::cout << "[" << module_name_ << "] " << "Learning process complete!" << std::endl;
 
     return 0;
 }
