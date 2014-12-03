@@ -33,16 +33,16 @@ int getTotalColorsNum() {return 11;}
 
 uint colorToInt(std::string color)
 {
-    if (color == "Black") return 10;
-    if (color == "Blue") return 1;
-    if (color == "Brown") return 2;
-    if (color == "Grey") return 9;
-    if (color == "Green") return 3;
-    if (color == "Orange") return 0;
-    if (color == "Purple") return 5;
-    if (color == "Red") return 6;
-    if (color == "White") return 8;
-    if (color == "Yellow") return 7;
+    if (color.compare("black") == 0) return 10;
+    if (color.compare("blue") == 0) return 1;
+    if (color.compare("brown") == 0) return 2;
+    if (color.compare("grey") == 0) return 9;
+    if (color.compare("green") == 0) return 3;
+    if (color.compare("orange") == 0) return 0;
+    if (color.compare("purple") == 0) return 5;
+    if (color.compare("red") == 0) return 6;
+    if (color.compare("white") == 0) return 8;
+    if (color.compare("yellow") == 0) return 7;
 
     return 0;
 }

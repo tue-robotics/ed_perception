@@ -35,9 +35,9 @@ private:
 
     // module configuration
     bool init_success_;
-    bool kDebugMode;
-    std::string kDebugFolder;
-    std::string kModuleName;
+    bool debug_mode_;
+    std::string debug_folder_;
+    std::string module_name_;
 
     // Module methods
     std::map<std::string, double> getImageColorProbability(const cv::Mat &img, const cv::Mat &mask, cv::Mat &histogram) const;
@@ -47,11 +47,11 @@ private:
     // Object colors
     std::map<std::string, std::vector<std::map<std::string, double> > > models_colors_;
 
-    void CleanDebugFolder(const std::string& folder) const;
+    void cleanDebugFolder(const std::string& folder) const;
 
     void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
 
-    bool load_learning(std::string path, std::string model_name);
+    bool loadLearning(std::string path, std::string model_name);
 
     void getHypothesis(std::map<std::string, double>& color_prob, cv::Mat& color_hist, std::map<std::string, double>& hypothesis) const;
 };
