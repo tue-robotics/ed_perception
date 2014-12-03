@@ -63,8 +63,16 @@ void config_to_file(tue::Configuration& config, const std::string &model_name, c
 
     std::string file_dir = save_directory + "/" + model_name + "/" + model_name + ".yml";
 
-    boost::filesystem::path dir(save_directory + "/" + model_name);
-    boost::filesystem::create_directories(dir);
+    try {
+        boost::filesystem::path dir(save_directory + "/" + model_name);
+        boost::filesystem::remove_all(dir);
+        boost::filesystem::create_directories(dir);
+    } catch(const boost::filesystem::filesystem_error& e){
+       if(e.code() == boost::system::errc::permission_denied)
+           std::cout << "boost::filesystem permission denied" << std::endl;
+       else
+           std::cout << "boost::filesystem failed with error: " << e.code().message() << std::endl;
+    }
 
     std::cout << "[" << kModuleName << "] " << "Saving model for '" << model_name << "' at " << file_dir << std::endl;
 
@@ -237,7 +245,10 @@ void imageToOduFinder(ed::EntityPtr& entity, OduDBBuilder& odu_learner, std::str
 
     // ---------- LEARN MEASUREMENT ----------
 
-    cv::Mat roi (cropped_image(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
+    // crop, convert to grayscale and increase contrast of the image
+    cv::Mat roi(cropped_image(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
+    cv::cvtColor(roi, roi, CV_BGR2GRAY);
+    cv::equalizeHist(roi , roi);
 
     odu_learner.learnImage(model_name + "-" + ed::Entity::generateID().str(), roi);
 }
@@ -248,31 +259,33 @@ void imageToOduFinder(ed::EntityPtr& entity, OduDBBuilder& odu_learner, std::str
 int main(int argc, char **argv) {
 
     std::string measurement_dir;
-    std::string output_dir;
+    std::string model_output_dir;
+    std::string db_output_dir;
 
-    if (argc < 3 || argc > 3)
+    if (argc != 4)
     {
-        std::cout << "Usage for:\n\n   ed-learning-tool MEASUREMENT_DIRECTORY OUTPUT_DIRECTORY \n\n" << std::endl;
+        std::cout << "Usage for:\n\n   ed-learning-tool MEASUREMENTS_DIRECTORY MODEL_LEARNING_DIRECTORY ODU_DB_DIRECTORY \n\n" << std::endl;
         std::cout << "\tMEASUREMENT_DIRECTORY - directory with the measurements separated in sub-folders. Sub-folder name will be used as model name" << std::endl;
-        std::cout << "\tOUTPUT_DIRECTORY - directory where the learning files will be stored" << std::endl;
+        std::cout << "\tMODEL_LEARNING_DIRECTORY - directory where the model learning files will be stored" << std::endl;
+        std::cout << "\tODU_DB_DIRECTORY - directory where the ODU Finder database will be stored" << std::endl;
         std::cout << "\n" << std::endl;
         return 1;
-    }else if (argc == 3)
+    }else
     {
         measurement_dir = argv[1];
-        output_dir = argv[2];
+        model_output_dir = argv[2];
+        db_output_dir = argv[3];
     }
 
     std::vector<std::string> perception_libs;
     kModuleName = "ed_learning_tool";
 
-    // used plugins
-    OduDBBuilder odu_learner = OduDBBuilder(output_dir + "/odu_debug/");
-    perception_libs.push_back("/home/luisf/ros/hydro/dev/devel/lib/libsize_matcher.so");
-    perception_libs.push_back("/home/luisf/ros/hydro/dev/devel/lib/libcolor_matcher.so");
-
 
     // ---------------- LOAD PERCEPTION LIBRARIES ----------------
+
+    OduDBBuilder odu_learner = OduDBBuilder(db_output_dir + "/odu_debug/");
+    perception_libs.push_back("/home/luisf/ros/hydro/dev/devel/lib/libsize_matcher.so");
+    perception_libs.push_back("/home/luisf/ros/hydro/dev/devel/lib/libcolor_matcher.so");
 
     std::cout << "[" << kModuleName << "] " << "Loading perception libraries" << std::endl;
 
@@ -332,7 +345,7 @@ int main(int argc, char **argv) {
 
         // if the model name changes, save the learned information
         if (last_model.compare(model_name) != 0){
-            config_to_file(parsed_conf, last_model, output_dir);
+            config_to_file(parsed_conf, last_model, model_output_dir);
             // reset config for new model
             parsed_conf = tue::Configuration();
             last_model = model_name;
@@ -364,9 +377,9 @@ int main(int argc, char **argv) {
     if (n_measurements == 0)
         std::cout << "No measurements found." << std::endl;
     else{
-        config_to_file(parsed_conf, model_name, output_dir);
+        config_to_file(parsed_conf, model_name, model_output_dir);
         // compile Odu Finder database
-        odu_learner.build_database(output_dir);
+        odu_learner.buildDatabase(db_output_dir + "/database/");
     }
 
 
