@@ -24,7 +24,7 @@ ODUFinderModule::~ODUFinderModule()
 
 void ODUFinderModule::loadConfig(const std::string& config_path)
 {
-    config_path_ = config_path;
+    config_path_ = config_path + "/database/";
     bool debug_mode = false;
 
     // creat odu finder instance
