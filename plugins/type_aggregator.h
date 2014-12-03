@@ -8,7 +8,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include <cv_bridge/cv_bridge.h>
 
-struct dictionary_match{
+struct DictionaryMatch{
     uint matches;
     float score;
     std::string entry;
@@ -30,17 +30,6 @@ struct Feature{
         return f.name == name;
     }
 };
-
-typedef std::pair<std::string, float> StringFloatPair;
-struct CompareValue
-{
-    bool operator()(const StringFloatPair& a, const StringFloatPair& b) const
-    {
-        return a.second < b.second;
-    }
-};
-
-
 
 
 class TypeAggregator : public ed::PerceptionModule
@@ -74,27 +63,25 @@ private:
 
     // module configuration
     bool init_success_;
-    std::string	kModuleName;    /*!< Name of the module, for output */
+    std::string	module_name_;    /*!< Name of the module, for output */
 
-    std::vector<std::string> kPluginNames;
-    std::map<std::string, std::vector<std::string> > dictionary;
+    std::vector<std::string> plugin_names_;
+    float positive_tresh_;
 
-    float kPositiveTresh;
-
-    void collect_features(tue::Configuration& entity_conf,
+    void collectFeatures(tue::Configuration& entity_conf,
                           std::vector<Feature>& features,
                           std::vector<Feature>& hypothesis) const;
 
-    void match_hypothesis(std::vector<Feature>& features,
+    void matchHypothesis(std::vector<Feature>& features,
                         std::map<std::string, float>& type_histogram,
                         std::string& type,
                         float& score) const;
 
-    void discard_options(std::vector<Feature>& features,
+    void discardOptions(std::vector<Feature>& features,
                          std::string& type,
                          float& score) const;
 
-    bool load_dictionary(const std::string path);
+    bool loadDictionary(const std::string path);
 
     float normalize(float x, float min, float max) const;
 };

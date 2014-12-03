@@ -26,18 +26,18 @@ TypeAggregator::~TypeAggregator()
 // ----------------------------------------------------------------------------------------------------
 
 void TypeAggregator::loadConfig(const std::string& config_path) {
-    kModuleName = "type_aggregator";
+    module_name_ = "type_aggregator";
 
-    kPluginNames.push_back("human_contour_matcher");
-    kPluginNames.push_back("face_detector");
-    kPluginNames.push_back("size_matcher");
-    kPluginNames.push_back("odu_finder");
-    kPluginNames.push_back("color_matcher");
+    plugin_names_.push_back("human_contour_matcher");
+    plugin_names_.push_back("face_detector");
+    plugin_names_.push_back("size_matcher");
+    plugin_names_.push_back("odu_finder");
+    plugin_names_.push_back("color_matcher");
 
-    kPositiveTresh = 0.5;
+    positive_tresh_ = 0.5;
 
     init_success_ = true;
-    std::cout << "[" << kModuleName << "] " << "Ready!" << std::endl;
+    std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -73,7 +73,7 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
                 {
 //                    type_histogram.insert(std::pair<std::string, float>(type, amount));
                 }else{
-                    std::cout << "[" << kModuleName << "] " << "Malformed histogram entry. type = " << type << ", amount = " << amount << std::endl;
+                    std::cout << "[" << module_name_ << "] " << "Malformed histogram entry. type = " << type << ", amount = " << amount << std::endl;
                 }
             }
             old_entity_conf.endArray();
@@ -83,13 +83,13 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
 
 
     // collect features asserted by other perception plugins
-    collect_features(entity_conf, features, hypothesis);
+    collectFeatures(entity_conf, features, hypothesis);
 
     // match hypothesis from different plugins
-    match_hypothesis(hypothesis, type_histogram, type, best_score);
+    matchHypothesis(hypothesis, type_histogram, type, best_score);
 
     // discard hypothesis based on the features
-    discard_options(features, type, best_score);
+    discardOptions(features, type, best_score);
 
     // assert general type
     if (!type.empty()){
@@ -132,7 +132,7 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
 // ----------------------------------------------------------------------------------------------------
 
 
-void TypeAggregator::discard_options(std::vector<Feature>& features,
+void TypeAggregator::discardOptions(std::vector<Feature>& features,
                                     std::string& type,
                                     float& score) const{
 
@@ -170,18 +170,18 @@ void TypeAggregator::discard_options(std::vector<Feature>& features,
 // ----------------------------------------------------------------------------------------------------
 
 
-void TypeAggregator::match_hypothesis(std::vector<Feature>& features,
+void TypeAggregator::matchHypothesis(std::vector<Feature>& features,
                                     std::map<std::string, float>& type_histogram,
                                     std::string& type,
                                     float& score) const{
 
-    std::map<std::string, std::pair<std::string, float> >::const_iterator feat_it;
-    std::map<std::string, std::vector<std::string> >::const_iterator dict_it;
+
+    std::vector<Feature>::iterator feat_it;
     std::map<std::string, float>::iterator hist_it;
 
     float min;
 
-    for (std::vector<Feature>::iterator feat_it = features.begin() ; feat_it != features.end(); ++feat_it){
+    for (feat_it = features.begin() ; feat_it != features.end(); ++feat_it){
         // search for match with the dictionary
         hist_it = type_histogram.find(feat_it->name);
 
@@ -215,7 +215,7 @@ void TypeAggregator::match_hypothesis(std::vector<Feature>& features,
 
 // ----------------------------------------------------------------------------------------------------
 
-void TypeAggregator::collect_features(tue::Configuration& entity_conf, std::vector<Feature>& features, std::vector<Feature>& hypothesis) const{
+void TypeAggregator::collectFeatures(tue::Configuration& entity_conf, std::vector<Feature>& features, std::vector<Feature>& hypothesis) const{
 
     float score = 0;
     std::string feat_name = "";
@@ -224,7 +224,7 @@ void TypeAggregator::collect_features(tue::Configuration& entity_conf, std::vect
     if (entity_conf.readGroup("perception_result"))
     {
         // find perception plugins that already processed the entity
-        for(std::vector<std::string>::const_iterator pluginName = kPluginNames.begin(); pluginName != kPluginNames.end(); ++pluginName) {
+        for(std::vector<std::string>::const_iterator pluginName = plugin_names_.begin(); pluginName != plugin_names_.end(); ++pluginName) {
             // visit every perception plugin
             if (entity_conf.readGroup(*pluginName)){
 
@@ -259,57 +259,6 @@ void TypeAggregator::collect_features(tue::Configuration& entity_conf, std::vect
         entity_conf.endGroup();
     }
 }
-
-// ----------------------------------------------------------------------------------------------------
-
-bool TypeAggregator::load_dictionary(const std::string path) {
-    if (path.empty()){
-        std::cout << "[" << kModuleName << "] " << "Dictionary path not specified." << std::endl;
-        return false;
-    }else{
-        tue::Configuration dictionary_conf;
-        std::string type_entry;
-        std::string feature_name;
-        std::vector<std::string> features;
-
-        // load list of models to include
-        if (dictionary_conf.loadFromYAMLFile(path)){
-
-            if (dictionary_conf.readArray("conclusions")){
-                while(dictionary_conf.nextArrayItem())
-                {
-                    if (dictionary_conf.value("type", type_entry))
-                    {
-                        features.clear();
-                        if (dictionary_conf.readArray("features"))
-                        {
-                            while(dictionary_conf.nextArrayItem())
-                            {
-                                if (dictionary_conf.value("name", feature_name))
-                                {
-                                    features.push_back(feature_name);
-                                }
-                            }
-                        }
-                        dictionary_conf.endArray();
-                        dictionary.insert(std::pair<std::string, std::vector<std::string> >(type_entry, features));
-                    }
-                }
-                dictionary_conf.endArray();
-            }else{
-                std::cout << "[" << kModuleName << "] " << "Dictionary incorrectly built." << std::endl;
-                std::cout << dictionary_conf.error() << std::endl;
-                return false;
-            }
-        }else{
-            std::cout << "[" << kModuleName << "] " << "Dictionary not found at " << path << "." << std::endl;
-            std::cout << dictionary_conf.error() << std::endl;
-            return false;
-        }
-    }
-    return true;
-}
-
 
 // ----------------------------------------------------------------------------------------------------
 
