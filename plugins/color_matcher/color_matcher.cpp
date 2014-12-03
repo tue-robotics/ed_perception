@@ -255,7 +255,7 @@ void ColorMatcher::getHypothesis(std::map<std::string, double>& color_prob, cv::
     // iterate through all learned models
     for(model_it = models_colors_.begin(); model_it != models_colors_.end(); ++model_it){
         model_name = model_it->first;
-        best_score = std::numeric_limits<double>::max();
+        best_score = 0;
 
         // iterate through all color sets
         for (uint i = 0; i < model_it->second.size(); i++){
@@ -277,10 +277,11 @@ void ColorMatcher::getHypothesis(std::map<std::string, double>& color_prob, cv::
 //                score += color_amount * set_it->second;
             }
 
+
             // use correlation to comapre histograms
             score = cv::compareHist(model_hist, curr_hist, CV_COMP_CORREL);
 
-            if (best_score > score){
+            if (best_score < score){
                 best_score = score;
             }
         }
