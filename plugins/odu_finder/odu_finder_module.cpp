@@ -25,9 +25,10 @@ ODUFinderModule::~ODUFinderModule()
 void ODUFinderModule::loadConfig(const std::string& config_path)
 {
     config_path_ = config_path;
+    bool debug_mode = false;
 
     // creat odu finder instance
-    odu_finder_ = new odu_finder::ODUFinder(config_path_, false);
+    odu_finder_ = new odu_finder::ODUFinder(config_path_, debug_mode);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -77,8 +78,9 @@ void ODUFinderModule::process(ed::EntityConstPtr e, tue::Configuration& result) 
         if (max_y < p_2d.y) max_y = p_2d.y;
     }
 
+    // convert to grayscale and increase contrast
     cv::cvtColor(cropped_image, masked_mono_image, CV_BGR2GRAY);
-
+    cv::equalizeHist(masked_mono_image, masked_mono_image);
 
     // ----------------------- PROCESS IMAGE -----------------------
 
@@ -122,7 +124,7 @@ void ODUFinderModule::process(ed::EntityConstPtr e, tue::Configuration& result) 
 
 // ----------------------------------------------------------------------------------------------------
 
-void ODUFinderModule::OptimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized, cv::Rect& bounding_box) const{
+void ODUFinderModule::optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized, cv::Rect& bounding_box) const{
 
     std::vector<std::vector<cv::Point> > hull;
     std::vector<std::vector<cv::Point> > contours;

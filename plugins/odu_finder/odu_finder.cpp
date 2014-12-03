@@ -131,7 +131,6 @@ bool ODUFinder::loadParams(std::string mode) {
     tree_levels = 5;
 
     object_threshold = 0.05;
-    votes_count = 10;
 
     pein_vis_ = false;
     extract_roi_ = false;
@@ -278,23 +277,29 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
         if (debug_mode_) std::cout << "[" << moduleName_ << "] " << "Cluster with size " << c << std::endl;
     }
 
-    if (debug_mode_) std::cout << "[" << moduleName_ << "] " << "MATCHES MAP SIZE " << matches_map.size() << std::endl;
+    if (debug_mode_) std::cout << "[" << moduleName_ << "] " << "Matches map size " << matches_map.size() << std::endl;
 
-    // Sort the results such that first guess has highest score
+    // create copy of votes in another structure
     std::vector<std::pair<uint32_t, float> > votes(matches_map.size());
     std::map<uint32_t, float>::iterator iter = matches_map.begin();
-
     for (int i = 0; iter != matches_map.end(); ++iter, ++i) {
         votes[i].first = iter->first;
         votes[i].second = iter->second;
     }
 
+    // Sort the results such that first guess has highest score
     std::sort(votes.begin(), votes.end(), compare_pairs);
 
     // Print results
-    if (debug_mode_) std::cout << "[" << moduleName_ << "] " << "RESULTS (threshold = " << object_threshold << ")"  << std::endl;
+    if (debug_mode_){
+        std::cout << "[" << moduleName_ << "] " << "Results (threshold = " << object_threshold << ")"  << std::endl;
+        for (int i = 0; i < votes.size() ; i++) {
+            std::cout << "[" << moduleName_ << "] " << "\tVotes: " << documents_map[votes[i].first]->name << ", " << votes[i].second << std::endl;
+        }
+    }
 
     // Check whether or not the object is recognized (or in tuning mode)
+    /*
     float best_tuning_score = -1.0;
     if (current_mode_ == odu_finder::TUNING)
     {
@@ -311,11 +316,12 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
             {
                 best_tuning_score = std::max(best_tuning_score, votes[i].second);
             }
-		}
+        }
 	}
-    
+    */
+
     if (votes.size() > 0 && votes[0].second <= object_threshold && current_mode_ != odu_finder::TUNING) {
-        if(debug_mode_) std::cout << "[" << moduleName_ << "] " << "No object recognized" << std::endl;
+        if(debug_mode_) std::cout << "[" << moduleName_ << "] " << "Object not recognized" << std::endl;
     }
     else {
         for (uint i = 0; (i < votes.size() && i < (uint) documents_map.size()); ++i)
@@ -324,14 +330,14 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
             {
                 // For ease of writing
                 float score = votes[i].second;
-                std::string name = documents_map[votes[i].first]->name;
+                std::string full_name = documents_map[votes[i].first]->name;
 
-                // Get short name
-                size_t position = name.find_first_of("-");
+                size_t separator_pos = full_name.find_first_of("-");
                 std::string short_name;
 
-                if (position > 0 && position <= name.size()) short_name = std::string(name.c_str(), position);
-                else short_name = name.c_str();
+                // Get short name
+                if (separator_pos > 0 && separator_pos <= full_name.size()) short_name = std::string(full_name.c_str(), separator_pos);
+                else short_name = full_name.c_str();
 
                 // Store the maximum score of the current object
                 if (results.find(short_name) == results.end())
@@ -345,15 +351,10 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
                     // Case: object already within map
                     results[short_name] = std::max(score, results[short_name]);
                 }
-            }else{
-                if (debug_mode_)
-                    std::cout << "[" << moduleName_ << "] " << "Discarded " << documents_map[votes[i].first]->name << " with score " << votes[i].second << std::endl;
             }
         }
 
         if(debug_mode_) std::cout << "[" << moduleName_ << "] " << "Results has size " << results.size() << std::endl;
-
-        //int current_id = votes[0].first;
 
         DocumentInfo** documents_to_visualize =	new DocumentInfo*[templates_to_show];
         for (int i=0; i<templates_to_show; ++i)
@@ -366,14 +367,6 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
         {
             DocumentInfo* d = documents_map[votes[0].first];
             size_t position = d->name.find_first_of("-");
-
-            //size_t position = std::min(position_us, position_dot);
-
-            // int frame_number = 0;
-            // ROS_INFO("documents_map %s" , d->name.c_str());
-
-            //  if (position == std::string::npos)
-            //     position = d->name.find('.');
 
             // Keep only the class label
             std::string short_name;
@@ -403,17 +396,31 @@ std::map<std::string, float> ODUFinder::process_image(IplImage* camera_image_in)
         delete[] documents_to_visualize;
     }
 
+    /*
     if (current_mode_ == odu_finder::TUNING && best_tuning_score >= 0.0)
     {
         obj_sum_.update(best_tuning_score);
         obj_sum_.print();
     }
+    */
+
     FreeKeypoints(keypoints);
+
+    // normalize results, 0 to 1
+    double max = 0;
+
+    for (std::map<std::string,float>::iterator it = results.begin(); it != results.end(); ++it)
+        if(max < it->second) max = it->second;
+
+    for (std::map<std::string,float>::iterator it = results.begin(); it != results.end(); ++it)
+        it->second /= max;
+
 
     return results;
 }
 
 /////////////////////////////////////////////////////
+
 void ODUFinder::build_database(std::string directory) {
     std::vector<FeatureVector> images;
     trace_directory(directory.c_str(), "", images);
@@ -460,12 +467,14 @@ void ODUFinder::build_database(std::string directory) {
 }
 
 /////////////////////////////////////////////////////
+
 void ODUFinder::process_images(std::string directory) {
     std::vector<FeatureVector> images;
     trace_directory(directory.c_str(), "", images, true);
 }
 
 /////////////////////////////////////////////////////////////////
+
 void ODUFinder::save_database_without_tree(std::string& directory) {
     std::cout << "[" << moduleName_ << "] " << "Saving documents..." << std::endl;
 
@@ -489,6 +498,7 @@ void ODUFinder::save_database_without_tree(std::string& directory) {
 }
 
 /////////////////////////////////////////////////////
+
 void ODUFinder::save_database(std::string& directory) {
     std::cout << "[" << moduleName_ << "] " << "Saving the tree..." << std::endl;
     std::string tree_file(directory);
@@ -498,6 +508,7 @@ void ODUFinder::save_database(std::string& directory) {
 }
 
 /////////////////////////////////////////////////////
+
 int ODUFinder::load_database(const std::string& directory) {
     std::cout << "[" << moduleName_ << "] " << "Loading the tree..." << std::endl;
 
@@ -554,6 +565,7 @@ int ODUFinder::load_database(const std::string& directory) {
 }
 
 ///////////////////////////////////////////////////////////////////////////
+
 void ODUFinder::add_image_to_database(vt::Document& doc, std::string& name) {
     docs.push_back(doc);
     documents_map[db->insert(doc)] = new DocumentInfo(&doc, name);
@@ -563,6 +575,7 @@ void ODUFinder::add_image_to_database(vt::Document& doc, std::string& name) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
+
 void ODUFinder::trace_directory(const char* dir, const char* prefix, std::vector<FeatureVector>& images, bool onlySaveImages) {
     std::cout << "[" << moduleName_ << "] " << "Tracing directory: " << dir << std::endl;
     DIR *pdir = opendir(dir);
@@ -740,6 +753,7 @@ void ODUFinder::visualize(IplImage *camera_image_in,
 }
 
 /////////////////////////////////////////////////////////////////////
+
 void ODUFinder::update_matches_map(vt::Matches& matches, size_t size) {
     for (int i = 0; (i < votes_count && i < (int) matches.size()); ++i) {
         if (matches_map.count(matches[i].id) == 0)
@@ -755,14 +769,19 @@ void ODUFinder::update_matches_map(vt::Matches& matches, size_t size) {
 
         float database_score = 2 - matches[i].score;
         float place_score = 1;
-        float size_score = 1;//size/80.0;
+        float size_score = 1;
         float score = database_score * place_score * size_score;
         matches_map[matches[i].id] += score;
-        //ROS_INFO("\t%f\t%f\t%f\t%s", matches[i].score, diff, score, documents_map[matches[i].id]->name.c_str());
+
+//        std::cout << "[" << moduleName_ << "] " << "Updating match map: " <<
+//                     matches[i].score << " , " << diff << " , " << score << " , "
+//                  << documents_map[matches[i].id]->name.c_str() << std::endl;
+
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
+
 void ODUFinder::process_file(std::string& filename, std::vector<FeatureVector>& images, bool onlySaveImages) {
     std::cout << "[" << moduleName_ << "] " << "Processing file " << filename.c_str() << "..." << std::endl;
 
@@ -801,6 +820,7 @@ void ODUFinder::process_file(std::string& filename, std::vector<FeatureVector>& 
 }
 
 ///////////////////////////////////////////////////////////////////////
+
 Keypoint ODUFinder::extract_keypoints(IplImage *image, bool frames_only) {
 
     Image sift_image = CreateImage(image->height, image->width);
@@ -823,6 +843,7 @@ Keypoint ODUFinder::extract_keypoints(IplImage *image, bool frames_only) {
 }
 
 /////////////////////////////////////
+
 void ODUFinder::write_stat_summary() {
     std::vector<std::pair<std::string, int> > pairs(stat_summary_map.size());
     std::map<std::string, int>::iterator iter = stat_summary_map.begin();
@@ -835,6 +856,7 @@ void ODUFinder::write_stat_summary() {
 }
 
 /////////////////////////////
+
 void ODUFinder::extract_roi(IplImage *image, std::vector<KeypointExt*> camera_keypoints) {
 
     //create a sequence storage for projected points

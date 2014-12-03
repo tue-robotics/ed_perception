@@ -28,7 +28,7 @@ private:
 
     std::string config_path_;
 
-    void OptimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized, cv::Rect &bounding_box) const;
+    void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized, cv::Rect &bounding_box) const;
 
     odu_finder::ODUFinder* odu_finder_;
 
