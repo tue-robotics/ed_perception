@@ -29,11 +29,11 @@ SizeMatcher::~SizeMatcher()
 
 void SizeMatcher::loadConfig(const std::string& config_path) {
 
-    kModuleName = "size_matcher";
+    module_name_ = "size_matcher";
 
-    diff_thresh = 0.8;
-    small_tresh = 0.5;
-    medium_tresh = 0.7;
+    difference_thresh_ = 0.8;
+    small_tresh_ = 0.5;
+    medium_tresh_ = 0.7;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -46,10 +46,10 @@ void SizeMatcher::loadModel(const std::string& model_name, const std::string& mo
 
     std::string path = models_folder + "/models/" + model_name +  "/" +  model_name + ".yml";
 
-    if (load_learning(path, model_name))
-        std::cout << "[" << kModuleName << "] " << "Loaded sizes for " << model_name << std::endl;
+    if (loadLearning(path, model_name))
+        std::cout << "[" << module_name_ << "] " << "Loaded sizes for " << model_name << std::endl;
     else{
-//        std::cout << "[" << kModuleName << "] " << "Couldn not load sizes for " << path << "!" << std::endl;
+//        std::cout << "[" << module_name_ << "] " << "Couldn not load sizes for " << path << "!" << std::endl;
     }
 }
 
@@ -119,7 +119,7 @@ void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) cons
             if (best_err > (diff_h + diff_w) / 2) best_err = (diff_h + diff_w) / 2;
         }
 
-        if (best_err < diff_thresh)
+        if (best_err < difference_thresh_)
             hypothesis[label] = std::max(1 - best_err, 0.0);
     }
 
@@ -138,11 +138,11 @@ void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) cons
     result.setValue("height", object_height);
     result.endGroup();
 
-    if ((object_width + object_height) < small_tresh){
+    if ((object_width + object_height) < small_tresh_){
         result.setValue("label", "small_size");
-    }else if (small_tresh < (object_width + object_height) && (object_width + object_height) < medium_tresh){
+    }else if (small_tresh_ < (object_width + object_height) && (object_width + object_height) < medium_tresh_){
         result.setValue("label", "medium_size");
-    }else if (medium_tresh < (object_width + object_height)){
+    }else if (medium_tresh_ < (object_width + object_height)){
         result.setValue("label", "large_size");
     }
 
@@ -167,9 +167,9 @@ void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) cons
 
 // ----------------------------------------------------------------------------------------------------
 
-bool SizeMatcher::load_learning(std::string path, std::string model_name){
+bool SizeMatcher::loadLearning(std::string path, std::string model_name){
     if (path.empty()){
-        std::cout << "[" << kModuleName << "] " << "Empty path!" << path << std::endl;
+        std::cout << "[" << module_name_ << "] " << "Empty path!" << path << std::endl;
         return false;
     }else{
         tue::Configuration conf;
@@ -185,23 +185,23 @@ bool SizeMatcher::load_learning(std::string path, std::string model_name){
                             ObjectSize obj_sz(0, height, 0, width);
                             model_sizes.push_back(obj_sz);
                         }else
-                            std::cout << "[" << kModuleName << "] " << "Could not find 'height' and 'width' values" << std::endl;
+                            std::cout << "[" << module_name_ << "] " << "Could not find 'height' and 'width' values" << std::endl;
                     }
 
                     if (!model_sizes.empty()){  // save sizes to map
                         models_[model_name] = model_sizes;
                     }else
-                        std::cout << "[" << kModuleName << "] " << "Could not read any sizes" << std::endl;
+                        std::cout << "[" << module_name_ << "] " << "Could not read any sizes" << std::endl;
 
                     conf.endArray();    // close Size array
                 }else
-                    std::cout << "[" << kModuleName << "] " << "Could not find 'size' group" << std::endl;
+                    std::cout << "[" << module_name_ << "] " << "Could not find 'size' group" << std::endl;
 
               conf.endGroup();  // close Model group
             }else
-                std::cout << "[" << kModuleName << "] " << "Could not find 'model' group" << std::endl;
+                std::cout << "[" << module_name_ << "] " << "Could not find 'model' group" << std::endl;
         }else{
-//            std::cout << "[" << kModuleName << "] " << "Didn't find configuration file." << std::endl;
+//            std::cout << "[" << module_name_ << "] " << "Didn't find configuration file." << std::endl;
             return false;
         }
     }
@@ -211,7 +211,7 @@ bool SizeMatcher::load_learning(std::string path, std::string model_name){
 
 // ----------------------------------------------------------------------------------------------------
 
-bool SizeMatcher::load_size(std::string path, std::string model_name){
+bool SizeMatcher::loadSize(std::string path, std::string model_name){
     std::ifstream model_file;
 
     // Open file
