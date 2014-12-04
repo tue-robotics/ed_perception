@@ -58,7 +58,6 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
 
     tue::config::Reader old_entity_conf(e->data());
 
-
     // rebuild histogram from previous configuration
     if (old_entity_conf.readGroup("perception_result", tue::config::OPTIONAL))
     {
@@ -132,11 +131,8 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
 // ----------------------------------------------------------------------------------------------------
 
 
-void TypeAggregator::discardOptions(std::vector<Feature>& features,
-                                    std::string& type,
-                                    float& score) const{
+void TypeAggregator::discardOptions(std::vector<Feature>& features, std::string& type, float& score) const{
 
-    std::vector<Feature>::iterator bla;
     bool face = false;
     bool human_shape = false;
     bool small_size = false;
@@ -153,18 +149,16 @@ void TypeAggregator::discardOptions(std::vector<Feature>& features,
         large_size = ((feat_it->name.compare("large_size") == 0 && feat_it->score == 1) || large_size == true);
     }
 
-
     // assuming that hypothesis are only used for household objects, therefore small
     //  anything medium or big cannot have an hypothesis
 
-    if ((human_shape || face) && !small_size){
+    if ((face || (human_shape && face)) && !small_size){
         type = "human";
         score = 1;
-    }else if(!human_shape && !face && (medium_size || large_size)){
+    }else if(!human_shape && !face && !small_size){
         type = "";
         score = 0;
     }
-
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -174,7 +168,6 @@ void TypeAggregator::matchHypothesis(std::vector<Feature>& features,
                                     std::map<std::string, float>& type_histogram,
                                     std::string& type,
                                     float& score) const{
-
 
     std::vector<Feature>::iterator feat_it;
     std::map<std::string, float>::iterator hist_it;
@@ -196,7 +189,6 @@ void TypeAggregator::matchHypothesis(std::vector<Feature>& features,
 //            type_histogram.insert(std::pair<std::string, float>(feat_it->name, feat_it->score*0.66));
         }
     }
-
 
     min = std::numeric_limits<float>::max();
     score = 0;
@@ -263,8 +255,7 @@ void TypeAggregator::collectFeatures(tue::Configuration& entity_conf, std::vecto
 // ----------------------------------------------------------------------------------------------------
 
 float TypeAggregator::normalize(float x, float min, float max) const{
-    return (x - min) * max;
-//    normalized = (x-min(x))/(max(x)-min(x))
+    return (x - min) / max;
 }
 
 ED_REGISTER_PERCEPTION_MODULE(TypeAggregator)
