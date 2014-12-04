@@ -6,6 +6,8 @@
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
+#include <boost/filesystem.hpp>
+
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -29,13 +31,61 @@ FaceDetector::~FaceDetector()
 
 // ----------------------------------------------------------------------------------------------------
 
+void FaceDetector::loadConfig(const std::string& config_path) {
+
+    module_name_ = "face_detector";
+    kCascadePath = config_path + "/cascade_classifiers/";
+    kDebugMode = false;
+
+    kClassFrontScaleFactor = 1.2;
+    kClassFrontMinNeighbors = 2;
+    kClassFrontMinSize = cv::Size(20,20);
+
+    kClassProfileScaleFactor= 1.1;
+    kClassProfileMinNeighbors = 2;
+    kClassProfileMinSize = cv::Size(20,20);
+
+    // load training files
+    if (!classifier_front.load(kCascadePath + "haarcascade_frontalface_default.xml") ||
+            !classifier_profile.load(kCascadePath + "haarcascade_profileface.xml")) {
+
+        std::cout << "[" << module_name_ << "] " << "Unable to load all haar cascade files ("<< kCascadePath << ")" << std::endl;
+        return;
+    }else
+        std::cout << "[" << module_name_ << "] " << "Loaded Cascade Classifier." << std::endl;
+
+    if (kDebugMode){
+        kDebugFolder = "/tmp/face_detector/";
+
+        try {
+            boost::filesystem::path dir(kDebugFolder);
+            boost::filesystem::remove_all(dir);
+            boost::filesystem::create_directories(dir);
+        } catch(const boost::filesystem::filesystem_error& e){
+           if(e.code() == boost::system::errc::permission_denied)
+               std::cout << "[" << kModuleName << "] " << "boost::filesystem permission denied" << std::endl;
+           else
+               std::cout << "[" << kModuleName << "] " << "boost::filesystem failed with error: " << e.code().message() << std::endl;
+        }
+
+//            CleanDebugFolder(kDebugFolder);
+
+        // create debug window
+//        cv::namedWindow("Face Detector Output", CV_WINDOW_AUTOSIZE);
+    }
+
+    init_success_ = true;
+    std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
+}
+
+/*
 void FaceDetector::loadModel(const std::string& model_name, const std::string& model_path)
 {
     if (model_name.compare("face") == 0){
         kModuleName = "face_detector";
-        kModelName = model_name;
+        module_name_ = model_name;
         kCascadePath = model_path + "/face_detector/cascade_classifiers/";
-        kDebugMode = false;
+        kDebugMode = true;
 
         kClassFrontScaleFactor = 1.2;
         kClassFrontMinNeighbors = 2;
@@ -56,16 +106,31 @@ void FaceDetector::loadModel(const std::string& model_name, const std::string& m
 
         if (kDebugMode){
             kDebugFolder = "/tmp/face_detector/";
-            CleanDebugFolder(kDebugFolder);
+
+            try {
+                boost::filesystem::path dir(kDebugFolder);
+                boost::filesystem::remove_all(dir);
+                boost::filesystem::create_directories(dir);
+
+            } catch(const boost::filesystem::filesystem_error& e){
+               if(e.code() == boost::system::errc::permission_denied)
+                   std::cout << "[" << kModuleName << "] " << "boost::filesystem permission denied" << std::endl;
+               else
+                   std::cout << "[" << kModuleName << "] " << "boost::filesystem failed with error: " << e.code().message() << std::endl;
+            }
+
+            std::cout << "[" << kModuleName << "] " << "Debug folder created." << std::endl;
+//            CleanDebugFolder(kDebugFolder);
 
             // create debug window
-//            cv::namedWindow("Face Detector Output", CV_WINDOW_AUTOSIZE);
+            cv::namedWindow("Face Detector Output", CV_WINDOW_AUTOSIZE);
         }
 
         std::cout << "[" << kModuleName << "] " << "Ready!" << std::endl;
         init_success_ = true;
     }
 }
+*/
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -77,7 +142,7 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
     // ---------- Prepare measurement ----------
 
     // Get the best measurement from the entity
-    ed::MeasurementConstPtr msr = e->bestMeasurement();
+    ed::MeasurementConstPtr msr = e->lastMeasurement();
     if (!msr)
         return;
 
@@ -230,7 +295,7 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
             cv::rectangle(debugImg, faces_profile[j], cv::Scalar(0, 0, 255), 2, CV_AA);
 
 
-        cv::imwrite(kDebugFolder + GenerateID() + "_face_detector.png", debugImg);
+        cv::imwrite(kDebugFolder + ed::Entity::generateID().c_str() + "_face_detector.png", debugImg);
 //        cv::imshow("Face Detector Output", debugImg);
     }
 
@@ -269,22 +334,6 @@ void FaceDetector::OptimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_o
     }
 
     cv::threshold(mask_optimized, mask_optimized, 50, 255, CV_THRESH_BINARY);
-}
-
-// ----------------------------------------------------------------------------------------------------
-
-std::string FaceDetector::GenerateID() const{
-    static const char alphanum[] =
-        "0123456789"
-        "abcdef";
-
-    std::string ID;
-    for (int i = 0; i < 10; ++i) {
-        int n = rand() / (RAND_MAX / (sizeof(alphanum) - 1) + 1);
-        ID += alphanum[n];
-    }
-
-    return ID;
 }
 
 // ----------------------------------------------------------------------------------------------------

@@ -22,7 +22,7 @@ private:
     bool init_success_;
     bool kDebugMode;            /*!< Enable debug mode */
     std::string	kModuleName;    /*!< Name of the module, for output */
-    std::string	kModelName;     /*!< Name of the classified model */
+    std::string	module_name_;     /*!< Name of the classified model */
     std::string kDebugFolder;   /*!< Path of the debug folder */
     std::string kCascadePath;   /*!< Path of the cascade training folder */
 
@@ -51,9 +51,6 @@ private:
 
     void OptimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
 
-    std::string GenerateID() const;
-
-
 /*
 * ###########################################
 *  				    PUBLIC
@@ -65,7 +62,7 @@ public:
 
     virtual ~FaceDetector();
 
-    void loadModel(const std::string& model_name, const std::string& model_path);
+    void loadConfig(const std::string& config_path);
 
     void process(ed::EntityConstPtr e, tue::Configuration& result) const;
 
