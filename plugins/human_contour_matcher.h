@@ -19,7 +19,7 @@ public:
 
     virtual ~HumanContourMatcher();
 
-    void loadModel(const std::string& model_name, const std::string& model_path);
+    void loadConfig(const std::string& config_path);
 
     void process(ed::EntityConstPtr e, tue::Configuration& result) const;
 

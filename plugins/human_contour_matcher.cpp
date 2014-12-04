@@ -6,6 +6,8 @@
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
+#include <boost/filesystem.hpp>
+
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -23,15 +25,19 @@ HumanContourMatcher::~HumanContourMatcher()
 
 // ----------------------------------------------------------------------------------------------------
 
-void HumanContourMatcher::loadModel(const std::string& model_name, const std::string& model_path)
-{
-    if (model_name.compare("human") == 0){
-        kModuleName = "human_contour_matcher";
 
-        init_success_ = human_classifier_.Initializations(model_name, model_path + "/human_contour_matcher/");
+void HumanContourMatcher::loadConfig(const std::string& config_path) {
 
-        std::cout << "[" << kModuleName << "] " << "Ready!" << std::endl;
+    kModuleName = "human_contour_matcher";
+
+
+    if(human_classifier_.Initializations(config_path)){
+            std::cout << "[" << kModuleName << "] " << "Initialization complete" << std::endl;
     }
+
+    init_success_ = true;
+
+    std::cout << "[" << kModuleName << "] " << "Ready!" << std::endl;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -43,7 +49,7 @@ void HumanContourMatcher::process(ed::EntityConstPtr e, tue::Configuration& resu
         return;
 
     // Get the best measurement from the entity
-    ed::MeasurementConstPtr msr = e->bestMeasurement();
+    ed::MeasurementConstPtr msr = e->lastMeasurement();
     if (!msr)
         return;
 
