@@ -34,6 +34,8 @@ void SizeMatcher::loadConfig(const std::string& config_path) {
     difference_thresh_ = 0.8;
     small_tresh_ = 0.5;
     medium_tresh_ = 0.7;
+
+    std::cout << "[" << module_name_ << "] " << "Ready!"<< std::endl;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -46,8 +48,9 @@ void SizeMatcher::loadModel(const std::string& model_name, const std::string& mo
 
     std::string path = models_folder + "/models/" + model_name +  "/" +  model_name + ".yml";
 
-    if (loadLearning(path, model_name))
-        std::cout << "[" << module_name_ << "] " << "Loaded sizes for " << model_name << std::endl;
+    if (loadLearning(path, model_name)){
+//        std::cout << "[" << module_name_ << "] " << "Loaded sizes for " << model_name << std::endl;
+    }
     else{
 //        std::cout << "[" << module_name_ << "] " << "Couldn not load sizes for " << path << "!" << std::endl;
     }
