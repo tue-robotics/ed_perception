@@ -134,7 +134,7 @@ class HumanClassifier {
         int ClipInt(int val, int min, int max) const;
 
         // Global variable initializations, templates and face cascade training files loading
-        bool Initializations(const std::string& model_name, const std::string& template_path);
+        bool Initializations(const std::string& template_path);
 
         // Loads a template with the given name and converts it into 2D points
         bool LoadTemplate(const std::string& template_path, std::vector<std::vector<cv::Point> >& template_list);

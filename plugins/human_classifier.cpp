@@ -593,13 +593,11 @@ int HumanClassifier::ClipInt(int val, int min, int max) const{
 }
 
 
-bool HumanClassifier::Initializations(const std::string& model_name, const std::string& module_path) {
+bool HumanClassifier::Initializations(const std::string& module_path) {
 
     std::string template_path;
-
-    kModelName = model_name;
     cascade_path_ = module_path + "cascade_classifiers/";
-    template_path = module_path + "head_templates/";
+    template_path = module_path + "/head_templates/";
 
     LoadParameters();
 
