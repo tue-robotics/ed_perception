@@ -35,6 +35,8 @@
 
 #include <boost/filesystem.hpp>
 
+#include <ros/package.h>
+
 std::string module_name_;
 
 // ----------------------------------------------------------------------------------------------------
@@ -65,7 +67,6 @@ void config_to_file(tue::Configuration& config, const std::string &model_name, c
 
     try {
         boost::filesystem::path dir(save_directory + "/" + model_name);
-//        boost::filesystem::remove_all(dir);
         boost::filesystem::create_directories(dir);
     } catch(const boost::filesystem::filesystem_error& e){
        if(e.code() == boost::system::errc::permission_denied)
@@ -289,8 +290,21 @@ int main(int argc, char **argv) {
     std::string db_output_dir;
     std::string model_list_path;
 
-    if (argc != 5)
+    if (argc == 5)
     {
+        measurement_dir = argv[1];
+        model_list_path = argv[2];
+        model_output_dir = argv[3];
+        db_output_dir = argv[4];
+    }else if (argc == 1){
+        // if specific paths are not specified, use ROS get path
+        std::string ed_models_dir = ros::package::getPath("ed_object_models");
+
+        measurement_dir = ed_models_dir + "/models";
+        model_list_path = ed_models_dir + "/configs/model_lists/all_models.yml";
+        model_output_dir = ed_models_dir + "/models";
+        db_output_dir = ed_models_dir + "/configs/odu_finder";
+    }else{
         std::cout << "Usage for:\n\n   ed-learning-tool MEASUREMENTS_DIRECTORY MODEL_LIST MODEL_LEARNING_DIRECTORY ODU_DB_DIRECTORY \n\n" << std::endl;
         std::cout << "\tMEASUREMENT_DIRECTORY - directory with the measurements separated in sub-folders. Sub-folder name will be used as model name" << std::endl;
         std::cout << "\tMODEL_LIST - List of models to be learned, from the available in the measurements directory (YML file)" << std::endl;
@@ -298,12 +312,6 @@ int main(int argc, char **argv) {
         std::cout << "\tODU_DB_DIRECTORY - directory where the ODU Finder database will be stored" << std::endl;
         std::cout << "\n" << std::endl;
         return 1;
-    }else
-    {
-        measurement_dir = argv[1];
-        model_list_path = argv[2];
-        model_output_dir = argv[3];
-        db_output_dir = argv[4];
     }
 
     std::vector<std::string> perception_libs;
@@ -344,7 +352,7 @@ int main(int argc, char **argv) {
 
     // ---------------- CRAWL THROUGH MEASUREMENTS ----------------
 
-    std::cout << "[" << module_name_ << "] " << "Finding measurements" << std::endl;
+    std::cout << "[" << module_name_ << "] " << "Starting learning" << std::endl;
 
     tue::filesystem::Crawler crawler(measurement_dir);
 
