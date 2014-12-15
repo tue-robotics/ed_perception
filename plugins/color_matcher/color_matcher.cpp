@@ -53,8 +53,9 @@ void ColorMatcher::loadModel(const std::string& model_name, const std::string& m
 
     std::string path = models_folder + "/models/" + model_name +  "/" +  model_name + ".yml";
 
-    if (loadLearning(path, model_name))
-        std::cout << "[" << module_name_ << "] " << "Loaded colors for " << model_name << std::endl;
+    if (loadLearning(path, model_name)){
+//        std::cout << "[" << module_name_ << "] " << "Loaded colors for " << model_name << std::endl;
+    }
     else{
 //        std::cout << "[" << kModuleName << "] " << "Couldn not load colors for " << path << "!" << std::endl;
     }
