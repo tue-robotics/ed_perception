@@ -181,11 +181,11 @@ void TypeAggregator::matchHypothesis(std::vector<Feature>& features,
         // add a new entry or update the existing one
         if (hist_it != type_histogram.end()){
 //            std::cout << "[" << kModuleName << "] " << "Update entry: " << feat_it->name << ", " << hist_it->second  << " + " << feat_it->score << std::endl;
-            hist_it->second += feat_it->score;
+            hist_it->second += weightedScore(feat_it->score, feat_it->plugin_name);
 //            hist_it->second = hist_it->second*0.33 + feat_it->score*0.66;
         }else{
 //            std::cout << "[" << kModuleName << "] " << "New entry: " << feat_it->name << ", " << feat_it->score << std::endl;
-            type_histogram.insert(std::pair<std::string, float>(feat_it->name, feat_it->score));
+            type_histogram.insert(std::pair<std::string, float>(feat_it->name, weightedScore(feat_it->score, feat_it->plugin_name)));
 //            type_histogram.insert(std::pair<std::string, float>(feat_it->name, feat_it->score*0.66));
         }
     }
@@ -202,6 +202,14 @@ void TypeAggregator::matchHypothesis(std::vector<Feature>& features,
             score = hist_it->second;
         }
     }
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+float TypeAggregator::weightedScore(float score, std::string plugin_name) const{
+
+   return score; // for now
 }
 
 

@@ -84,6 +84,8 @@ private:
     bool loadDictionary(const std::string path);
 
     float normalize(float x, float min, float max) const;
+
+    float weightedScore(float score, std::string plugin_name) const;
 };
 
 #endif
