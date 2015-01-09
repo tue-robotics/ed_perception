@@ -67,6 +67,12 @@ add_library(face_detector
 )
 target_link_libraries(face_detector ${catkin_LIBRARIES})
 
+add_library(face_recognition
+    plugins/face_recognition.cpp
+    plugins/face_recognition.h
+)
+target_link_libraries(face_recognition ${catkin_LIBRARIES})
+
 add_library(ed_odu_finder
     plugins/odu_finder/odu_finder_module.cpp
     plugins/odu_finder/odu_finder_module.h
