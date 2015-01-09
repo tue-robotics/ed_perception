@@ -6,7 +6,6 @@
 // OpenCV includes
 #include <opencv/cv.h>
 #include "opencv2/highgui/highgui.hpp"
-#include <cv_bridge/cv_bridge.h>
 
 class FaceDetector : public ed::PerceptionModule
 {
@@ -25,7 +24,6 @@ private:
     std::string	module_name_;     /*!< Name of the classified model */
     std::string kDebugFolder;   /*!< Path of the debug folder */
     std::string kCascadePath;   /*!< Path of the cascade training folder */
-
 
     // Cascade classifier configuration
     double kClassFrontScaleFactor;  // Parameter specifying how much the image size is reduced at each image scale
