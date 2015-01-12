@@ -35,7 +35,7 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
     using_LBP_ = true;
 
     // Get the path to your CSV.
-    std::string fn_csv = config_path + "/faces_learned.csv";
+    std::string fn_csv = config_path + "/faces_learned_office.csv";
 
     // Read in the data. This can fail if no valid input filename is given
     try {
@@ -75,9 +75,6 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
         std::cout << "[" << module_name_ << "] " << "Training Fisher Faces..." << std::endl;
         models[FISHER]->train(images_, labels_);
 
-//        std::string saveModelPath = "/tmp/face-rec-model_fisher.txt";
-//        models[FISHER]->save(saveModelPath);
-
         std::cout << "[" << module_name_ << "] " << "Fisher Faces trained!" << std::endl;
     }
 
@@ -87,9 +84,6 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
 
         std::cout << "[" << module_name_ << "] " << "Training LBPH Faces..." << std::endl;
         models[LBPH]->train(images_, labels_);
-
-//        std::string saveModelPath = "/tmp/face-rec-model_LBPH.txt";
-//        models[LBPH]->save(saveModelPath);
 
         std::cout << "[" << module_name_ << "] " << "LBPH Faces trained!" << std::endl;
     }
@@ -106,7 +100,7 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
         return;
 
     if (!isFaceFound(config.limitScope())){
-        std::cout << "[" << module_name_ << "] " << "Couldn't find a face, skipping recognition"<< std::endl;
+//        std::cout << "[" << module_name_ << "] " << "Couldn't find a face, skipping recognition"<< std::endl;
         return;
     }
 
@@ -154,45 +148,59 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
     // ----------------------- Process -----------------------
 
     cv::Rect faceRect;
-    cv::Point eye_left;
-    cv::Point eye_right;
 
     // get location of face and eyes
     if (!getFaceInfo(config.limitScope(), faceRect)){
-        std::cout << "[" << module_name_ << "] " << "Problem retrieving face information" << std::endl;
+        std::cout << "[" << module_name_ << "] " << "Problem retrieving face information, aborting recognition!" << std::endl;
+        return;
     }
 
     cv::Mat face(cropped_image(faceRect));
+    cv::Mat face_aligned;
 
+    int TARGET_SIZE = 150;
+    float VERTICAL_OFFSET = 0.35;
+    float HORIZONTAL_OFFSET = 0.25;
 
-    // ----------------------- TESTING ---------------------------------
-    std::string num_test = boost::lexical_cast<std::string>(rand() % 8);
-    std::string test_path = "/home/luisf/test_subjects/person" + num_test + ".pgm";
-    cv::Mat test_img = cv::imread(test_path.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
-    std::string test_name = "person" + num_test;
-    // ------------------------------------------------------------------
+    if (!AlignFace(cropped_image, faceRect, TARGET_SIZE, HORIZONTAL_OFFSET, VERTICAL_OFFSET, face_aligned))
+        std::cout << "Could not align face!" << std::endl;
+
+    // ----------------------- TESTING --------------------------------------------------------------------------
+//    std::string path_temp = "/home/luisf/faces_office/"; path_temp.append(ed::Entity::generateID().c_str()); path_temp.append(".pgm");
+//    cv::imwrite(path_temp, face_aligned);
+
+    cv::imwrite("/tmp/face.png", face);
+    cv::imwrite("/tmp/face_aligned.png", face_aligned);
+    cv::imwrite("/tmp/full.png", cropped_image);
+
+//    std::string num_test = boost::lexical_cast<std::string>(rand() % 8);
+//    std::string test_path = "/home/luisf/test_subjects/person" + num_test + ".pgm";
+//    face_aligned = cv::imread(test_path.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+//    resize(face_aligned, face_aligned, cv::Size(), 112, 92, cv::INTER_NEAREST);
+
+    // -----------------------------------------------------------------------------------------------------------
 
     // The following line predicts the label of a given
     std::vector<int> predictedLabel; predictedLabel.resize(3);
     std::vector<double> confidence; confidence.resize(3);
 
     predictedLabel[EIGEN] = -1; confidence[EIGEN] = 0.0;
-    models[EIGEN]->predict(test_img, predictedLabel[EIGEN], confidence[EIGEN]);
+    models[EIGEN]->predict(face_aligned, predictedLabel[EIGEN], confidence[EIGEN]);
 
     predictedLabel[FISHER] = -1; confidence[FISHER] = 0.0;
-    models[FISHER]->predict(test_img, predictedLabel[FISHER], confidence[FISHER]);
+    models[FISHER]->predict(face_aligned, predictedLabel[FISHER], confidence[FISHER]);
 
     predictedLabel[LBPH] = -1; confidence[LBPH] = 0.0;
-    models[LBPH]->predict(test_img, predictedLabel[LBPH], confidence[LBPH]);
+    models[LBPH]->predict(face_aligned, predictedLabel[LBPH], confidence[LBPH]);
 
-    std::cout << "[" << module_name_ << "] " << "Eigen faces: " << labelsInfo_.at(predictedLabel[EIGEN]) << "(" << test_name << ")"
-              << " with probability " << confidence[EIGEN] <<std::endl;
+//    std::cout << "[" << module_name_ << "] " << "Eigen faces: " << labelsInfo_.at(predictedLabel[EIGEN])
+//              << " with probability " << confidence[EIGEN] <<std::endl;
 
-    std::cout << "[" << module_name_ << "] " << "Fisher faces: " << labelsInfo_.at(predictedLabel[FISHER]) << "(" << test_name << ")"
-              << " with probability " << confidence[FISHER] <<std::endl;
+//    std::cout << "[" << module_name_ << "] " << "Fisher faces: " << labelsInfo_.at(predictedLabel[FISHER])
+//              << " with probability " << confidence[FISHER] <<std::endl;
 
-    std::cout << "[" << module_name_ << "] " << "LBPH faces: " << labelsInfo_.at(predictedLabel[LBPH]) << "(" << test_name << ")"
-              << " with probability " << confidence[LBPH] <<std::endl;
+//    std::cout << "[" << module_name_ << "] " << "LBPH faces: " << labelsInfo_.at(predictedLabel[LBPH])
+//              << " with probability " << confidence[LBPH] <<std::endl;
 
 
 
@@ -205,6 +213,16 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
     }
 
     config.writeGroup("face_recognizer");
+
+    if ((predictedLabel[EIGEN] == predictedLabel[FISHER] && predictedLabel[EIGEN] == predictedLabel[LBPH])||
+            predictedLabel[EIGEN] == predictedLabel[FISHER]){
+
+        config.setValue("label", labelsInfo_.at(predictedLabel[EIGEN]));
+        config.setValue("score", 1);
+    }else{
+        config.setValue("label", "");
+        config.setValue("score", 0);
+    }
 
     config.writeGroup("eigen");
     config.setValue("name", labelsInfo_.at(predictedLabel[EIGEN]));
@@ -239,7 +257,6 @@ bool FaceRecognition::isFaceFound(tue::Configuration config) const{
     if (!config.readGroup("face_detector", tue::OPTIONAL))
         return false;
 
-
     if (config.value("score", score, tue::OPTIONAL) && config.value("label", group_label, tue::OPTIONAL)){
         return score == 1;
     }
@@ -256,18 +273,16 @@ bool FaceRecognition::getFaceInfo(tue::Configuration config, cv::Rect& faceRect)
 
     if (!config.readGroup("face_detector", tue::OPTIONAL)) return false;
 
-    if (!config.readGroup("faces_front", tue::OPTIONAL)) return false;
+    if (!config.readArray("faces_front", tue::OPTIONAL)) return false;
 
-//    std::cout << "im here" << std::endl;
-
-    if (config.value("height", height)){
-        std::cout << "found it" << std::endl;
-//        return false;
+    while(config.nextArrayItem()){
+        if (!config.value("x", topX) || !config.value("y", topY) || !config.value("height", height) || !config.value("width", width)){
+           std::cout << "[" << module_name_ << "] " << "Incorrect construction of face information" << std::endl;
+            return false;
+        }
     }
 
     faceRect = cv::Rect(topX, topY, width, height);
-
-    std::cout << "rect " << topX << ", " << topY << ", " << height << ", " << width << std::endl;
 
     return true;
 }
@@ -331,5 +346,174 @@ void FaceRecognition::read_csv(const std::string& filename, std::vector<cv::Mat>
     std::cout << "[" << module_name_ << "] " << images_.size() << " faces were loaded for " << unique_names << " different people." << std::endl;
 }
 
+// ----------------------------------------------------------------------------------------------------
+
+bool FaceRecognition::AlignFace(cv::Mat origImg, cv::Rect faceLoc, int targetSize, float horizOffset, float vertOffset, cv::Mat& faceImg) const{
+    std::vector<cv::Rect> leftEyeLoc;
+    std::vector<cv::Rect> rightEyeLoc;
+    cv::Point leftEye;
+    cv::Point rightEye;
+    cv::Point refOrigin;
+    cv::Point topCorner;
+    cv::Rect cropArea;
+    int bestEyeLeft = 0;
+    int bestEyeRight = 0;
+    int horizOffsetEye;
+    int vertOffsetEye;
+    int dist;
+    float scale;
+    bool faceAligned = false;
+    cv::Mat faceDetectGray;
+
+    // create copy of the image for the haar detector and convert it to gray scale
+    cvtColor(origImg(faceLoc), faceDetectGray, CV_BGR2GRAY);
+
+    // detect eyes
+    //leftEyeDetector_.detectMultiScale(faceDetectGray, leftEyeLoc, 1.1, 1, 0 | CV_HAAR_SCALE_IMAGE);
+    //rightEyeDetector_.detectMultiScale(faceDetectGray, rightEyeLoc, 1.1, 1, 0 | CV_HAAR_SCALE_IMAGE);
+
+    // find the first detected eye that is on the correct side of the face
+    for (uint i = 0; i < leftEyeLoc.size(); i++){
+        if (leftEyeLoc[i].x < faceDetectGray.cols / 2){
+            bestEyeLeft = i;
+            break;
+        }
+    }
+
+    for (uint i = 0; i < rightEyeLoc.size(); i++){
+        if (rightEyeLoc[i].x > faceDetectGray.cols / 2){
+            bestEyeRight = i;
+            break;
+        }
+    }
+
+    // get center point for the eyes, if found
+    if (leftEyeLoc.size() > 0 && rightEyeLoc.size() > 0){
+        // get the center of the eye location
+        leftEye = cv::Point(leftEyeLoc[bestEyeLeft].x + leftEyeLoc[bestEyeLeft].width / 2,
+                leftEyeLoc[bestEyeLeft].y + leftEyeLoc[bestEyeLeft].height / 2);
+
+        rightEye = cv::Point(rightEyeLoc[bestEyeRight].x + rightEyeLoc[bestEyeRight].width / 2,
+                rightEyeLoc[bestEyeRight].y + rightEyeLoc[bestEyeRight].height / 2);
+    }else{
+        leftEye = cv::Point(0,0);
+        rightEye = cv::Point(0,0);
+    }
+
+    // if the eyes are on the correct side of the face
+    if (leftEye.x < faceDetectGray.rows / 2 && rightEye.x > faceDetectGray.rows / 2) {
+        refOrigin = cv::Point(faceLoc.x, faceLoc.y);
+
+        // calculate distance between the eyes in original scale
+        dist = Distance(leftEye, rightEye);
+
+        if (dist > origImg.cols){
+            std::cout << "[" << module_name_ << "] " << images_.size() << " Bad eye positions. Aborting alignement!" << std::endl;
+            //leftEye.x, leftEye.y, rightEye.x, rightEye.y;
+            return false;
+        }
+
+        // copy original color image to align it
+        origImg.copyTo(faceImg);
+
+        // draw circles on the eyes
+        circle(faceImg, leftEye + refOrigin, 2, cv::Scalar(0, 255, 0), 1);
+        circle(faceImg, rightEye + refOrigin, 2, cv::Scalar(0, 0, 255), 1);
+
+        // determine the horizontal and vertical offeset for the left eye
+        horizOffsetEye = floor(horizOffset * targetSize);
+        vertOffsetEye = floor(vertOffset * targetSize);
+
+        // determine the scale value so that the current distance between the eyes will cv::Match
+        //	the one defined by the offsets
+        scale = (targetSize - 2 * horizOffsetEye) / (float) dist;
+
+        //rotate and resize the full image
+        rotateFace(faceImg, faceImg, leftEye + refOrigin, rightEye + refOrigin, leftEye + refOrigin);
+        resize(faceImg, faceImg, cv::Size(), scale, scale, cv::INTER_NEAREST);
+
+        // top corner is the position of the left eye - offsets
+        topCorner = cv::Point((leftEye.x + refOrigin.x) * scale, (leftEye.y + refOrigin.y) * scale)
+                 - cv::Point (horizOffsetEye, vertOffsetEye);
+
+        cropArea = cv::Rect(ClipInt(topCorner.x, 0 , faceImg.cols - targetSize),
+                        ClipInt(topCorner.y, 0 , faceImg.rows - targetSize),
+                        targetSize, targetSize);
+
+        if (topCorner.x > faceImg.cols - targetSize || topCorner.y > faceImg.rows - targetSize)
+            std::cout << "[" << module_name_ << "] " << " Top Corner had to be clipped, face ROI was too small" << std::endl;
+
+        // crop the aligned image
+        faceImg(cropArea).copyTo(faceImg);
+
+        // eyes were corcv::Rectly detected
+        faceAligned = true;
+    }else{
+        // if the eye detection failed, still focus more the original face ROI
+        int topOffset;
+        int size;
+
+        // make the selected area square
+        if (faceDetectGray.cols < faceDetectGray.rows){
+            topOffset = faceDetectGray.cols * 0.1;
+            size = faceDetectGray.cols * 0.75;
+        }else{
+            topOffset = faceDetectGray.rows * 0.1;
+            size = faceDetectGray.rows * 0.75;
+        }
+
+        // crop the face, without going over the image
+        faceDetectGray(cv::Rect(topOffset, topOffset*2,
+                     ClipInt(size, 1, faceDetectGray.cols - topOffset),
+                     ClipInt(size, 1, faceDetectGray.rows - topOffset*2))).copyTo(faceDetectGray);
+
+        resize(faceDetectGray, faceImg, cv::Size(targetSize, targetSize), 0, 0, cv::INTER_NEAREST);
+
+        faceAligned = true;
+    }
+
+    return faceAligned;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+int FaceRecognition::ClipInt(int val, int min, int max) const{
+    return val <= min ? min : val >= max ? max : val;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+int FaceRecognition::Distance(cv::Point p1, cv::Point p2) const{
+    float dx;
+    float dy;
+    dx = p2.x - p1.x;
+    dy = p2.y - p1.y;
+    return floor(sqrt(dx * dx + dy * dy));
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void FaceRecognition::rotateFace(cv::Mat faceImg, cv::Mat& rotatedImg, cv::Point leftEye, cv::Point rightEye, cv::Point center) const{
+    double mod1, mod2, innerp, angle;
+    cv::Point p3 (rightEye.x, leftEye.y);
+    cv::Mat rotMat;
+
+    // module of the line between right eye and left eye
+    mod1 = sqrt(pow(rightEye.y - leftEye.y, 2) + pow(rightEye.x - leftEye.x, 2));
+    // module of the line between the left eye and a cv::Point in the horizontal line passing bye the left eye
+    mod2 = sqrt(pow(p3.y - leftEye.y, 2) + pow(rightEye.x - leftEye.x, 2));
+    // calculate inner product
+    innerp = (rightEye.x - leftEye.x) * (p3.x - leftEye.x) + (rightEye.y - leftEye.y) * (p3.y - leftEye.y);
+    // calculate angle and convert it to degrees
+    angle = acos(innerp / (mod1 * mod2)) * 180 / M_PI;
+
+    // determine if its a positive or negative rotation
+    if (leftEye.y > rightEye.y)
+        angle *= -1;
+
+    // get rotation cv::Matrix and apply it to the image
+    rotMat = cv::getRotationMatrix2D(center, angle, 1.0);
+    cv::warpAffine(faceImg, rotatedImg, rotMat, faceImg.size());
+}
 
 ED_REGISTER_PERCEPTION_MODULE(FaceRecognition)

@@ -63,6 +63,14 @@ private:
 
     bool getFaceInfo(tue::Configuration config, cv::Rect& faceRect) const;
 
+    bool AlignFace(cv::Mat origImg, cv::Rect faceLoc, int targetSize, float horizOffset, float vertOffset, cv::Mat& faceImg) const;
+
+    int ClipInt(int val, int min, int max) const;
+
+    int Distance(cv::Point p1, cv::Point p2) const;
+
+    void rotateFace(cv::Mat faceImg, cv::Mat& rotatedImg, cv::Point leftEye, cv::Point rightEye, cv::Point center) const;
+
 /*
 * ###########################################
 *  				    PUBLIC
