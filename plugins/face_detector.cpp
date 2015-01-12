@@ -202,8 +202,8 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
             result.writeArray("faces_front");
             for (uint j = 0; j < faces_front.size(); j++) {
                 result.addArrayItem();
-                result.setValue("x", faces_front[j].x);
-                result.setValue("y", faces_front[j].y);
+                result.setValue("x", faces_front[j].x + (int)min_x);
+                result.setValue("y", faces_front[j].y + (int)min_y);
                 result.setValue("width", faces_front[j].width);
                 result.setValue("height", faces_front[j].height);
                 result.endArrayItem();
@@ -216,8 +216,8 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
             result.writeArray("faces_profile");
             for (uint j = 0; j < faces_profile.size(); j++) {
                 result.addArrayItem();
-                result.setValue("x", faces_profile[j].x);
-                result.setValue("y", faces_profile[j].y);
+                result.setValue("x", faces_profile[j].x + (int)min_x);
+                result.setValue("y", faces_profile[j].y + + (int)min_y);
                 result.setValue("width", faces_profile[j].width);
                 result.setValue("height", faces_profile[j].height);
                 result.endArrayItem();
