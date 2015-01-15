@@ -182,6 +182,8 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
         if (max_y < p_2d.y) max_y = p_2d.y;
     }
 
+    cv::Rect bouding_box (min_x, min_y, max_x - min_x, max_y - min_y);
+
     // ----------------------- Process and Assert results -----------------------
 
     // create group if it doesnt exist
@@ -195,7 +197,7 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
     result.setValue("label", "face");
 
     // Detect faces in the measurment and assert the results
-    if(DetectFaces(cropped_image(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)), faces_front, faces_profile)){
+    if(DetectFaces(cropped_image(bouding_box), faces_front, faces_profile)){
 
         // if front faces were detected
         if (faces_front.size() > 0){
