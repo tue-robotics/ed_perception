@@ -44,17 +44,61 @@ void TypeAggregator::loadConfig(const std::string& config_path) {
 
 void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_conf) const
 {
-
     // if initialization failed, return
     if (!init_success_)
         return;
+/*
+    // ---------- Prepare measurement ----------
+
+    // Get the best measurement from the entity
+    ed::MeasurementConstPtr msr = e->lastMeasurement();
+    if (!msr)
+        return;
+
+    uint min_x, max_x, min_y, max_y;
+
+    // create a view
+    rgbd::View view(*msr->image(), msr->image()->getRGBImage().cols);
+
+    // get color image
+    const cv::Mat& color_image = msr->image()->getRGBImage();
+
+    // crop it to match the view
+    cv::Mat cropped_image(color_image(cv::Rect(0,0,view.getWidth(), view.getHeight())));
+
+    // initialize bounding box points
+    max_x = 0;
+    max_y = 0;
+    min_x = view.getWidth();
+    min_y = view.getHeight();
+
+    cv::Mat mask = cv::Mat::zeros(view.getHeight(), view.getWidth(), CV_8UC1);
+    // Iterate over all points in the mask
+    for(ed::ImageMask::const_iterator it = msr->imageMask().begin(view.getWidth()); it != msr->imageMask().end(); ++it)
+    {
+        // mask's (x, y) coordinate in the depth image
+        const cv::Point2i& p_2d = *it;
+
+        // paint a mask
+        mask.at<unsigned char>(*it) = 255;
+
+        // update the boundary coordinates
+        if (min_x > p_2d.x) min_x = p_2d.x;
+        if (max_x < p_2d.x) max_x = p_2d.x;
+        if (min_y > p_2d.y) min_y = p_2d.y;
+        if (max_y < p_2d.y) max_y = p_2d.y;
+    }
+
+
+    cv::imwrite((std::string)"/tmp/type_aggregator/" + e->id().c_str() + ".png", cropped_image(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
+*/
+    // ---------------------------------------------
 
     std::vector<Feature> features;
     std::vector<Feature> hypothesis;
     std::map<std::string, float> type_histogram;
     std::string type = "";
     float best_score = 0;
-    float min;
 
     tue::config::Reader old_entity_conf(e->data());
 
@@ -72,7 +116,7 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
                 {
 //                    type_histogram.insert(std::pair<std::string, float>(type, amount));
                 }else{
-                    std::cout << "[" << module_name_ << "] " << "Malformed histogram entry. type = " << type << ", amount = " << amount << std::endl;
+                    std::cout << "[" << module_name_ << "] " << "Malformed histogram! (type = " << type << ", amount = " << amount <<")" << std::endl;
                 }
             }
             old_entity_conf.endArray();
@@ -82,13 +126,13 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
 
 
     // collect features asserted by other perception plugins
-    collectFeatures(entity_conf, features, hypothesis);
+    collectFeatures(entity_conf.limitScope(), features, hypothesis);
 
     // match hypothesis from different plugins
     matchHypothesis(hypothesis, type_histogram, type, best_score);
 
     // discard hypothesis based on the features
-    discardOptions(features, type, best_score);
+    discardTypes(features, type, best_score);
 
     // assert general type
     if (!type.empty()){
@@ -126,12 +170,17 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
 
     entity_conf.endGroup(); // close type_aggregator group
     entity_conf.endGroup(); // close perception_result group
+
+//    std::cout << "[" << module_name_ << "] " << "######### Entity: " << e->id() << "#########" << std::endl;
+//    std::cout << entity_conf << std::endl;
+//    std::cout << std::endl;
 }
+
 
 // ----------------------------------------------------------------------------------------------------
 
 
-void TypeAggregator::discardOptions(std::vector<Feature>& features, std::string& type, float& score) const{
+void TypeAggregator::discardTypes(std::vector<Feature>& features, std::string& type, float& score) const{
 
     bool face = false;
     bool human_shape = false;
@@ -149,17 +198,17 @@ void TypeAggregator::discardOptions(std::vector<Feature>& features, std::string&
         large_size = ((feat_it->name.compare("large_size") == 0 && feat_it->score == 1) || large_size == true);
     }
 
-    // assuming that hypothesis are only used for household objects, therefore small
-    //  anything medium or big cannot have an hypothesis
-
-    if ((face || (human_shape && face)) && !small_size){
+    // if it has a face or human shape, and its not small, it must be a human
+    if ((face || human_shape) && (medium_size || large_size)){
         type = "human";
         score = 1;
-    }else if(!human_shape && !face && !small_size){
+    // if it has no face, no human shape, and its not small, then its not an ordinary object
+    }else if(!human_shape && !face && (medium_size || large_size)){
         type = "";
         score = 0;
     }
 }
+
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -207,6 +256,7 @@ void TypeAggregator::matchHypothesis(std::vector<Feature>& features,
 
 // ----------------------------------------------------------------------------------------------------
 
+
 float TypeAggregator::weightedScore(float score, std::string plugin_name) const{
 
    return score; // for now
@@ -215,7 +265,8 @@ float TypeAggregator::weightedScore(float score, std::string plugin_name) const{
 
 // ----------------------------------------------------------------------------------------------------
 
-void TypeAggregator::collectFeatures(tue::Configuration& entity_conf, std::vector<Feature>& features, std::vector<Feature>& hypothesis) const{
+
+void TypeAggregator::collectFeatures(tue::Configuration entity_conf, std::vector<Feature>& features, std::vector<Feature>& hypothesis) const{
 
     float score = 0;
     std::string feat_name = "";
@@ -260,10 +311,5 @@ void TypeAggregator::collectFeatures(tue::Configuration& entity_conf, std::vecto
     }
 }
 
-// ----------------------------------------------------------------------------------------------------
-
-float TypeAggregator::normalize(float x, float min, float max) const{
-    return (x - min) / max;
-}
 
 ED_REGISTER_PERCEPTION_MODULE(TypeAggregator)

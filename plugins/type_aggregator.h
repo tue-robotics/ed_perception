@@ -68,22 +68,13 @@ private:
     std::vector<std::string> plugin_names_;
     float positive_tresh_;
 
-    void collectFeatures(tue::Configuration& entity_conf,
-                          std::vector<Feature>& features,
-                          std::vector<Feature>& hypothesis) const;
+    void collectFeatures(tue::Configuration entity_conf, std::vector<Feature>& features, std::vector<Feature>& hypothesis) const;
 
-    void matchHypothesis(std::vector<Feature>& features,
-                        std::map<std::string, float>& type_histogram,
-                        std::string& type,
-                        float& score) const;
+    void matchHypothesis(std::vector<Feature>& features, std::map<std::string, float>& type_histogram, std::string& type, float& score) const;
 
-    void discardOptions(std::vector<Feature>& features,
-                         std::string& type,
-                         float& score) const;
+    void discardTypes(std::vector<Feature>& features, std::string& type, float& score) const;
 
     bool loadDictionary(const std::string path);
-
-    float normalize(float x, float min, float max) const;
 
     float weightedScore(float score, std::string plugin_name) const;
 };
