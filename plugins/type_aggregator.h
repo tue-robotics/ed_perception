@@ -72,7 +72,7 @@ private:
 
     void matchHypothesis(std::vector<Feature>& features, std::map<std::string, float>& type_histogram, std::string& type, float& score) const;
 
-    void discardTypes(std::vector<Feature>& features, std::string& type, float& score) const;
+    void determineType(std::vector<Feature>& features, std::string& type, float& score) const;
 
     bool loadDictionary(const std::string path);
 

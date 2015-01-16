@@ -38,6 +38,7 @@ void TypeAggregator::loadConfig(const std::string& config_path) {
 
     init_success_ = true;
     std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
+
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -47,6 +48,7 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
     // if initialization failed, return
     if (!init_success_)
         return;
+
 /*
     // ---------- Prepare measurement ----------
 
@@ -132,7 +134,7 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
     matchHypothesis(hypothesis, type_histogram, type, best_score);
 
     // discard hypothesis based on the features
-    discardTypes(features, type, best_score);
+    determineType(features, type, best_score);
 
     // assert general type
     if (!type.empty()){
@@ -162,7 +164,6 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
     if (!type.empty()){
         entity_conf.setValue("type", type);
         entity_conf.setValue("score", best_score);
-
 //        std::cout << "[" << kModuleName << "] " << "Asserted type: " << type << " (" << certainty << ")" << std::endl;
     }else{
 //        std::cout << "[" << kModuleName << "] " << "No hypothesis found." << std::endl;
@@ -174,15 +175,17 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
 //    std::cout << "[" << module_name_ << "] " << "######### Entity: " << e->id() << "#########" << std::endl;
 //    std::cout << entity_conf << std::endl;
 //    std::cout << std::endl;
+
 }
 
 
 // ----------------------------------------------------------------------------------------------------
 
 
-void TypeAggregator::discardTypes(std::vector<Feature>& features, std::string& type, float& score) const{
+void TypeAggregator::determineType(std::vector<Feature>& features, std::string& type, float& score) const{
 
     bool face = false;
+    bool multiple_faces = false;
     bool human_shape = false;
     bool small_size = false;
     bool medium_size = false;
@@ -192,19 +195,24 @@ void TypeAggregator::discardTypes(std::vector<Feature>& features, std::string& t
     // get booleans from features
     for (std::vector<Feature>::iterator feat_it = features.begin() ; feat_it != features.end(); ++feat_it){
         face = ((feat_it->name.compare("face") == 0 && feat_it->score == 1) || face == true);
+        multiple_faces = ((feat_it->name.compare("multiple_faces") == 0 && feat_it->score == 1) || multiple_faces == true);
         human_shape = ((feat_it->name.compare("human_shape") == 0 && feat_it->score == 1) || human_shape == true);
+
         small_size = ((feat_it->name.compare("small_size") == 0 && feat_it->score == 1) || small_size == true);
         medium_size = ((feat_it->name.compare("medium_size") == 0 && feat_it->score == 1) || medium_size == true);
         large_size = ((feat_it->name.compare("large_size") == 0 && feat_it->score == 1) || large_size == true);
     }
 
     // if it has a face or human shape, and its not small, it must be a human
-    if ((face || human_shape) && (medium_size || large_size)){
+    if ((face || (human_shape && !multiple_faces)) && (medium_size || large_size)){
         type = "human";
         score = 1;
+    }else if (multiple_faces && (medium_size || large_size)){
+        type = "crowd";
+        score = 1;
     // if it has no face, no human shape, and its not small, then its not an ordinary object
-    }else if(!human_shape && !face && (medium_size || large_size)){
-        type = "";
+    }else if(!human_shape && !face && !multiple_faces && (medium_size || large_size)){
+        type = "unknown";
         score = 0;
     }
 }
