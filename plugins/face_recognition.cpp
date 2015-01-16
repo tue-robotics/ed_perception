@@ -148,6 +148,8 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
         if (max_y < p_2d.y) max_y = p_2d.y;
     }
 
+    cv::Rect bouding_box (min_x, min_y, max_x - min_x, max_y - min_y);
+
     // ----------------------- Process -----------------------
 
     cv::Rect face_rect;
@@ -166,7 +168,7 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 //    cv::imwrite((std::string)"/home/luisf/faces_office/" + ed::Entity::generateID().c_str() + ".pgm", face_aligned);
 
 //    cv::imwrite("/tmp/min_box.png", cropped_image(bouding_box));
-//    cv::imwrite("/tmp/face.png", cropped_image(faceRect));
+//    cv::imwrite("/tmp/face.png", cropped_image(face_rect));
 //    cv::imwrite("/tmp/face_aligned.png", face_aligned);
 //    cv::imwrite("/tmp/full.png", cropped_image);
 
