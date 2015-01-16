@@ -194,7 +194,6 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
 
     result.writeGroup("face_detector");
 
-    result.setValue("label", "face");
 
     // Detect faces in the measurment and assert the results
     if(DetectFaces(cropped_image(bouding_box), faces_front, faces_profile)){
@@ -227,10 +226,16 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
             result.endArray();
         }
 
+        if (faces_front.size() + faces_profile.size() > 1)
+            result.setValue("label", "multiple_faces");
+        else
+            result.setValue("label", "face");
+
         result.setValue("score", 1.0);
 
     }else{
         // no faces detected
+        result.setValue("label", "face");
         result.setValue("score", 0.0);
     }
 
