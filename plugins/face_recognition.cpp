@@ -53,7 +53,7 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
     debug_mode_ = true;
 
     using_Eigen_ = false;
-    using_Fisher_ = false;
+    using_Fisher_ = true;
     using_LBPH_ = true;
 
     face_target_size_ = 150;
@@ -533,6 +533,13 @@ void FaceRecognition::trainRecognizers(std::vector<cv::Mat>& images, std::vector
         std::cout << "[" << module_name_ << "] " << "Eigen Faces trained!" << std::endl;
     }
 
+    // train LBP
+    if (using_LBPH_){
+        trained_LBPH_ = true;
+        models[LBPH]->train(images, labels);
+        std::cout << "[" << module_name_ << "] " << "LBPH Faces trained!" << std::endl;
+    }
+
     if(labelsInfo_.size() > 1){
         // train Fisher Faces
         if (using_Fisher_){
@@ -540,16 +547,9 @@ void FaceRecognition::trainRecognizers(std::vector<cv::Mat>& images, std::vector
             models[FISHER]->train(images, labels);
             std::cout << "[" << module_name_ << "] " << "Fisher Faces trained!" << std::endl;
         }
-
-        // train LBP
-        if (using_LBPH_){
-            trained_LBPH_ = true;
-            models[LBPH]->train(images, labels);
-            std::cout << "[" << module_name_ << "] " << "LBPH Faces trained!" << std::endl;
-        }
     }
     else
-        std::cout << "[" << module_name_ << "] " << "Could not train Fisher and LBPH Faces, only have 1 class!" << std::endl;
+        std::cout << "[" << module_name_ << "] " << "Could not train Fisher Faces, needs more than 1 class!" << std::endl;
 }
 
 
