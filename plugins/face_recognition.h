@@ -1,21 +1,26 @@
+/*
+* Author: Luis Fererira
+* E-mail: luisffereira@outlook.com
+* Date: January 2015
+*/
+
 #ifndef ED_PERCEPTION_FACE_RECOGNITION_H_
 #define ED_PERCEPTION_FACE_RECOGNITION_H_
 
 #include <ed/perception_modules/perception_module.h>
 
-// OpenCV includes
-//#include <opencv/cv.h>
+#include <ed_perception/LearnPerson.h>
+#include <ed_perception/LearnPersonRequest.h>
+#include <ed_perception/LearnPersonResponse.h>
 
+// OpenCV includes
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/core/core.hpp"
 #include "opencv2/contrib/contrib.hpp"
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
-
-#include <boost/filesystem.hpp>
-#include <boost/lexical_cast.hpp>
+#include <ros/callback_queue.h>
+#include <ros/service_server.h>
+#include <ros/publisher.h>
 
 
 class FaceRecognition : public ed::PerceptionModule
@@ -27,6 +32,7 @@ enum{
     LBPH = 2
 };
 
+
 /*
  * ###########################################
  *  				PRIVATE
@@ -37,38 +43,51 @@ private:
     // -------------------- VARIABLES --------------------
 
     // module configuration
-    bool init_success_;         // signal if initialization is complete
-    bool debug_mode_;           // signal if debug mode is active, to enable output communication
-    std::string module_name_;   // module name that shows up in the output
+    bool init_success_;             // signal if initialization is complete
+    bool debug_mode_;               // signal if debug mode is active, to enable output communication
+    std::string module_name_;       // module name that shows up in the output
+    mutable bool learning_mode_;    // true if face is being learned, false for normal recognition mode
+    std::string faces_save_dir_;
+
+    // face alignement parameters
+    int face_target_size_;      // size of the image after alignement
+    float face_vert_offset_;    // vertical offeset from the left eye to the top margin of the image
+    float face_horiz_offset_;   // horizontal offeset from the left eye to the left margin of the image
+
+    float eigen_treshold_;      // treshold for a trustworthy classification with Eigen Faces
+    float fisher_treshold_;     // treshold for a trustworthy classification with Fisher Faces
+    float lbph_treshold_;       // treshold for a trustworthy classification with LBPH Faces
+
+    // Face recogniton training
+    mutable std::vector<cv::Mat> images_;               // images used for training
+    mutable std::vector<int> labels_;                   // label corresponding to each image
+    mutable std::map<int, std::string> labelsInfo_;     // "human" name of a label
+    mutable int last_label_;                            // last label number used
+
+    // Face recognizers
+    mutable std::vector<cv::Ptr<cv::FaceRecognizer> > models_;      // vector of models for the FaceRecognizers
 
     bool using_Eigen_;          // is Eingen Faces recognition enabled
     bool using_Fisher_;         // is Fisher Faces recognition enabled
-    bool using_LBPH_;            // is LBPH recognition enabled
+    bool using_LBPH_;           // is LBPH recognition enabled
 
-    // face alignement parameters
-    int face_target_size_;            // size of the image after alignement
-    float face_vert_offset_;      // vertical offeset from the left eye to the top margin of the image
-    float face_horiz_offset_;    // horizontal offeset from the left eye to the left margin of the image
+    mutable bool trained_Eigen_;          // is Eingen Faces recognition enabled
+    mutable bool trained_Fisher_;         // is Fisher Faces recognition enabled
+    mutable bool trained_LBPH_;           // is LBPH recognition enabled
 
-    float eigen_treshold_;
-    float fisher_treshold_;
-    float lbph_treshold_;
-
-    // Face recogniton training
-    std::vector<cv::Mat> images_;
-    std::vector<int> labels_;
-    std::map<int, std::string> labelsInfo_;
-
-    // Face recognizers
-    std::vector<cv::Ptr<cv::FaceRecognizer> > models;
+    // learning service
+    mutable ros::CallbackQueue cb_queue_;   // service queue
+    ros::ServiceServer srv_learn_face;      // service to learn new face
+    std::string learning_name_;             // name to be used in the learning process
+    mutable uint n_faces_current_;          // number of faces learned for the last request
+    uint max_faces_learn_;                  // total number of faces to be learned for each model
 
 
 
     // -------------------- FUNCTIONS --------------------
 
     // Read the CSV file with the path to the image, the class number and label
-    void read_csv(const std::string& filename,
-                  const std::string& images_path,
+    void readCSV(const std::string& filename,
                   std::vector<cv::Mat>& images,
                   std::vector<int>& labels,
                   std::map<int, std::string>& labelsInfo,
@@ -96,6 +115,24 @@ private:
     void matchResults(std::string eigenLabel, std::string fisherLabel, std::string lbphLabel,
                       float eigenConf, float fisherConf, float lbphConf,
                       std::string& label_match, double& confidence_match) const;
+
+    // show visualization window with information
+    void showDebugWindow(cv::Mat face_aligned, std::string eigen_label, std::string fisher_label, std::string lbph_label, std::vector<double> confidence) const;
+
+    // function called when service is requested
+    bool srvStartLearning(const ed_perception::LearnPerson::Request& ros_req, ed_perception::LearnPerson::Response& ros_res);
+
+    // learns a face
+    bool learnFace(std::string person_name,
+                   int person_label,
+                   cv::Mat& face,
+                   int n_face,
+                   std::vector<cv::Mat>& face_images,
+                   std::vector<int>& face_labels,
+                   std::map<int, std::string>& faces_info) const;
+
+    // trains the opencv FaceRecognizers
+    void trainRecognizers(std::vector<cv::Mat>& images, std::vector<int>& labels, std::vector<cv::Ptr<cv::FaceRecognizer> >& models) const;
 
 /*
 * ###########################################

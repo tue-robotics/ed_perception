@@ -1,3 +1,9 @@
+/*
+* Author: Luis Fererira
+* E-mail: luisffereira@outlook.com
+* Date: January 2015
+*/
+
 #include "face_recognition.h"
 
 #include "ed/measurement.h"
@@ -6,6 +12,15 @@
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
+#include <ros/node_handle.h>
+#include <ros/advertise_service_options.h>
+
+#include <boost/filesystem.hpp>
+#include <boost/lexical_cast.hpp>
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -21,18 +36,24 @@ FaceRecognition::FaceRecognition() :
 
 FaceRecognition::~FaceRecognition(){
 
+    if (debug_mode_){
+        cv::destroyWindow("Face Recognition debug");
+    }
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 void FaceRecognition::loadConfig(const std::string& config_path) {
 
+
+    // ---------------- PARAMETERS ----------------
+
     // module configuration
     module_name_ = "face_recognition";
-    debug_mode_ = false;
+    debug_mode_ = true;
 
     using_Eigen_ = false;
-    using_Fisher_ = true;
+    using_Fisher_ = false;
     using_LBPH_ = true;
 
     face_target_size_ = 150;
@@ -43,51 +64,62 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
     fisher_treshold_ = 2000;
     lbph_treshold_ = 50;
 
-    // Get the path to the CSV file and images
-    std::string csv_file_path = config_path + "/faces_learned_office.csv";
-    std::string images_relative_path = config_path + "/faces_office/";
+    learning_mode_ = false;
+    max_faces_learn_ = 10;
 
-    // Read in the data. This can fail if no valid input filename is given
-    try {
-        std::cout << "[" << module_name_ << "] " << "Reading CSV file with faces locations and names" << std::endl;
-        read_csv(csv_file_path, images_relative_path, images_, labels_, labelsInfo_);
-    } catch (cv::Exception& e) {
-        std::cout << "[" << module_name_ << "] " << "Error opening file \"" << csv_file_path << "\". Reason: " << e.msg << std::endl;
-        return;
-    }
 
-    // quit if there are not enough images to train
-    if(images_.size() <= 1) {
-        std::cout << "[" << module_name_ << "] " << "Face dataset doesn't have enought images! Need more than 2." << std::endl;
-        return;
-    }
+    // ---------------- INITIALIZATIONS ----------------
+
+    trained_Eigen_ = false;
+    trained_Fisher_ = false;
+    trained_LBPH_ = false;
+
+    last_label_ = 0;
+
+    // create faces folder
+    faces_save_dir_ = (std::string)getenv("HOME") + "/faces_learned/";
+    boost::filesystem::path dir(faces_save_dir_);
+    boost::filesystem::create_directories(dir);
+    std::cout << "[" << module_name_ << "] " << "Faces learned will be saved in: " << faces_save_dir_ << std::endl;
 
     // resize to the maximum number of FaceRecognizers you're going to use
-    models.resize(3);
+    models_.resize(3);
+    models_[EIGEN] = cv::createEigenFaceRecognizer();
+    models_[FISHER] = cv::createFisherFaceRecognizer();
+    models_[LBPH] = cv::createLBPHFaceRecognizer();
 
-    // train Eingen Faces
-    if (using_Eigen_){
-        models[EIGEN] = cv::createEigenFaceRecognizer();
-        std::cout << "[" << module_name_ << "] " << "Training Eigen Faces..." << std::endl;
-        models[EIGEN]->train(images_, labels_);
-        std::cout << "[" << module_name_ << "] " << "Eigen Faces trained!" << std::endl;
+    // create debug window
+    if (debug_mode_){
+        cv::namedWindow("Face Recognition debug", cv::WINDOW_AUTOSIZE);
     }
 
-    // train Fisher Faces
-    if (using_Fisher_){
-        models[FISHER] = cv::createFisherFaceRecognizer();
-        std::cout << "[" << module_name_ << "] " << "Training Fisher Faces..." << std::endl;
-        models[FISHER]->train(images_, labels_);
-        std::cout << "[" << module_name_ << "] " << "Fisher Faces trained!" << std::endl;
+    // Get the path to the CSV file and images
+    std::string csv_file_path = faces_save_dir_ + "face_models.cvs";
+
+    // Load faces from CSV file
+    if (!csv_file_path.empty()){
+        readCSV(csv_file_path, images_, labels_, labelsInfo_);
+        trainRecognizers(images_, labels_, models_);
+    }else {
+        std::cout << "[" << module_name_ << "] " << "No CSV faces file was loaded! Recognizers not trained" << std::endl;
     }
 
-    // train LBP
-    if (using_LBPH_){
-        models[LBPH] = cv::createLBPHFaceRecognizer();
-        std::cout << "[" << module_name_ << "] " << "Training LBPH Faces..." << std::endl;
-        models[LBPH]->train(images_, labels_);
-        std::cout << "[" << module_name_ << "] " << "LBPH Faces trained!" << std::endl;
+    // create and advertise service to initiate learning
+    if (!ros::isInitialized())
+    {
+        ros::M_string remapping_args;
+        ros::init(remapping_args, "ed");
     }
+
+    ros::NodeHandle nh;
+
+    ros::AdvertiseServiceOptions opt_srv_get_entity_info =
+                ros::AdvertiseServiceOptions::create<ed_perception::LearnPerson>(
+                "/face_recognition/learn", boost::bind(&FaceRecognition::srvStartLearning, this, _1, _2),
+                ros::VoidPtr(), &cb_queue_);
+
+    srv_learn_face = nh.advertiseService(opt_srv_get_entity_info);
+    std::cout << "[" << module_name_ << "] " << "Use 'rosservice call /face_recognition/learn PERSON_NAME' to initialize learning" << std::endl;
 
     init_success_ = true;
     std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
@@ -106,6 +138,8 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 //        std::cout << "[" << module_name_ << "] " << "Couldn't find a face, skipping recognition"<< std::endl;
         return;
     }
+
+    cb_queue_.callAvailable();
 
     // ---------- Prepare measurement ----------
 
@@ -154,25 +188,11 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
     cv::Rect face_rect;
     cv::Mat face_aligned;
-
-    // get location of face and eyes
-    if (!getFaceInfo(config.limitScope(), face_rect)){
-        std::cout << "[" << module_name_ << "] " << "Problem retrieving face information, aborting recognition!" << std::endl;
-        return;
-    }
-
-    if (!alignFace(cropped_image, face_rect, face_target_size_, face_horiz_offset_, face_vert_offset_, face_aligned))
-        std::cout << "[" << module_name_ << "] " << "Could not align face!" << std::endl;
-
-    // ----------------------- MANUAL LEARNING --------------------------------------------------------------------------
-//    cv::imwrite((std::string)"/home/luisf/faces_office/" + ed::Entity::generateID().c_str() + ".pgm", face_aligned);
-
-//    cv::imwrite("/tmp/min_box.png", cropped_image(bouding_box));
-//    cv::imwrite("/tmp/face.png", cropped_image(face_rect));
-//    cv::imwrite("/tmp/face_aligned.png", face_aligned);
-//    cv::imwrite("/tmp/full.png", cropped_image);
-
-    // -----------------------------------------------------------------------------------------------------------
+    std::string eigen_label;
+    std::string fisher_label;
+    std::string lbph_label;
+    std::string label_match;
+    double confidence_match;
 
     // The following line predicts the label of a given
     std::vector<int> predict_label; predict_label.resize(3);
@@ -183,34 +203,70 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
     predict_label[FISHER] = -1; confidence[FISHER] = 0.0;
     predict_label[LBPH] = -1; confidence[LBPH] = 0.0;
 
-    // perform recognition
-    if (using_Eigen_){
-        models[EIGEN]->predict(face_aligned, predict_label[EIGEN], confidence[EIGEN]);
+    // get location of face and eyes
+    if (!getFaceInfo(config.limitScope(), face_rect)){
+        std::cout << "[" << module_name_ << "] " << "No face information found, aborting recognition" << std::endl;
+        return;
     }
 
-    if (using_Fisher_){
-        models[FISHER]->predict(face_aligned, predict_label[FISHER], confidence[FISHER]);
-    }
+    // align, grayscale and resize face
+    if (!alignFace(cropped_image, face_rect, face_target_size_, face_horiz_offset_, face_vert_offset_, face_aligned))
+        std::cout << "[" << module_name_ << "] " << "Could not align face!" << std::endl;
 
-    if (using_LBPH_){
-        models[LBPH]->predict(face_aligned, predict_label[LBPH], confidence[LBPH]);
-    }
+    // ---------- Learning Mode ----------
+    if (learning_mode_){
+        label_match = learning_name_;
+        confidence_match = 0;
 
+        // true when learning is complete
+        if (learnFace(learning_name_, last_label_, face_aligned, n_faces_current_, images_, labels_, labelsInfo_)){
+            std::cout << "[" << module_name_ << "] " << "Learning complete!" << std::endl;
+
+            // reset number of learned faces
+            n_faces_current_ = 0;
+
+            // update last label number
+            last_label_ ++;
+
+            // retrain FaceRecognizers if there are enough classes to train
+            trainRecognizers(images_, labels_, models_);
+
+            // quit learning mode
+            learning_mode_ = false;
+        }else{
+            // update number of faces learned
+            n_faces_current_ ++;
+        }
+
+    // ---------- Recognition Mode ----------
+    }else{
+        // perform recognition
+        if (using_Eigen_ && trained_Eigen_){
+            models_[EIGEN]->predict(face_aligned, predict_label[EIGEN], confidence[EIGEN]);
+        }
+
+        // these two can only be used with at least 2 classes
+        if (using_Fisher_ && trained_Fisher_){
+            models_[FISHER]->predict(face_aligned, predict_label[FISHER], confidence[FISHER]);
+        }
+
+        if (using_LBPH_ && trained_LBPH_){
+            models_[LBPH]->predict(face_aligned, predict_label[LBPH], confidence[LBPH]);
+        }
+
+        // fill labels with the predicted name, in case there was a prediction
+        eigen_label = predict_label[EIGEN] > -1 ? labelsInfo_.at(predict_label[EIGEN]) : "";
+        fisher_label = predict_label[FISHER] > -1 ? labelsInfo_.at(predict_label[FISHER]) : "";
+        lbph_label = predict_label[LBPH] > -1 ? labelsInfo_.at(predict_label[LBPH]) : "";
+
+        // match these results into one
+        matchResults(eigen_label, fisher_label, lbph_label,
+                     confidence[EIGEN], confidence[FISHER], confidence[LBPH],
+                     label_match, confidence_match);
+    }
 
     // ----------------------- Assert results -----------------------
 
-    // fill labels with the predicted name, in case there was a prediction
-    std::string eigen_label = predict_label[EIGEN] > -1 ? labelsInfo_.at(predict_label[EIGEN]) : "";
-    std::string fisher_label = predict_label[FISHER] > -1 ? labelsInfo_.at(predict_label[FISHER]) : "";
-    std::string lbph_label = predict_label[LBPH] > -1 ? labelsInfo_.at(predict_label[LBPH]) : "";
-
-    // match these results into one
-    double confidence_match;
-    std::string label_match;
-
-    matchResults(eigen_label, fisher_label, lbph_label,
-                 confidence[EIGEN], confidence[FISHER], confidence[LBPH],
-                 label_match, confidence_match);
 
     // create group if it doesnt exist
     if (!config.readGroup("perception_result", tue::OPTIONAL))
@@ -251,6 +307,109 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
     config.endGroup();  // close face_recognizer group
     config.endGroup();  // close perception_result group
+
+    if (debug_mode_){
+        showDebugWindow(face_aligned, eigen_label, fisher_label, lbph_label, confidence);
+    }
+}
+
+
+
+// ----------------------------------------------------------------------------------------------------
+
+
+bool FaceRecognition::learnFace(std::string person_name,
+                                int person_label,
+                                cv::Mat& face,
+                                int n_face,
+                                std::vector<cv::Mat>& face_images,
+                                std::vector<int>& face_labels,
+                                std::map<int, std::string>& faces_info) const{
+
+    std::cout << "[" << module_name_ << "] " << "Learning face: " << person_name << ", label " << person_label << " (" << n_faces_current_ << ")" << std::endl;
+
+    // add face and name to the DB
+    face_images.push_back(face);
+    face_labels.push_back(person_label);
+    faces_info.insert(std::make_pair(person_label, person_name));
+
+
+    // -------------------- save faces for debug --------------------
+
+    // create faces folder if it doesn't exist already
+    std::string local_save_dir = faces_save_dir_ + person_name + "/";
+    boost::filesystem::path dir(local_save_dir);
+    if( !(boost::filesystem::exists(dir)))
+        boost::filesystem::create_directories(dir);
+
+    std::string file_name = person_name + "_" + ed::Entity::generateID().c_str();
+    cv::imwrite(local_save_dir + file_name + ".pgm", face);
+
+
+    // -------------------- update CSV file --------------------
+    std::stringstream path_on_disk;
+    path_on_disk << local_save_dir << file_name;
+
+    // Add relative path to cvs file
+    std::string cvs_file_name = faces_save_dir_ + "face_models.cvs";
+    std::fstream myfile;
+    myfile.open (cvs_file_name.c_str(), std::fstream::in | std::fstream::out | std::fstream::app);
+    myfile << local_save_dir << file_name << ".pgm" << ";" << person_label << ";" << person_name << "\n";
+    myfile.close();
+
+
+    // if the number os faces learned for this user is more than max_faces_learn_, then its done
+    return n_face >= max_faces_learn_;
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+
+bool FaceRecognition::srvStartLearning(const ed_perception::LearnPerson::Request& ros_req, ed_perception::LearnPerson::Response& ros_res)
+{
+    std::cout << "[" << module_name_ << "] " << "Service called, person name: " << ros_req.person_name << std::endl;
+
+    learning_name_ = ros_req.person_name;
+    n_faces_current_ = 0;
+
+    learning_mode_ = true;  
+
+    ros_res.info = "Learning started";
+
+    return true;
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+
+void FaceRecognition::showDebugWindow(cv::Mat face_aligned,
+                                      std::string eigen_label,
+                                      std::string fisher_label,
+                                      std::string lbph_label,
+                                      std::vector<double> confidence) const{
+
+    int key_press;
+
+    cv::Mat debug_display(cv::Size(face_target_size_ + 50, face_target_size_ + 80), CV_8UC1, cv::Scalar(0,0,0));
+    cv::Mat debug_roi = debug_display(cv::Rect(25,0, face_target_size_, face_target_size_));
+    face_aligned.copyTo(debug_roi);
+
+    cvtColor(debug_display, debug_display, CV_GRAY2RGB);
+
+    std::string info1("Eingen: " + eigen_label + " (" + boost::str(boost::format("%.0f") % confidence[EIGEN]) + ")");
+    std::string info2("Fisher: " + fisher_label + " (" + boost::str(boost::format("%.0f") % confidence[FISHER]) + ")");
+    std::string info3("LBPH:  " + lbph_label + " (" + boost::str(boost::format("%.0f") % confidence[LBPH]) + ")");
+
+    // draw name and ID
+    cv::putText(debug_display, info1, cv::Point(0 , face_target_size_ + 20), 1, 1.1, cv::Scalar(255, 255, 255), 1, CV_AA);
+    cv::putText(debug_display, info2, cv::Point(0 , face_target_size_ + 40), 1, 1.1, cv::Scalar(255, 255, 255), 1, CV_AA);
+    cv::putText(debug_display, info3, cv::Point(0 , face_target_size_ + 60), 1, 1.1, cv::Scalar(255, 255, 255), 1, CV_AA);
+
+    cv::imshow("Face Recognition debug", debug_display);
+
+//    key_press = cv::waitKey(100);
 }
 
 
@@ -296,9 +455,15 @@ void FaceRecognition::matchResults(std::string eigenLabel, std::string fisherLab
 //        std::cout << it->first << ", " << it->second << "\n";
 //    }
 
-    // return the match with the lowest percentage of error
-    label_match = ordered_results.begin()->first;
-    confidence_match = ordered_results.begin()->second;
+    if (!ordered_results.empty()){
+        // return the match with the lowest percentage of error
+        label_match = ordered_results.begin()->first;
+        confidence_match = ordered_results.begin()->second;
+    }else{
+//        std::cout << "[" << module_name_ << "] " << "No results to match" << std::endl;
+        label_match = "";
+        confidence_match = 0;
+    }
 }
 
 
@@ -339,7 +504,7 @@ bool FaceRecognition::getFaceInfo(tue::Configuration config, cv::Rect& faceRect)
     while(config.nextArrayItem()){
         if (!config.value("x", topX) || !config.value("y", topY) || !config.value("height", height) || !config.value("width", width)){
            std::cout << "[" << module_name_ << "] " << "Incorrect construction of face information" << std::endl;
-            return false;
+           return false;
         }
     }
 
@@ -352,8 +517,46 @@ bool FaceRecognition::getFaceInfo(tue::Configuration config, cv::Rect& faceRect)
 // ----------------------------------------------------------------------------------------------------
 
 
-void FaceRecognition::read_csv(const std::string& filename,
-                               const std::string& images_relative_path,
+void FaceRecognition::trainRecognizers(std::vector<cv::Mat>& images, std::vector<int>& labels, std::vector<cv::Ptr<cv::FaceRecognizer> >& models) const{
+
+    if (images.empty()){
+        std::cout << "[" << module_name_ << "] " << "No images found. Unable to train Recognizers" << std::endl;
+        return;
+    }
+
+    std::cout << "[" << module_name_ << "] " << "Training with " << images.size() << " images for " << labelsInfo_.size() << " different people." << std::endl;
+
+    // train Eingen Faces
+    if (using_Eigen_){
+        models[EIGEN]->train(images, labels);
+        trained_Eigen_ = true;
+        std::cout << "[" << module_name_ << "] " << "Eigen Faces trained!" << std::endl;
+    }
+
+    if(labelsInfo_.size() > 1){
+        // train Fisher Faces
+        if (using_Fisher_){
+            trained_Fisher_ = true;
+            models[FISHER]->train(images, labels);
+            std::cout << "[" << module_name_ << "] " << "Fisher Faces trained!" << std::endl;
+        }
+
+        // train LBP
+        if (using_LBPH_){
+            trained_LBPH_ = true;
+            models[LBPH]->train(images, labels);
+            std::cout << "[" << module_name_ << "] " << "LBPH Faces trained!" << std::endl;
+        }
+    }
+    else
+        std::cout << "[" << module_name_ << "] " << "Could not train Fisher and LBPH Faces, only have 1 class!" << std::endl;
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+
+void FaceRecognition::readCSV( const std::string& filename,
                                std::vector<cv::Mat>& images,
                                std::vector<int>& labels,
                                std::map<int, std::string>& labelsInfo,
@@ -361,7 +564,9 @@ void FaceRecognition::read_csv(const std::string& filename,
 
     std::ifstream csv(filename.c_str());
 
-    if (!csv) CV_Error(CV_StsBadArg, "No valid input file was given, please check the given filename.");
+    if (!csv) {
+        std::cout << "[" << module_name_ << "] " << "No valid input file was given, please check the given filename. " << filename << std::endl;
+    }
 
     std::string line;
     std::string path;
@@ -389,7 +594,7 @@ void FaceRecognition::read_csv(const std::string& filename,
             }
 
             // 'path' can be file, dir or wildcard path
-            std::string root(images_relative_path.c_str()); root.append(path.c_str());
+            std::string root(path.c_str());
             std::vector<std::string> files;
             cv::glob(root, files, true);
 
@@ -412,7 +617,8 @@ void FaceRecognition::read_csv(const std::string& filename,
         }
     }
 
-    std::cout << "[" << module_name_ << "] " << images_.size() << " faces were loaded for " << unique_names << " different people." << std::endl;
+    // update last label
+    last_label_ = unique_names;
 }
 
 
