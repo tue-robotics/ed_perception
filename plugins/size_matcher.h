@@ -1,3 +1,9 @@
+/*
+* Author: Luis Fererira
+* E-mail: luisffereira@outlook.com
+* Date: July 2015
+*/
+
 #ifndef ED_PERCEPTION_SIZE_MATCHER_H_
 #define ED_PERCEPTION_SIZE_MATCHER_H_
 
@@ -60,9 +66,7 @@ private:
     std::map<std::string, std::vector<ObjectSize> > models_;
     std::string	module_name_;    /*!< Name of the module, for output */
 
-    bool loadSize(std::string path, std::string model_name);
-
-    bool loadLearning(std::string path, std::string model_name);
+    bool loadLearnedModel(std::string path, std::string model_name);
 };
 
 }

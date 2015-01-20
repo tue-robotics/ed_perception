@@ -1,3 +1,9 @@
+/*
+* Author: Luis Fererira
+* E-mail: luisffereira@outlook.com
+* Date: January 2015
+*/
+
 #include "size_matcher.h"
 
 #include "ed/measurement.h"
@@ -48,7 +54,7 @@ void SizeMatcher::loadModel(const std::string& model_name, const std::string& mo
 
     std::string path = models_folder + "/models/" + model_name +  "/" +  model_name + ".yml";
 
-    if (loadLearning(path, model_name)){
+    if (loadLearnedModel(path, model_name)){
 //        std::cout << "[" << module_name_ << "] " << "Loaded sizes for " << model_name << std::endl;
     }
     else{
@@ -170,7 +176,7 @@ void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) cons
 
 // ----------------------------------------------------------------------------------------------------
 
-bool SizeMatcher::loadLearning(std::string path, std::string model_name){
+bool SizeMatcher::loadLearnedModel(std::string path, std::string model_name){
     if (path.empty()){
         std::cout << "[" << module_name_ << "] " << "Empty path!" << path << std::endl;
         return false;
@@ -211,33 +217,6 @@ bool SizeMatcher::loadLearning(std::string path, std::string model_name){
     return true;
 }
 
-
-// ----------------------------------------------------------------------------------------------------
-
-bool SizeMatcher::loadSize(std::string path, std::string model_name){
-    std::ifstream model_file;
-
-    // Open file
-    model_file.open(path.c_str());
-
-    if (!model_file.is_open())
-        return false;
-
-    std::vector<ObjectSize> model_vec;
-
-    // Get data from file
-    double h_min = 0, h_max = 0, w_min = 0, w_max = 0;
-    while (model_file >> h_min >> h_max >> w_min >> w_max)
-    {
-        ObjectSize obj_sz(h_min, h_max, w_min, w_max);
-        model_vec.push_back(obj_sz);
-    }
-
-    // save sizes to models vector
-    models_[model_name] = model_vec;
-
-    return true;
-}
 
 ED_REGISTER_PERCEPTION_MODULE(SizeMatcher)
 }
