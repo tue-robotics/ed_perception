@@ -22,8 +22,23 @@ find_package(OpenCV REQUIRED)
 ###################################
 ## catkin specific configuration ##
 ###################################
+
+add_service_files(
+   FILES
+   LearnPerson.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 catkin_package(
 )
+
+
+
+
 
 ###########
 ## Build ##
