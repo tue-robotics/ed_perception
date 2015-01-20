@@ -1,3 +1,9 @@
+/*
+* Author: Luis Fererira
+* E-mail: luisffereira@outlook.com
+* Date: January 2015
+*/
+
 #include "color_matcher.h"
 
 #include "ed/measurement.h"

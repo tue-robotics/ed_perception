@@ -1,3 +1,9 @@
+/*
+* Author: Luis Fererira
+* E-mail: luisffereira@outlook.com
+* Date: July 2015
+*/
+
 #ifndef ED_PERCEPTION_COLOR_MATCHER_H_
 #define ED_PERCEPTION_COLOR_MATCHER_H_
 

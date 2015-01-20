@@ -1,5 +1,11 @@
-#include <ed/perception_modules/perception_module.h>
+/*
+* Author: Luis Fererira
+* E-mail: luisffereira@outlook.com
+* Date: January 2015
+*/
 
+// ed includes
+#include <ed/perception_modules/perception_module.h>
 #include <ed/entity.h>
 
 // Measurement data structures

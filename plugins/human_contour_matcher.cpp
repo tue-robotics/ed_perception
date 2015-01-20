@@ -1,3 +1,9 @@
+/*
+* Author: Luis Fererira
+* E-mail: luisffereira@outlook.com
+* Date: July 2015
+*/
+
 #include "human_contour_matcher.h"
 
 #include "ed/measurement.h"

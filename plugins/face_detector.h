@@ -1,3 +1,9 @@
+/*
+* Author: Luis Fererira
+* E-mail: luisffereira@outlook.com
+* Date: January 2015
+*/
+
 #ifndef ED_PERCEPTION_FACE_DETECTOR_H_
 #define ED_PERCEPTION_FACE_DETECTOR_H_
 

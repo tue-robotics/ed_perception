@@ -1,3 +1,9 @@
+/*
+* Author: Luis Fererira
+* E-mail: luisffereira@outlook.com
+* Date: January 2015
+*/
+
 #include "type_aggregator.h"
 #include "ed/measurement.h"
 #include <ed/entity.h>

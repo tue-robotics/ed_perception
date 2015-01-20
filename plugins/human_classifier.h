@@ -1,9 +1,9 @@
 /*
- * human_classifier.h
- *
- *  Created on: Jul 11, 2014
- *      Author: Luis Ferreira
- */
+* Author: Luis Fererira
+* E-mail: luisffereira@outlook.com
+* Date: July 2015
+*/
+
 #ifndef HUMAN_CLASSIFIER_H_
 #define HUMAN_CLASSIFIER_H_
 
