@@ -1,6 +1,6 @@
 /*
 * Author: Luis Fererira
-* E-mail: luisffereira@outlook.com
+* E-mail: luisfferreira@outlook.com
 * Date: January 2015
 */
 
@@ -50,7 +50,7 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
 
     // module configuration
     module_name_ = "face_recognition";
-    debug_mode_ = true;
+    debug_mode_ = false;
 
     using_Eigen_ = false;
     using_Fisher_ = true;

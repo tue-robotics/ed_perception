@@ -1,6 +1,6 @@
 /*
 * Author: Luis Fererira
-* E-mail: luisffereira@outlook.com
+* E-mail: luisfferreira@outlook.com
 * Date: January 2015
 */
 
