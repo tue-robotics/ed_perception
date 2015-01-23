@@ -59,7 +59,7 @@ private:
 
     bool loadLearning(std::string path, std::string model_name);
 
-    void getHypothesis(std::map<std::string, double>& color_prob, cv::Mat& color_hist, std::map<std::string, double>& hypothesis) const;
+    void getHypothesis(cv::Mat& color_hist, std::map<std::string, double>& hypothesis) const;
 };
 
 

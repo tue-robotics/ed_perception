@@ -128,9 +128,9 @@ void ColorMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) con
     cv::Mat roi_mask (mask(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
 
     cv::Mat color_hist;
-    std::map<std::string, double> color_prob = getImageColorProbability(roi, roi_mask, color_hist);
+    std::map<std::string, double> color_amount = getImageColorProbability(roi, roi_mask, color_hist);
 
-    getHypothesis(color_prob, color_hist, hypothesis);
+    getHypothesis(color_hist, hypothesis);
 
     // ---------- ASSERT RESULTS ----------
 
@@ -143,9 +143,9 @@ void ColorMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) con
     result.writeGroup("color_matcher");
 
     // assert colors
-    if (!color_prob.empty()){
+    if (!color_amount.empty()){
         result.writeArray("colors");
-        for (std::map<std::string, double>::const_iterator it = color_prob.begin(); it != color_prob.end(); ++it)
+        for (std::map<std::string, double>::const_iterator it = color_amount.begin(); it != color_amount.end(); ++it)
         {
             result.addArrayItem();
             result.setValue("name", it->first);
@@ -250,7 +250,7 @@ std::map<std::string, double> ColorMatcher::getImageColorProbability(const cv::M
 // ----------------------------------------------------------------------------------------------------
 
 
-void ColorMatcher::getHypothesis(std::map<std::string, double>& color_prob, cv::Mat& curr_hist, std::map<std::string, double>& hypothesis) const
+void ColorMatcher::getHypothesis(cv::Mat& curr_hist, std::map<std::string, double>& hypothesis) const
 {
 
     std::map<std::string, std::vector<std::map<std::string, double> > >::const_iterator model_it;
@@ -267,25 +267,14 @@ void ColorMatcher::getHypothesis(std::map<std::string, double>& color_prob, cv::
         // iterate through all color sets
         for (uint i = 0; i < model_it->second.size(); i++){
             double score = 0;
-            double color_amount = 0;
             cv::Mat model_hist = cv::Mat::zeros(1, ColorNames::getTotalColorsNum(), CV_32FC1);
 
             // fill histogram for the current color set of the model
             for(set_it = model_it->second[i].begin(); set_it != model_it->second[i].end(); ++set_it){
                 model_hist.at<float>(colorToInt(set_it->first)) = set_it->second;
-
-                // find the color amount on the object being tested, if possible
-//                std::map<std::string, double>::iterator find_it = color_prob.find(set_it->first);
-//                if (find_it != color_prob.end()){
-//                    color_amount = find_it->second;
-//                }else
-//                    color_amount = 0;
-
-//                score += color_amount * set_it->second;
             }
 
-
-            // use correlation to comapre histograms
+            // use correlation to compare histograms
             score = cv::compareHist(model_hist, curr_hist, CV_COMP_CORREL);
 
             if (best_score < score){
