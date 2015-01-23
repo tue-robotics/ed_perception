@@ -53,7 +53,7 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
     debug_mode_ = false;
 
     using_Eigen_ = false;
-    using_Fisher_ = true;
+    using_Fisher_ = false;
     using_LBPH_ = true;
 
     face_target_size_ = 150;
@@ -61,8 +61,8 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
     face_horiz_offset_ = 0.25;
 
     eigen_treshold_ = 3000;
-    fisher_treshold_ = 2000;
-    lbph_treshold_ = 50;
+    fisher_treshold_ = 1200;
+    lbph_treshold_ = 45;
 
     learning_mode_ = false;
     max_faces_learn_ = 10;
@@ -98,7 +98,7 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
 
     // Load faces from CSV file
     if (!csv_file_path.empty()){
-        readCSV(csv_file_path, images_, labels_, labelsInfo_);
+        readCSV(csv_file_path, images_, labels_, labels_info_);
         trainRecognizers(images_, labels_, models_);
     }else {
         std::cout << "[" << module_name_ << "] " << "No CSV faces file was loaded! Recognizers not trained" << std::endl;
@@ -205,7 +205,7 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
     // get location of face and eyes
     if (!getFaceInfo(config.limitScope(), face_rect)){
-        std::cout << "[" << module_name_ << "] " << "No face information found, aborting recognition" << std::endl;
+//        std::cout << "[" << module_name_ << "] " << "No face information found, aborting recognition" << std::endl;
         return;
     }
 
@@ -219,7 +219,7 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
         confidence_match = 0;
 
         // true when learning is complete
-        if (learnFace(learning_name_, last_label_, face_aligned, n_faces_current_, images_, labels_, labelsInfo_)){
+        if (learnFace(learning_name_, last_label_, face_aligned, n_faces_current_, images_, labels_, labels_info_)){
             std::cout << "[" << module_name_ << "] " << "Learning complete!" << std::endl;
 
             // reset number of learned faces
@@ -237,33 +237,35 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
             // update number of faces learned
             n_faces_current_ ++;
         }
-
-    // ---------- Recognition Mode ----------
-    }else{
-        // perform recognition
-        if (using_Eigen_ && trained_Eigen_){
-            models_[EIGEN]->predict(face_aligned, predict_label[EIGEN], confidence[EIGEN]);
-        }
-
-        // these two can only be used with at least 2 classes
-        if (using_Fisher_ && trained_Fisher_){
-            models_[FISHER]->predict(face_aligned, predict_label[FISHER], confidence[FISHER]);
-        }
-
-        if (using_LBPH_ && trained_LBPH_){
-            models_[LBPH]->predict(face_aligned, predict_label[LBPH], confidence[LBPH]);
-        }
-
-        // fill labels with the predicted name, in case there was a prediction
-        eigen_label = predict_label[EIGEN] > -1 ? labelsInfo_.at(predict_label[EIGEN]) : "";
-        fisher_label = predict_label[FISHER] > -1 ? labelsInfo_.at(predict_label[FISHER]) : "";
-        lbph_label = predict_label[LBPH] > -1 ? labelsInfo_.at(predict_label[LBPH]) : "";
-
-        // match these results into one
-        matchResults(eigen_label, fisher_label, lbph_label,
-                     confidence[EIGEN], confidence[FISHER], confidence[LBPH],
-                     label_match, confidence_match);
     }
+
+
+    // ---------- Recognition ----------
+
+    // perform recognition
+    if (using_Eigen_ && trained_Eigen_){
+        models_[EIGEN]->predict(face_aligned, predict_label[EIGEN], confidence[EIGEN]);
+    }
+
+    // these two can only be used with at least 2 classes
+    if (using_Fisher_ && trained_Fisher_){
+        models_[FISHER]->predict(face_aligned, predict_label[FISHER], confidence[FISHER]);
+    }
+
+    if (using_LBPH_ && trained_LBPH_){
+        models_[LBPH]->predict(face_aligned, predict_label[LBPH], confidence[LBPH]);
+    }
+
+    // fill labels with the predicted name, in case there was a prediction
+    eigen_label = predict_label[EIGEN] > -1 ? labels_info_.at(predict_label[EIGEN]) : "";
+    fisher_label = predict_label[FISHER] > -1 ? labels_info_.at(predict_label[FISHER]) : "";
+    lbph_label = predict_label[LBPH] > -1 ? labels_info_.at(predict_label[LBPH]) : "";
+
+    // match these results into one
+    matchResults(eigen_label, fisher_label, lbph_label,
+                 confidence[EIGEN], confidence[FISHER], confidence[LBPH],
+                 label_match, confidence_match);
+
 
     // ----------------------- Assert results -----------------------
 
@@ -309,7 +311,7 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
     config.endGroup();  // close perception_result group
 
     if (debug_mode_){
-        showDebugWindow(face_aligned, eigen_label, fisher_label, lbph_label, confidence);
+        showDebugWindow(face_aligned, eigen_label, fisher_label, lbph_label, confidence, label_match, confidence_match);
     }
 }
 
@@ -388,24 +390,66 @@ void FaceRecognition::showDebugWindow(cv::Mat face_aligned,
                                       std::string eigen_label,
                                       std::string fisher_label,
                                       std::string lbph_label,
-                                      std::vector<double> confidence) const{
+                                      std::vector<double> confidence,
+                                      std::string label_match,
+                                      double confidence_match) const{
 
     int key_press;
 
-    cv::Mat debug_display(cv::Size(face_target_size_ + 50, face_target_size_ + 80), CV_8UC1, cv::Scalar(0,0,0));
-    cv::Mat debug_roi = debug_display(cv::Rect(25,0, face_target_size_, face_target_size_));
+    cv::Scalar color_red (0, 0, 255);
+    cv::Scalar color_yellow (0, 255, 255);
+    cv::Scalar color_green (0, 204, 0);
+    cv::Scalar color_gray (100, 100, 100);
+    cv::Scalar color_white (255, 255, 255);
+
+    cv::Scalar eigen_color;
+    cv::Scalar fisher_color;
+    cv::Scalar lbph_color;
+
+    cv::Mat debug_display(cv::Size(face_target_size_ + 60, face_target_size_ + 100), CV_8UC1, cv::Scalar(0,0,0));
+    cv::Mat debug_roi = debug_display(cv::Rect(30,0, face_target_size_, face_target_size_));
     face_aligned.copyTo(debug_roi);
 
     cvtColor(debug_display, debug_display, CV_GRAY2RGB);
 
+    // set colors of the text depending on the score
+    if (confidence[EIGEN]/eigen_treshold_ > 0.0 && confidence[EIGEN]/eigen_treshold_ < 0.8)
+        eigen_color = color_green;
+    else if (confidence[EIGEN]/eigen_treshold_ > 0.8 && confidence[EIGEN]/eigen_treshold_ < 1.0)
+        eigen_color = color_yellow;
+    else if (confidence[EIGEN]/eigen_treshold_ > 1.0)
+        eigen_color = color_red;
+    else if (confidence[EIGEN]/eigen_treshold_ == 0.0)
+        eigen_color = color_gray;
+
+    if (confidence[FISHER]/fisher_treshold_ > 0.0 && confidence[FISHER]/fisher_treshold_ < 0.8)
+        fisher_color = color_green;
+    else if (confidence[FISHER]/fisher_treshold_ > 0.8 && confidence[FISHER]/fisher_treshold_ < 1.0)
+        fisher_color = color_yellow;
+    else if (confidence[FISHER]/fisher_treshold_ > 1.0 )
+        fisher_color = color_red;
+    else if (confidence[FISHER]/fisher_treshold_ == 0.0)
+        fisher_color = color_gray;
+
+    if (confidence[LBPH]/lbph_treshold_ > 0.0 && confidence[LBPH]/lbph_treshold_ < 0.8)
+        lbph_color = color_green;
+    else if (confidence[LBPH]/lbph_treshold_ > 0.8 && confidence[LBPH]/lbph_treshold_ < 1.0)
+        lbph_color = color_yellow;
+    else if (confidence[LBPH]/lbph_treshold_ > 1.0 )
+        lbph_color = color_red;
+    else if (confidence[LBPH]/lbph_treshold_ == 0.0)
+        lbph_color = color_gray;
+
     std::string info1("Eingen: " + eigen_label + " (" + boost::str(boost::format("%.0f") % confidence[EIGEN]) + ")");
     std::string info2("Fisher: " + fisher_label + " (" + boost::str(boost::format("%.0f") % confidence[FISHER]) + ")");
     std::string info3("LBPH:  " + lbph_label + " (" + boost::str(boost::format("%.0f") % confidence[LBPH]) + ")");
+    std::string info4("Match:  " + label_match + " (" + boost::str(boost::format("%.2f") % confidence_match) + ")");
 
-    // draw name and ID
-    cv::putText(debug_display, info1, cv::Point(0 , face_target_size_ + 20), 1, 1.1, cv::Scalar(255, 255, 255), 1, CV_AA);
-    cv::putText(debug_display, info2, cv::Point(0 , face_target_size_ + 40), 1, 1.1, cv::Scalar(255, 255, 255), 1, CV_AA);
-    cv::putText(debug_display, info3, cv::Point(0 , face_target_size_ + 60), 1, 1.1, cv::Scalar(255, 255, 255), 1, CV_AA);
+    // draw text
+    cv::putText(debug_display, info1, cv::Point(10 , face_target_size_ + 20), 1, 1.1, eigen_color, 1, CV_AA);
+    cv::putText(debug_display, info2, cv::Point(10 , face_target_size_ + 40), 1, 1.1, fisher_color, 1, CV_AA);
+    cv::putText(debug_display, info3, cv::Point(10 , face_target_size_ + 60), 1, 1.1, lbph_color, 1, CV_AA);
+    cv::putText(debug_display, info4, cv::Point(10 , face_target_size_ + 85), 1, 1.1, color_white, 1, CV_AA);
 
     cv::imshow("Face Recognition debug", debug_display);
 
@@ -423,7 +467,7 @@ void FaceRecognition::matchResults(std::string eigenLabel, std::string fisherLab
     std::map <std::string, double> ordered_results;
     std::map <std::string, double>::iterator find_it;
 
-    // get a the confidence in terms of percentage, regarding the threshold of each method
+    // compare the score of each method with the threshold
     if (using_Eigen_ && !eigenLabel.empty()){
         find_it = ordered_results.find(eigenLabel);
         // average the error percentage in case the match already existed
@@ -524,7 +568,7 @@ void FaceRecognition::trainRecognizers(std::vector<cv::Mat>& images, std::vector
         return;
     }
 
-    std::cout << "[" << module_name_ << "] " << "Training with " << images.size() << " images for " << labelsInfo_.size() << " different people." << std::endl;
+    std::cout << "[" << module_name_ << "] " << "Training with " << images.size() << " images for " << labels_info_.size() << " different people." << std::endl;
 
     // train Eingen Faces
     if (using_Eigen_){
@@ -540,16 +584,15 @@ void FaceRecognition::trainRecognizers(std::vector<cv::Mat>& images, std::vector
         std::cout << "[" << module_name_ << "] " << "LBPH Faces trained!" << std::endl;
     }
 
-    if(labelsInfo_.size() > 1){
+    if(using_Fisher_){
         // train Fisher Faces
-        if (using_Fisher_){
+        if(labels_info_.size() > 1){
             trained_Fisher_ = true;
             models[FISHER]->train(images, labels);
             std::cout << "[" << module_name_ << "] " << "Fisher Faces trained!" << std::endl;
-        }
+        }else
+            std::cout << "[" << module_name_ << "] " << "Could not train Fisher Faces, needs more than 1 class!" << std::endl;
     }
-    else
-        std::cout << "[" << module_name_ << "] " << "Could not train Fisher Faces, needs more than 1 class!" << std::endl;
 }
 
 

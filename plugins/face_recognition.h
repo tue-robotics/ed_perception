@@ -61,7 +61,7 @@ private:
     // Face recogniton training
     mutable std::vector<cv::Mat> images_;               // images used for training
     mutable std::vector<int> labels_;                   // label corresponding to each image
-    mutable std::map<int, std::string> labelsInfo_;     // "human" name of a label
+    mutable std::map<int, std::string> labels_info_;     // "human" name of a label
     mutable int last_label_;                            // last label number used
 
     // Face recognizers
@@ -117,7 +117,13 @@ private:
                       std::string& label_match, double& confidence_match) const;
 
     // show visualization window with information
-    void showDebugWindow(cv::Mat face_aligned, std::string eigen_label, std::string fisher_label, std::string lbph_label, std::vector<double> confidence) const;
+    void showDebugWindow(cv::Mat face_aligned,
+                         std::string eigen_label,
+                         std::string fisher_label,
+                         std::string lbph_label,
+                         std::vector<double> confidence,
+                         std::string label_match,
+                         double confidence_match) const;
 
     // function called when service is requested
     bool srvStartLearning(const ed_perception::LearnPerson::Request& ros_req, ed_perception::LearnPerson::Response& ros_res);
