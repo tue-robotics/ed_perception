@@ -30,115 +30,55 @@ FaceDetector::FaceDetector() :
 FaceDetector::~FaceDetector()
 {
     // destroy the debug window
-    if (kDebugMode) {
+    if (debug_mode_) {
         cv::destroyWindow("Face Detector Output");
     }
 }
 
+
 // ----------------------------------------------------------------------------------------------------
+
 
 void FaceDetector::loadConfig(const std::string& config_path) {
 
     module_name_ = "face_detector";
-    kCascadePath = config_path + "/cascade_classifiers/";
-    kDebugMode = false;
+    cascade_files_path_ = config_path + "/cascade_classifiers/";
+    debug_mode_ = false;
 
-    kClassFrontScaleFactor = 1.2;
-    kClassFrontMinNeighbors = 2;
-    kClassFrontMinSize = cv::Size(20,20);
+    classif_front_scale_factor_ = 1.2;
+    classif_front_min_neighbours_ = 3;
+    classif_front_min_size_ = cv::Size(20,20);
 
-    kClassProfileScaleFactor= 1.1;
-    kClassProfileMinNeighbors = 2;
-    kClassProfileMinSize = cv::Size(20,20);
+    classif_profile_scale_factor_= 1.2;
+    classif_profile_min_neighbours_ = 3;
+    classif_profile_min_size_ = cv::Size(20,20);
 
-    // load training files
-    if (!classifier_front.load(kCascadePath + "haarcascade_frontalface_default.xml") ||
-            !classifier_profile.load(kCascadePath + "haarcascade_profileface.xml")) {
+    debug_folder_ = "/tmp/face_detector/";
 
-        std::cout << "[" << module_name_ << "] " << "Unable to load all haar cascade files ("<< kCascadePath << ")" << std::endl;
-        return;
-    }else
-        std::cout << "[" << module_name_ << "] " << "Loaded Cascade Classifier." << std::endl;
-
-    if (kDebugMode){
-        kDebugFolder = "/tmp/face_detector/";
-
+    if (debug_mode_){
+        // clean the debug folder if debugging is active
         try {
-            boost::filesystem::path dir(kDebugFolder);
+            boost::filesystem::path dir(debug_folder_);
             boost::filesystem::remove_all(dir);
             boost::filesystem::create_directories(dir);
         } catch(const boost::filesystem::filesystem_error& e){
            if(e.code() == boost::system::errc::permission_denied)
-               std::cout << "[" << kModuleName << "] " << "boost::filesystem permission denied" << std::endl;
+               std::cout << "[" << module_name_ << "] " << "boost::filesystem permission denied" << std::endl;
            else
-               std::cout << "[" << kModuleName << "] " << "boost::filesystem failed with error: " << e.code().message() << std::endl;
+               std::cout << "[" << module_name_ << "] " << "boost::filesystem failed with error: " << e.code().message() << std::endl;
         }
 
-//            CleanDebugFolder(kDebugFolder);
-
         // create debug window
-//        cv::namedWindow("Face Detector Output", CV_WINDOW_AUTOSIZE);
+        cv::namedWindow("Face Detector Output", CV_WINDOW_AUTOSIZE);
     }
 
     init_success_ = true;
     std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
 }
 
-/*
-void FaceDetector::loadModel(const std::string& model_name, const std::string& model_path)
-{
-    if (model_name.compare("face") == 0){
-        kModuleName = "face_detector";
-        module_name_ = model_name;
-        kCascadePath = model_path + "/face_detector/cascade_classifiers/";
-        kDebugMode = true;
-
-        kClassFrontScaleFactor = 1.2;
-        kClassFrontMinNeighbors = 2;
-        kClassFrontMinSize = cv::Size(20,20);
-
-        kClassProfileScaleFactor= 1.1;
-        kClassProfileMinNeighbors = 2;
-        kClassProfileMinSize = cv::Size(20,20);
-
-        // load training files
-        if (!classifier_front.load(kCascadePath + "haarcascade_frontalface_default.xml") ||
-                !classifier_profile.load(kCascadePath + "haarcascade_profileface.xml")) {
-
-            std::cout << "[" << kModuleName << "] " << "Unable to load all haar cascade files ("<< kCascadePath << ")" << std::endl;
-            return;
-        }else
-            std::cout << "[" << kModuleName << "] " << "Loaded Cascade Classifier." << std::endl;
-
-        if (kDebugMode){
-            kDebugFolder = "/tmp/face_detector/";
-
-            try {
-                boost::filesystem::path dir(kDebugFolder);
-                boost::filesystem::remove_all(dir);
-                boost::filesystem::create_directories(dir);
-
-            } catch(const boost::filesystem::filesystem_error& e){
-               if(e.code() == boost::system::errc::permission_denied)
-                   std::cout << "[" << kModuleName << "] " << "boost::filesystem permission denied" << std::endl;
-               else
-                   std::cout << "[" << kModuleName << "] " << "boost::filesystem failed with error: " << e.code().message() << std::endl;
-            }
-
-            std::cout << "[" << kModuleName << "] " << "Debug folder created." << std::endl;
-//            CleanDebugFolder(kDebugFolder);
-
-            // create debug window
-            cv::namedWindow("Face Detector Output", CV_WINDOW_AUTOSIZE);
-        }
-
-        std::cout << "[" << kModuleName << "] " << "Ready!" << std::endl;
-        init_success_ = true;
-    }
-}
-*/
 
 // ----------------------------------------------------------------------------------------------------
+
 
 void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) const
 {
@@ -249,14 +189,20 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
     result.endGroup();  // close perception_result group
 }
 
+
 // ----------------------------------------------------------------------------------------------------
+
 
 bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
                                std::vector<cv::Rect>& faces_front,
                                std::vector<cv::Rect>& faces_profile) const{
 
     cv::Mat cascade_img;
-    bool face_detected;
+    std::vector<cv::Rect>::iterator face_it;
+
+    // using locally created classifiers because opencv does not support threading
+    cv::CascadeClassifier classifier_front_local;
+    cv::CascadeClassifier classifier_profile_local;
 
     // create a copy of the image
     cropped_img.copyTo(cascade_img);
@@ -264,15 +210,10 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
     // increase contrast of the image
     normalize(cascade_img, cascade_img, 0, 255, cv::NORM_MINMAX, CV_8UC1);
 
-    // using locally created classifiers because opencv does not support threading
-    cv::CascadeClassifier classifier_front_local;
-    cv::CascadeClassifier classifier_profile_local;
-
-    // load training files
-    if (!classifier_front_local.load(kCascadePath + "haarcascade_frontalface_default.xml") ||
-            !classifier_profile_local.load(kCascadePath + "haarcascade_profileface.xml")) {
-
-        std::cout << "[" << kModuleName << "] " << "Unable to load all haar cascade files ("<< kCascadePath << ")" << std::endl;
+    // load training files for frontal classifier
+    if (!classifier_front_local.load(cascade_files_path_ + "haarcascade_frontalface_alt_tree.xml")) {
+        std::cout << "[" << module_name_ << "] " << "Unable to load frontal haar cascade files ("<< cascade_files_path_
+                  << "haarcascade_frontalface_alt_tree.xml" << ")" << std::endl;
 
         return false;
     }
@@ -280,25 +221,59 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
     // detect frontal faces
     classifier_front_local.detectMultiScale(cascade_img,
                                             faces_front,
-                                            kClassFrontScaleFactor,
-                                            kClassFrontMinNeighbors,
+                                            classif_front_scale_factor_,
+                                            classif_front_min_neighbours_,
                                             0|CV_HAAR_SCALE_IMAGE,
-                                            kClassFrontMinSize);
+                                            classif_front_min_size_);
 
-    // only search profile faces if the frontal face detection failed
-    if (faces_front.size() == 0){
-        classifier_profile_local.detectMultiScale(cascade_img,
-                                                  faces_profile,
-                                                  kClassProfileScaleFactor,
-                                                  kClassProfileMinNeighbors,
-                                                  0|CV_HAAR_SCALE_IMAGE,
-                                                  kClassProfileMinSize);
+
+    // discard face if its not close to the top of the region, false positive
+    face_it = faces_front.begin();
+    for ( ; face_it != faces_front.end(); ) {
+        // allowed area is the full width and three times the size of the detected face
+        cv::Rect allowed_area (0, 0, cropped_img.cols, face_it->height * 3);
+
+        // test if the rectangles intersect
+        if ( !(allowed_area & *face_it).area()) {
+            face_it = faces_front.erase(face_it);
+        }else
+            ++face_it;
     }
 
-    face_detected = (faces_front.size() > 0 || faces_profile.size() > 0);
+    // only search profile faces if the frontal face detection failed
+    if (faces_front.empty()){
+        // load training files for profile classifier
+        if (!classifier_profile_local.load(cascade_files_path_ + "haarcascade_profileface.xml")){
+            std::cout << "[" << module_name_ << "] " << "Unable to load profile haar cascade files ("<< cascade_files_path_
+                      << "haarcascade_profileface.xml" << ")" << std::endl;
+
+            return false;
+        }
+
+        classifier_profile_local.detectMultiScale(cascade_img,
+                                                  faces_profile,
+                                                  classif_profile_scale_factor_,
+                                                  classif_profile_min_neighbours_,
+                                                  0|CV_HAAR_SCALE_IMAGE,
+                                                  classif_profile_min_size_);
+
+        // discard face if its not close to the top of the region, false positive
+        face_it = faces_profile.begin();
+        for ( ; face_it != faces_profile.end(); ) {
+            // allowed area is the full width and three times the size of the detected face
+            cv::Rect allowed_area (0, 0, cropped_img.cols, face_it->height * 3);
+
+            // test if the rectangles intersect
+            if ( !(allowed_area & *face_it).area()) {
+                face_it = faces_profile.erase(face_it);
+            }else
+                ++face_it;
+        }
+    }
+
 
     // if debug mode is active and faces were found
-    if (kDebugMode){
+    if (debug_mode_){
         cv::Mat debugImg(cropped_img);
 
         for (uint j = 0; j < faces_front.size(); j++)
@@ -308,15 +283,17 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
             cv::rectangle(debugImg, faces_profile[j], cv::Scalar(0, 0, 255), 2, CV_AA);
 
 
-        cv::imwrite(kDebugFolder + ed::Entity::generateID().c_str() + "_face_detector.png", debugImg);
-//        cv::imshow("Face Detector Output", debugImg);
+        cv::imwrite(debug_folder_ + ed::Entity::generateID().c_str() + "_face_detector.png", debugImg);
+        cv::imshow("Face Detector Output", debugImg);
     }
 
-    return face_detected;
+    // return true if a face was found
+    return (!faces_front.empty() || !faces_profile.empty());
 }
 
 
 // ----------------------------------------------------------------------------------------------------
+
 
 void FaceDetector::OptimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const{
 
@@ -335,7 +312,9 @@ void FaceDetector::OptimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_o
     }
 }
 
+
 // ----------------------------------------------------------------------------------------------------
+
 
 void FaceDetector::OptimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const{
 
@@ -349,18 +328,9 @@ void FaceDetector::OptimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_o
     cv::threshold(mask_optimized, mask_optimized, 50, 255, CV_THRESH_BINARY);
 }
 
-// ----------------------------------------------------------------------------------------------------
-
-void FaceDetector::CleanDebugFolder(const std::string& folder){
-    if (system(std::string("mkdir " + folder).c_str()) != 0){
-        //printf("\nUnable to create output folder. Already created?\n");
-    }
-    if (system(std::string("rm " + folder + "*.png").c_str()) != 0){
-        //printf("\nUnable to clean output folder \n");
-    }
-}
 
 // ----------------------------------------------------------------------------------------------------
+
 
 int FaceDetector::ClipInt(int val, int min, int max) const{
     return val <= min ? min : val >= max ? max : val;
