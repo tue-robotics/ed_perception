@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
 
         showMeasurement(*msr);
 
-        ed::EntityPtr e(new ed::Entity("test-entity", "", 5, 0));
+        ed::EntityPtr e(new ed::Entity("test-entity", "", 5));
         e->addMeasurement(msr);
 
         std::cout << std::endl << "------------------------------------------------------------" << std::endl;

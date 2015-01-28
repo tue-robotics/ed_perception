@@ -405,7 +405,7 @@ int main(int argc, char **argv) {
             last_model = model_name;
         }
 
-        ed::EntityPtr e(new ed::Entity(model_name + "-entity", "", 5, 0));
+        ed::EntityPtr e(new ed::Entity(model_name + "-entity", "", 5));
         e->addMeasurement(msr);
 
         // ---------------- PROCESS MEASUREMENTS WITH LIBRARIES----------------
