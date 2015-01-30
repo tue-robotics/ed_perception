@@ -22,11 +22,12 @@
 #include <ros/service_server.h>
 #include <ros/publisher.h>
 
+#include "color_matcher/color_matcher.h"
 
 class FaceRecognition : public ed::PerceptionModule
 {
 
-enum{
+enum Recognizers{
     EIGEN = 0,
     FISHER = 1,
     LBPH = 2
@@ -47,7 +48,8 @@ private:
     bool debug_mode_;               // signal if debug mode is active, to enable output communication
     std::string module_name_;       // module name that shows up in the output
     mutable bool learning_mode_;    // true if face is being learned, false for normal recognition mode
-    std::string faces_save_dir_;
+    std::string faces_save_dir_;    // directory where to save the faces learned, for later re-learning
+    bool save_learned_faces_;        // wheter to save the faces learned or not
 
     // face alignement parameters
     int face_target_size_;      // size of the image after alignement
@@ -61,7 +63,8 @@ private:
     // Face recogniton training
     mutable std::vector<cv::Mat> images_;               // images used for training
     mutable std::vector<int> labels_;                   // label corresponding to each image
-    mutable std::map<int, std::string> labels_info_;     // "human" name of a label
+    mutable std::map<int, std::string> labels_info_;    // connects a label number with a person name
+    mutable std::map<int, std::vector<cv::Mat> > learned_histograms_;    // connects label number name with a set of colors
     mutable int last_label_;                            // last label number used
 
     // Face recognizers
@@ -112,7 +115,7 @@ private:
     void rotateFace(cv::Mat faceImg, cv::Mat& rotatedImg, cv::Point leftEye, cv::Point rightEye, cv::Point center) const;
 
     // match the results from the recogniton into a single result
-    void matchResults(std::string eigenLabel, std::string fisherLabel, std::string lbphLabel,
+    void matchFaceClassifications(std::string eigenLabel, std::string fisherLabel, std::string lbphLabel,
                       float eigenConf, float fisherConf, float lbphConf,
                       std::string& label_match, double& confidence_match) const;
 
@@ -122,8 +125,10 @@ private:
                          std::string fisher_label,
                          std::string lbph_label,
                          std::vector<double> confidence,
-                         std::string label_match,
-                         double confidence_match) const;
+                         std::string face_match,
+                         double face_confidence,
+                         std::string histogram_match,
+                         double histogram_confidence) const;
 
     // function called when service is requested
     bool srvStartLearning(const ed_perception::LearnPerson::Request& ros_req, ed_perception::LearnPerson::Response& ros_res);
@@ -132,6 +137,7 @@ private:
     bool learnFace(std::string person_name,
                    int person_label,
                    cv::Mat& face,
+                   cv::Mat& histogram,
                    int n_face,
                    std::vector<cv::Mat>& face_images,
                    std::vector<int>& face_labels,
@@ -139,6 +145,14 @@ private:
 
     // trains the opencv FaceRecognizers
     void trainRecognizers(std::vector<cv::Mat>& images, std::vector<int>& labels, std::vector<cv::Ptr<cv::FaceRecognizer> >& models) const;
+
+    void getEntityHistogram(tue::Configuration config, cv::Mat& entity_histogram) const;
+
+    void matchHistograms(cv::Mat& entity_histogram,
+                         std::map<int, std::vector<cv::Mat> >& learned_histograms,
+                         int& color_match_label,
+                         double& color_match_confidence) const;
+
 
 /*
 * ###########################################
