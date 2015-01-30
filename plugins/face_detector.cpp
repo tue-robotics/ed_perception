@@ -215,6 +215,8 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
         std::cout << "[" << module_name_ << "] " << "Unable to load frontal haar cascade files ("<< cascade_files_path_
                   << "haarcascade_frontalface_alt_tree.xml" << ")" << std::endl;
 
+        init_success_ = false;
+
         return false;
     }
 
@@ -225,7 +227,6 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
                                             classif_front_min_neighbours_,
                                             0|CV_HAAR_SCALE_IMAGE,
                                             classif_front_min_size_);
-
 
     // discard face if its not close to the top of the region, false positive
     face_it = faces_front.begin();

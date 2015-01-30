@@ -24,7 +24,7 @@ class FaceDetector : public ed::PerceptionModule
 private:
 
     // module configuration
-    bool init_success_;
+    mutable bool init_success_;
     bool debug_mode_;            /*!< Enable debug mode */
     std::string	module_name_;    /*!< Name of the module, for output */
     std::string debug_folder_;   /*!< Path of the debug folder */
