@@ -51,14 +51,15 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
 
     // module configuration
     module_name_ = "face_recognition";
-    debug_mode_ = false;
+    debug_mode_ = true;
     save_learned_faces_ = false;
     faces_save_dir_ = (std::string)getenv("HOME") + "/faces_learned/";
 
     // recognition parameters
-    using_Eigen_ = true;
+    using_Eigen_ = false;
     using_Fisher_ = true;
     using_LBPH_ = true;
+    using_histogram_ = true;
 
     eigen_treshold_ = 3500;
     fisher_treshold_ = 1200;
@@ -195,29 +196,29 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
     // face recognition
     cv::Rect face_rect;
     cv::Mat face_aligned;
-    std::string eigen_classification;
-    std::string fisher_classification;
-    std::string lbph_classification;
     std::string face_match_result;
     double face_confidence_match;
 
     // color recognition, for clothes
-    std::string color_match_result;
-    int color_match_label;
-    double color_match_confidence;
+    std::string hist_match_result;
+    int hist_match_label;
+    double hist_match_confidence;
     std::string histogram_classification;
     cv::Mat entity_histogram;
 
+    std::vector<int> predicted_label;
+    std::vector<double> confidence;
+    std::vector<std::string> predicted_name;
 
-    // The following line predicts the label of a given
-    std::vector<int> predict_label; predict_label.resize(3);
-    std::vector<double> confidence; confidence.resize(3);
+    predicted_label.resize(4);
+    confidence.resize(4);
+    predicted_name.resize(4);
 
     // initialize values
-    predict_label[EIGEN] = -1; confidence[EIGEN] = 0.0;
-    predict_label[FISHER] = -1; confidence[FISHER] = 0.0;
-    predict_label[LBPH] = -1; confidence[LBPH] = 0.0;
-    color_match_label = -1; color_match_confidence = 0.0;
+    predicted_label[EIGEN] = -1; confidence[EIGEN] = 0.0;
+    predicted_label[FISHER] = -1; confidence[FISHER] = 0.0;
+    predicted_label[LBPH] = -1; confidence[LBPH] = 0.0;
+    predicted_label[HIST] = -1; confidence[HIST] = 0.0;
 
     // get location of face and eyes
     if (!getFaceInfo(config.limitScope(), face_rect)){
@@ -261,32 +262,31 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
     // ---------- Recognition ----------
 
-    matchHistograms(entity_histogram, learned_histograms_, color_match_label, color_match_confidence);
-
     // perform recognition
     if (using_Eigen_ && trained_Eigen_){
-        models_[EIGEN]->predict(face_aligned, predict_label[EIGEN], confidence[EIGEN]);
+        models_[EIGEN]->predict(face_aligned, predicted_label[EIGEN], confidence[EIGEN]);
     }
 
     // these two can only be used with at least 2 classes
     if (using_Fisher_ && trained_Fisher_){
-        models_[FISHER]->predict(face_aligned, predict_label[FISHER], confidence[FISHER]);
+        models_[FISHER]->predict(face_aligned, predicted_label[FISHER], confidence[FISHER]);
     }
 
     if (using_LBPH_ && trained_LBPH_){
-        models_[LBPH]->predict(face_aligned, predict_label[LBPH], confidence[LBPH]);
+        models_[LBPH]->predict(face_aligned, predicted_label[LBPH], confidence[LBPH]);
     }
 
-    // fill labels with the predicted name, in case there was a prediction
-    eigen_classification = predict_label[EIGEN] > -1 ? labels_info_.at(predict_label[EIGEN]) : "";
-    fisher_classification = predict_label[FISHER] > -1 ? labels_info_.at(predict_label[FISHER]) : "";
-    lbph_classification = predict_label[LBPH] > -1 ? labels_info_.at(predict_label[LBPH]) : "";
-    histogram_classification = color_match_label > -1 ? labels_info_.at(color_match_label) : "";
+    if (using_histogram_)
+        matchHistograms(entity_histogram, learned_histograms_, predicted_label[HIST], confidence[HIST]);
 
-    // match these results into one
-    matchFaceClassifications(eigen_classification, fisher_classification, lbph_classification,
-                 confidence[EIGEN], confidence[FISHER], confidence[LBPH],
-                 face_match_result, face_confidence_match);
+    // fill labels with the predicted name, in case there was a prediction
+    predicted_name[EIGEN] = predicted_label[EIGEN] > -1 ? labels_info_.at(predicted_label[EIGEN]) : "";
+    predicted_name[FISHER] = predicted_label[FISHER] > -1 ? labels_info_.at(predicted_label[FISHER]) : "";
+    predicted_name[LBPH] = predicted_label[LBPH] > -1 ? labels_info_.at(predicted_label[LBPH]) : "";
+    predicted_name[HIST] = predicted_label[HIST] > -1 ? labels_info_.at(predicted_label[HIST]) : "";
+
+    // match different classifications into a single result
+    matchClassifications(predicted_name, confidence, face_match_result, face_confidence_match);
 
 
     // ----------------------- Assert results -----------------------
@@ -307,23 +307,23 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
         config.setValue("score", 0);
     }
 
-    if (using_Eigen_ && predict_label[EIGEN] > -1){
+    if (using_Eigen_ && predicted_label[EIGEN] > -1){
         config.writeGroup("eigen");
-        config.setValue("name", eigen_classification);
+        config.setValue("name", predicted_name[EIGEN]);
         config.setValue("score", confidence[EIGEN]);
         config.endGroup();  // close eigen group
     }
 
-    if (using_Fisher_ && predict_label[FISHER] > -1){
+    if (using_Fisher_ && predicted_label[FISHER] > -1){
         config.writeGroup("fisher");
-        config.setValue("name", fisher_classification);
+        config.setValue("name", predicted_name[FISHER]);
         config.setValue("score", confidence[FISHER]);
         config.endGroup();  // close fisher group
     }
 
-    if (using_LBPH_ && predict_label[LBPH] > -1){
+    if (using_LBPH_ && predicted_label[LBPH] > -1){
         config.writeGroup("lbph");
-        config.setValue("name", lbph_classification);
+        config.setValue("name", predicted_name[LBPH]);
         config.setValue("score", confidence[LBPH]);
         config.endGroup();  // close lbph group
     }
@@ -333,14 +333,10 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
     if (debug_mode_){
         showDebugWindow(face_aligned,
-                        eigen_classification,
-                        fisher_classification,
-                        lbph_classification,
+                        predicted_name,
                         confidence,
                         face_match_result,
-                        face_confidence_match,
-                        histogram_classification,
-                        color_match_confidence);
+                        face_confidence_match);
     }
 }
 
@@ -465,102 +461,94 @@ void FaceRecognition::matchHistograms(cv::Mat& entity_histogram,
     std::map<int, std::vector<cv::Mat> >::const_iterator map_it;
     std::vector<double> scores;
     double avg_score;
+    double score;
 
     // iterate through all people learned
     for(map_it = learned_histograms.begin(); map_it != learned_histograms.end(); ++map_it){
         avg_score = 0;
         scores.clear();
 
+        std::cout << "[" << module_name_ << "] " << "For " << labels_info_.at(map_it->first) << std::endl;
         // iterate through each histogram from this person
         for(uint i=0 ; i< map_it->second.size() ; i++){
-            scores.push_back(cv::compareHist(entity_histogram, map_it->second[i], CV_COMP_CORREL));
+            score = cv::compareHist(entity_histogram, map_it->second[i], CV_COMP_CORREL);
+
+            // sometimes the comprisson returns a negative score, not sure why but i dont like it
+            if (score < 0)
+                score = 0;
+
+            scores.push_back(score);
+            std::cout << "[" << module_name_ << "] " << "\t: " << scores[i] << std::endl;
         }
 
-//        std::cout << "[" << module_name_ << "] " << "For " << labels_info_.at(map_it->first) << std::endl;
         // calculate average
         for(uint i=0 ; i < scores.size() ; i++){
             avg_score += scores[i];
-//            std::cout << "[" << module_name_ << "] " << "\tscores: " << scores[i] << std::endl;
         }
 
         avg_score /= scores.size();
 
-//        std::cout << "[" << module_name_ << "] " << "For " << labels_info_.at(map_it->first) << ": " << avg_score << std::endl;
+        std::cout << "[" << module_name_ << "] " << "avg: " << avg_score << std::endl;
 
         if (color_match_confidence < avg_score){
             color_match_confidence = avg_score;
             color_match_label = map_it->first;
         }
     }
-
-//    std::cout << "[" << module_name_ << "] " << std::endl;
 }
 
 
 // ----------------------------------------------------------------------------------------------------
 
 
-void FaceRecognition::matchFaceClassifications(std::string eigen_label, std::string fisher_label, std::string lbph_label,
-                                   float eigenConf, float fisherConf, float lbphConf,
-                                   std::string& label_match, double& confidence_match) const{
+void FaceRecognition::matchClassifications(std::vector<std::string> classifications,
+                                           std::vector<double> confidence,
+                                           std::string& label_match,
+                                           double& confidence_match) const{
 
 
     std::map <std::string, double> scores_positive;     // average scores for classifications bellow the thresholds
     std::map <std::string, double> scores_negative;     // average scores for classifications above the thresholds
     std::map <std::string, double>::iterator find_it;
 
-    double normalized_eigen = eigenConf/eigen_treshold_;
-    double normalized_fisher = fisherConf/fisher_treshold_;
-    double normalized_lbph = lbphConf/lbph_treshold_;
+    double norm_confidence;
+    std::string recogizer_label;
 
-    // collect results from Eigen faces, average with previous results
-    if (using_Eigen_ && !eigen_label.empty()){
-        if(normalized_eigen < 1.0){
-            find_it = scores_positive.find(eigen_label);
-            if (find_it != scores_positive.end())
-                scores_positive[eigen_label] = (scores_positive[eigen_label] + normalized_eigen)/2;
-            else
-                scores_positive[eigen_label] = normalized_eigen;
+
+    // go through all classifications, Eigen, Fisher and LBPH
+    for (int i=0 ; i < classifications.size() ; i ++){
+
+        // get classification name and calculate normalized confidence
+        if (i == EIGEN && using_Eigen_ && !classifications[EIGEN].empty()){
+            norm_confidence = confidence[EIGEN]/eigen_treshold_;
+            recogizer_label = classifications[EIGEN];
+
+        }else if (i == FISHER && using_Fisher_ && !classifications[FISHER].empty()){
+            norm_confidence = confidence[FISHER]/fisher_treshold_;
+            recogizer_label = classifications[FISHER];
+
+        }else if (i == LBPH && using_LBPH_ && !classifications[LBPH].empty()){
+            norm_confidence = confidence[LBPH]/lbph_treshold_;
+            recogizer_label = classifications[LBPH];
         }else{
-            find_it = scores_negative.find(eigen_label);
-            if (find_it != scores_negative.end())
-                scores_negative[eigen_label] = (scores_negative[eigen_label] + normalized_eigen)/2;
-            else
-                scores_negative[eigen_label] = normalized_eigen;
+            continue;
         }
-    }
 
-    // collect results from Fisher faces, average with previous results
-    if (using_Fisher_ && !fisher_label.empty()){
-        if(normalized_fisher < 1.0){
-            find_it = scores_positive.find(fisher_label);
-            if (find_it != scores_positive.end())
-                scores_positive[fisher_label] = (scores_positive[fisher_label] + normalized_fisher)/2;
-            else
-                scores_positive[fisher_label] = normalized_fisher;
-        }else{
-            find_it = scores_negative.find(fisher_label);
-            if (find_it != scores_negative.end())
-                scores_negative[fisher_label] = (scores_negative[fisher_label] + normalized_fisher)/2;
-            else
-                scores_negative[fisher_label] = normalized_fisher;
-        }
-    }
+        // calculate final confidence for every classification, separated by threshold levels
+        if(norm_confidence < 1.0){
+            find_it = scores_positive.find(recogizer_label);
 
-    // collect results from LBPH faces, average with previous results
-    if (using_LBPH_ && !lbph_label.empty()){
-        if(normalized_lbph < 1.0){
-            find_it = scores_positive.find(lbph_label);
             if (find_it != scores_positive.end())
-                scores_positive[lbph_label] = (scores_positive[lbph_label] + normalized_lbph)/2;
+                scores_positive[recogizer_label] = (scores_positive[recogizer_label] + norm_confidence)/2;
             else
-                scores_positive[lbph_label] = normalized_lbph;
+                scores_positive[recogizer_label] = norm_confidence;
         }else{
-            find_it = scores_negative.find(lbph_label);
+            find_it = scores_negative.find(recogizer_label);
+
             if (find_it != scores_negative.end())
-                scores_negative[lbph_label] = (scores_negative[lbph_label] + normalized_lbph)/2;
+                scores_negative[recogizer_label] = (scores_negative[recogizer_label] + norm_confidence)/2;
             else
-                scores_negative[lbph_label] = normalized_lbph;
+                scores_negative[recogizer_label] = norm_confidence;
         }
     }
 
@@ -576,6 +564,7 @@ void FaceRecognition::matchFaceClassifications(std::string eigen_label, std::str
         confidence_match = 0;
     }
 }
+
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -606,14 +595,10 @@ bool FaceRecognition::srvStartLearning(const ed_perception::LearnPerson::Request
 
 
 void FaceRecognition::showDebugWindow(cv::Mat face_aligned,
-                                      std::string eigen_label,
-                                      std::string fisher_label,
-                                      std::string lbph_label,
+                                      std::vector<std::string> predicted_name,
                                       std::vector<double> confidence,
                                       std::string face_match,
-                                      double face_confidence,
-                                      std::string histogram_match,
-                                      double histogram_confidence) const{
+                                      double face_confidence) const{
 
     int key_press;
 
@@ -629,7 +614,7 @@ void FaceRecognition::showDebugWindow(cv::Mat face_aligned,
     cv::Scalar hist_match_color;
 
 
-    cv::Mat debug_display(cv::Size(face_target_size_ + 60, face_target_size_ + 140), CV_8UC1, cv::Scalar(0,0,0));
+    cv::Mat debug_display(cv::Size(face_target_size_ + 60, face_target_size_ + 135), CV_8UC1, cv::Scalar(0,0,0));
     cv::Mat debug_roi = debug_display(cv::Rect(30,0, face_target_size_, face_target_size_));
     face_aligned.copyTo(debug_roi);
 
@@ -663,20 +648,20 @@ void FaceRecognition::showDebugWindow(cv::Mat face_aligned,
     else
         lbph_color = color_gray;
 
-    if (histogram_confidence > 0.0 && confidence[LBPH]/lbph_treshold_ <= 0.6)
+    if (confidence[HIST] > 0.0 && confidence[HIST] <= 0.6)
         hist_match_color = color_red;
-    else if (histogram_confidence > 0.6 && histogram_confidence <= 0.8)
+    else if (confidence[HIST] > 0.6 && confidence[HIST] <= 0.8)
         hist_match_color = color_yellow;
-    else if (histogram_confidence > 0.8)
+    else if (confidence[HIST] > 0.8)
         hist_match_color = color_green;
     else
         hist_match_color = color_gray;
 
-    std::string info1("Eingen: " + eigen_label + " (" + boost::str(boost::format("%.0f") % confidence[EIGEN]) + ")");
-    std::string info2("Fisher: " + fisher_label + " (" + boost::str(boost::format("%.0f") % confidence[FISHER]) + ")");
-    std::string info3("LBPH:  " + lbph_label + " (" + boost::str(boost::format("%.0f") % confidence[LBPH]) + ")");
+    std::string info1("Eingen: " + predicted_name[EIGEN] + " (" + boost::str(boost::format("%.0f") % confidence[EIGEN]) + ")");
+    std::string info2("Fisher: " + predicted_name[FISHER] + " (" + boost::str(boost::format("%.0f") % confidence[FISHER]) + ")");
+    std::string info3("LBPH:  " + predicted_name[LBPH] + " (" + boost::str(boost::format("%.0f") % confidence[LBPH]) + ")");
 
-    std::string info5("Color:  " + histogram_match + " (" + boost::str(boost::format("%.2f") % histogram_confidence) + ")");
+    std::string info5("Color:  " + predicted_name[HIST] + " (" + boost::str(boost::format("%.2f") % confidence[HIST]) + ")");
 
     std::string info4("Match:  " + face_match + " (" + boost::str(boost::format("%.2f") % face_confidence) + ")");
 

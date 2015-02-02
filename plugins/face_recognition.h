@@ -30,7 +30,8 @@ class FaceRecognition : public ed::PerceptionModule
 enum Recognizers{
     EIGEN = 0,
     FISHER = 1,
-    LBPH = 2
+    LBPH = 2,
+    HIST = 3
 };
 
 
@@ -73,6 +74,7 @@ private:
     bool using_Eigen_;          // is Eingen Faces recognition enabled
     bool using_Fisher_;         // is Fisher Faces recognition enabled
     bool using_LBPH_;           // is LBPH recognition enabled
+    bool using_histogram_;      // is histogram comparison enabled
 
     mutable bool trained_Eigen_;          // is Eingen Faces recognition enabled
     mutable bool trained_Fisher_;         // is Fisher Faces recognition enabled
@@ -115,20 +117,17 @@ private:
     void rotateFace(cv::Mat faceImg, cv::Mat& rotatedImg, cv::Point leftEye, cv::Point rightEye, cv::Point center) const;
 
     // match the results from the recogniton into a single result
-    void matchFaceClassifications(std::string eigenLabel, std::string fisherLabel, std::string lbphLabel,
-                      float eigenConf, float fisherConf, float lbphConf,
-                      std::string& label_match, double& confidence_match) const;
+    void matchClassifications(std::vector<std::string> classifications,
+                              std::vector<double> confidence,
+                              std::string& label_match,
+                              double& confidence_match) const;
 
     // show visualization window with information
     void showDebugWindow(cv::Mat face_aligned,
-                         std::string eigen_label,
-                         std::string fisher_label,
-                         std::string lbph_label,
+                         std::vector<std::string> predicted_name,
                          std::vector<double> confidence,
                          std::string face_match,
-                         double face_confidence,
-                         std::string histogram_match,
-                         double histogram_confidence) const;
+                         double face_confidence) const;
 
     // function called when service is requested
     bool srvStartLearning(const ed_perception::LearnPerson::Request& ros_req, ed_perception::LearnPerson::Response& ros_res);
