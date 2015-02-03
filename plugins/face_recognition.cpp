@@ -51,7 +51,7 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
 
     // module configuration
     module_name_ = "face_recognition";
-    debug_mode_ = true;
+    debug_mode_ = false;
     save_learned_faces_ = false;
     faces_save_dir_ = (std::string)getenv("HOME") + "/faces_learned/";
 
@@ -62,7 +62,7 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
     using_histogram_ = true;
 
     eigen_treshold_ = 3500;
-    fisher_treshold_ = 1200;
+    fisher_treshold_ = 800;
     lbph_treshold_ = 45;
 
     // face alignement parameters
@@ -468,7 +468,7 @@ void FaceRecognition::matchHistograms(cv::Mat& entity_histogram,
         avg_score = 0;
         scores.clear();
 
-        std::cout << "[" << module_name_ << "] " << "For " << labels_info_.at(map_it->first) << std::endl;
+//        std::cout << "[" << module_name_ << "] " << "For " << labels_info_.at(map_it->first) << std::endl;
         // iterate through each histogram from this person
         for(uint i=0 ; i< map_it->second.size() ; i++){
             score = cv::compareHist(entity_histogram, map_it->second[i], CV_COMP_CORREL);
@@ -478,7 +478,7 @@ void FaceRecognition::matchHistograms(cv::Mat& entity_histogram,
                 score = 0;
 
             scores.push_back(score);
-            std::cout << "[" << module_name_ << "] " << "\t: " << scores[i] << std::endl;
+//            std::cout << "[" << module_name_ << "] " << "\t: " << scores[i] << std::endl;
         }
 
         // calculate average
@@ -488,7 +488,7 @@ void FaceRecognition::matchHistograms(cv::Mat& entity_histogram,
 
         avg_score /= scores.size();
 
-        std::cout << "[" << module_name_ << "] " << "avg: " << avg_score << std::endl;
+//        std::cout << "[" << module_name_ << "] " << "avg: " << avg_score << std::endl;
 
         if (color_match_confidence < avg_score){
             color_match_confidence = avg_score;
