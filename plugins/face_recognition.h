@@ -60,6 +60,7 @@ private:
     float eigen_treshold_;      // treshold for a trustworthy classification with Eigen Faces
     float fisher_treshold_;     // treshold for a trustworthy classification with Fisher Faces
     float lbph_treshold_;       // treshold for a trustworthy classification with LBPH Faces
+    double recognition_treshold_;
 
     // Face recogniton training
     mutable std::vector<cv::Mat> images_;               // images used for training

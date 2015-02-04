@@ -64,6 +64,7 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
     eigen_treshold_ = 3500;
     fisher_treshold_ = 800;
     lbph_treshold_ = 45;
+    recognition_treshold_ = 0.95;
 
     // face alignement parameters
     face_target_size_ = 150;
@@ -189,7 +190,7 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
         if (max_y < p_2d.y) max_y = p_2d.y;
     }
 
-    cv::Rect bouding_box (min_x, min_y, max_x - min_x, max_y - min_y);
+//    cv::Rect bouding_box (min_x, min_y, max_x - min_x, max_y - min_y);
 
     // ----------------------- Process -----------------------
 
@@ -200,27 +201,26 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
     double face_confidence_match;
 
     // color recognition, for clothes
-    std::string hist_match_result;
-    int hist_match_label;
-    double hist_match_confidence;
-    std::string histogram_classification;
     cv::Mat entity_histogram;
 
     std::vector<int> predicted_label;
     std::vector<double> confidence;
     std::vector<std::string> predicted_name;
 
+    // initialize values
     predicted_label.resize(4);
     confidence.resize(4);
     predicted_name.resize(4);
+    predicted_label[EIGEN] = -1;
+    predicted_label[FISHER] = -1;
+    predicted_label[LBPH] = -1;
+    predicted_label[HIST] = -1;
+    confidence[EIGEN] = 0.0;
+    confidence[FISHER] = 0.0;
+    confidence[LBPH] = 0.0;
+    confidence[HIST] = 0.0;
 
-    // initialize values
-    predicted_label[EIGEN] = -1; confidence[EIGEN] = 0.0;
-    predicted_label[FISHER] = -1; confidence[FISHER] = 0.0;
-    predicted_label[LBPH] = -1; confidence[LBPH] = 0.0;
-    predicted_label[HIST] = -1; confidence[HIST] = 0.0;
-
-    // get location of face and eyes
+    // get location of face
     if (!getFaceInfo(config.limitScope(), face_rect)){
         return;
     }
@@ -228,7 +228,7 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
     // get color information from the entity config and creat a histogram with it
     getEntityHistogram(config.limitScope(), entity_histogram);
 
-    // align, grayscale and resize facecolor_match_result
+    // align, grayscale and resize face
     if (!alignFace(cropped_image, face_rect, face_target_size_, face_horiz_offset_, face_vert_offset_, face_aligned))
         std::cout << "[" << module_name_ << "] " << "Could not align face!" << std::endl;
 
@@ -262,12 +262,11 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
     // ---------- Recognition ----------
 
-    // perform recognition
+    // perform recognition on each module
     if (using_Eigen_ && trained_Eigen_){
         models_[EIGEN]->predict(face_aligned, predicted_label[EIGEN], confidence[EIGEN]);
     }
 
-    // these two can only be used with at least 2 classes
     if (using_Fisher_ && trained_Fisher_){
         models_[FISHER]->predict(face_aligned, predicted_label[FISHER], confidence[FISHER]);
     }
@@ -276,14 +275,16 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
         models_[LBPH]->predict(face_aligned, predicted_label[LBPH], confidence[LBPH]);
     }
 
-    if (using_histogram_)
+    if (using_histogram_){
         matchHistograms(entity_histogram, learned_histograms_, predicted_label[HIST], confidence[HIST]);
+    }
 
     // fill labels with the predicted name, in case there was a prediction
     predicted_name[EIGEN] = predicted_label[EIGEN] > -1 ? labels_info_.at(predicted_label[EIGEN]) : "";
     predicted_name[FISHER] = predicted_label[FISHER] > -1 ? labels_info_.at(predicted_label[FISHER]) : "";
     predicted_name[LBPH] = predicted_label[LBPH] > -1 ? labels_info_.at(predicted_label[LBPH]) : "";
     predicted_name[HIST] = predicted_label[HIST] > -1 ? labels_info_.at(predicted_label[HIST]) : "";
+
 
     // match different classifications into a single result
     matchClassifications(predicted_name, confidence, face_match_result, face_confidence_match);
@@ -299,7 +300,8 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
     config.writeGroup("face_recognizer");
 
-    if (!face_match_result.empty()){
+    // only publish a name if the error is bellow the treshold
+    if (!face_match_result.empty() && face_confidence_match < recognition_treshold_){
         config.setValue("label", face_match_result);
         config.setValue("score", face_confidence_match);
     }else{
