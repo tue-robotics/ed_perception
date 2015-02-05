@@ -28,24 +28,45 @@ ColorMatcher::~ColorMatcher()
 
 // ----------------------------------------------------------------------------------------------------
 
-void ColorMatcher::loadConfig(const std::string& config_path) {
+void ColorMatcher::configure(tue::Configuration config) {
 
-    module_name_ = "color_matcher";
-    debug_folder_ = "/tmp/color_matcher/";
-    debug_mode_ = false;
+    if (!config.value("color_table", color_table_path_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'color_table' not found. Using default: " << color_table_path_ << std::endl;
+
+    color_table_path_ = module_path_ + color_table_path_;
+
+    if (!config.value("debug_mode", debug_mode_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_mode' not found. Using default: " << debug_mode_ << std::endl;
+
+    if (!config.value("debug_folder", debug_folder_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_folder' not found. Using default: " << debug_folder_ << std::endl;
 
     if (debug_mode_)
         cleanDebugFolder(debug_folder_);
 
     std::cout << "[" << module_name_ << "] " << "Loading color names..." << std::endl;
 
-    if (!color_table_.load_config(config_path + "/color_names.txt")){
-        std::cout << "[" << module_name_ << "] " << "Failed loading color names from " +config_path + "/color_names.txt" << std::endl;
+    if (!color_table_.load_config(color_table_path_)){
+        std::cout << "[" << module_name_ << "] " << "Failed loading color names from " << color_table_path_ << std::endl;
         return;
     }
 
     init_success_ = true;
+
     std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ColorMatcher::loadConfig(const std::string& config_path) {
+
+    module_name_ = "color_matcher";
+    module_path_ = config_path;
+
+    // default values in case configure(...) is not called!
+    debug_folder_ = "/tmp/color_matcher/";
+    debug_mode_ = false;
+    color_table_path_ = config_path + "/color_names.txt";
 }
 
 

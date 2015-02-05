@@ -27,8 +27,10 @@ private:
     mutable bool init_success_;
     bool debug_mode_;            /*!< Enable debug mode */
     std::string	module_name_;    /*!< Name of the module, for output */
+    std::string	module_path_;    /*!< Name of the module, for output */
     std::string debug_folder_;   /*!< Path of the debug folder */
-    std::string cascade_files_path_;   /*!< Path of the cascade training folder */
+    std::string cascade_front_files_path_;  /*!< Path of the cascade training folder */
+    std::string cascade_profile_files_path_;   /*!< Path of the cascade training folder */
 
     // Cascade classifier configuration
     double classif_front_scale_factor_;  // Parameter specifying how much the image size is reduced at each image scale
@@ -71,6 +73,8 @@ public:
     void loadConfig(const std::string& config_path);
 
     void process(ed::EntityConstPtr e, tue::Configuration& result) const;
+
+    void configure(tue::Configuration config);
 
 };
 

@@ -29,6 +29,8 @@ public:
 
     virtual ~ColorMatcher();
 
+    void configure(tue::Configuration config);
+
     void loadModel(const std::string& model_name, const std::string& model_path);
 
     void loadConfig(const std::string& config_path);
@@ -42,8 +44,11 @@ private:
     // module configuration
     bool init_success_;
     bool debug_mode_;
-    std::string debug_folder_;
     std::string module_name_;
+
+    std::string debug_folder_;
+    std::string module_path_;
+    std::string color_table_path_;
 
     // Module methods
     std::map<std::string, double> getImageColorProbability(const cv::Mat &img, const cv::Mat &mask, cv::Mat &histogram) const;

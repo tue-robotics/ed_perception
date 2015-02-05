@@ -42,59 +42,32 @@ FaceRecognition::~FaceRecognition(){
     }
 }
 
+
 // ----------------------------------------------------------------------------------------------------
 
-void FaceRecognition::loadConfig(const std::string& config_path) {
+void FaceRecognition::configure(tue::Configuration config) {
+/*
 
-
-    // ---------------- PARAMETERS ----------------
-
-    // module configuration
-    module_name_ = "face_recognition";
     debug_mode_ = false;
     save_learned_faces_ = false;
     faces_save_dir_ = (std::string)getenv("HOME") + "/faces_learned/";
-
-    // recognition parameters
     using_Eigen_ = false;
     using_Fisher_ = true;
     using_LBPH_ = true;
     using_histogram_ = true;
-
+    enable_learning_service_ = true;
     eigen_treshold_ = 3500;
     fisher_treshold_ = 800;
     lbph_treshold_ = 45;
     recognition_treshold_ = 0.95;
-
-    // face alignement parameters
     face_target_size_ = 150;
     face_vert_offset_ = 0.35;
     face_horiz_offset_ = 0.25;
-
-    // learning mode parameters
     learning_mode_ = false;
     max_faces_learn_ = 10;
 
-    // ---------------- INITIALIZATIONS ----------------
 
-    trained_Eigen_ = false;
-    trained_Fisher_ = false;
-    trained_LBPH_ = false;
 
-    last_label_ = 0;
-
-    // create faces folder
-    if (save_learned_faces_){
-        boost::filesystem::path dir(faces_save_dir_);
-        boost::filesystem::create_directories(dir);
-        std::cout << "[" << module_name_ << "] " << "Faces learned will be saved in: " << faces_save_dir_ << std::endl;
-    }
-
-    // resize to the maximum number of FaceRecognizers you're going to use
-    models_.resize(3);
-    models_[EIGEN] = cv::createEigenFaceRecognizer();
-    models_[FISHER] = cv::createFisherFaceRecognizer();
-    models_[LBPH] = cv::createLBPHFaceRecognizer();
 
     // create debug window
     if (debug_mode_){
@@ -112,25 +85,81 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
         std::cout << "[" << module_name_ << "] " << "No CSV faces file was loaded! Recognizers not trained" << std::endl;
     }
 
-    // create and advertise service to initiate learning
-    if (!ros::isInitialized())
-    {
-        ros::M_string remapping_args;
-        ros::init(remapping_args, "ed");
+    // create faces folder
+    if (save_learned_faces_){
+        boost::filesystem::path dir(faces_save_dir_);
+        boost::filesystem::create_directories(dir);
+        std::cout << "[" << module_name_ << "] " << "Faces learned will be saved in: " << faces_save_dir_ << std::endl;
     }
 
-    ros::NodeHandle nh;
+    if (enable_learning_service_){
+        // create and advertise service to initiate learning
+        if (!ros::isInitialized())
+        {
+            ros::M_string remapping_args;
+            ros::init(remapping_args, "ed");
+        }
 
-    ros::AdvertiseServiceOptions opt_srv_get_entity_info =
+        ros::NodeHandle nh;
+
+        ros::AdvertiseServiceOptions opt_srv_get_entity_info =
                 ros::AdvertiseServiceOptions::create<ed_perception::LearnPerson>(
-                "/face_recognition/learn", boost::bind(&FaceRecognition::srvStartLearning, this, _1, _2),
-                ros::VoidPtr(), &cb_queue_);
+                    "/face_recognition/learn", boost::bind(&FaceRecognition::srvStartLearning, this, _1, _2),
+                    ros::VoidPtr(), &cb_queue_);
 
-    srv_learn_face = nh.advertiseService(opt_srv_get_entity_info);
-    std::cout << "[" << module_name_ << "] " << "Use 'rosservice call /face_recognition/learn PERSON_NAME' to initialize learning" << std::endl;
+        srv_learn_face = nh.advertiseService(opt_srv_get_entity_info);
+        std::cout << "[" << module_name_ << "] " << "Use 'rosservice call /face_recognition/learn PERSON_NAME' to initialize learning" << std::endl;
+    }
 
     init_success_ = true;
     std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
+    */
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+void FaceRecognition::loadConfig(const std::string& config_path) {
+
+
+    // default values in case configure(...) is not called!
+    // module configuration
+    module_name_ = "face_recognition";
+    debug_mode_ = false;
+    save_learned_faces_ = false;
+    faces_save_dir_ = (std::string)getenv("HOME") + "/faces_learned/";
+    // recognition parameters
+    using_Eigen_ = false;
+    using_Fisher_ = true;
+    using_LBPH_ = true;
+    using_histogram_ = true;
+    enable_learning_service_ = true;
+    // recognition thresholds
+    eigen_treshold_ = 3500;
+    fisher_treshold_ = 800;
+    lbph_treshold_ = 45;
+    recognition_treshold_ = 0.95;
+    // face alignement parameters
+    face_target_size_ = 150;
+    face_vert_offset_ = 0.35;
+    face_horiz_offset_ = 0.25;
+    // learning mode parameters
+    learning_mode_ = false;
+    max_faces_learn_ = 10;
+
+    // ---------------- INITIALIZATIONS ----------------
+
+    trained_Eigen_ = false;
+    trained_Fisher_ = false;
+    trained_LBPH_ = false;
+
+    last_label_ = 0;
+
+    // resize to the maximum number of FaceRecognizers you're going to use
+    models_.resize(3);
+    models_[EIGEN] = cv::createEigenFaceRecognizer();
+    models_[FISHER] = cv::createFisherFaceRecognizer();
+    models_[LBPH] = cv::createLBPHFaceRecognizer();
 }
 
 
@@ -147,7 +176,8 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
         return;
     }
 
-    cb_queue_.callAvailable();
+    if (enable_learning_service_)
+        cb_queue_.callAvailable();
 
     // ---------- Prepare measurement ----------
 
@@ -401,7 +431,8 @@ bool FaceRecognition::learnFace(std::string person_name,
 
     std::map <int, std::vector<cv::Mat> >::iterator find_it;
 
-    std::cout << "[" << module_name_ << "] " << "Learning face: " << person_name << ", label " << person_label << " (" << n_faces_current_ << ")" << std::endl;
+    std::cout << "[" << module_name_ << "] " << "Learning face: " << person_name << ", with label " << person_label
+              << " (" << n_faces_current_ << "/" << max_faces_learn_ << ")" << std::endl;
 
     // add face and name to the DB
     face_images.push_back(face);
@@ -489,7 +520,6 @@ void FaceRecognition::matchHistograms(cv::Mat& entity_histogram,
         }
 
         avg_score /= scores.size();
-
 //        std::cout << "[" << module_name_ << "] " << "avg: " << avg_score << std::endl;
 
         if (color_match_confidence < avg_score){

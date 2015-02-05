@@ -21,7 +21,9 @@ namespace perception
 
 // ----------------------------------------------------------------------------------------------------
 
-SizeMatcher::SizeMatcher() : PerceptionModule("size_matcher")
+SizeMatcher::SizeMatcher() :
+    PerceptionModule("size_matcher"),
+    init_success_(false)
 {
 }
 
@@ -33,13 +35,31 @@ SizeMatcher::~SizeMatcher()
 
 // ----------------------------------------------------------------------------------------------------
 
+
+void SizeMatcher::configure(tue::Configuration config) {
+
+    if (!config.value("size_diff_threshold", size_diff_threshold_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'size_diff_threshold' not found. Using default: " << size_diff_threshold_ << std::endl;
+
+    if (!config.value("small_size_treshold", size_diff_threshold_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'small_size_treshold' not found. Using default: " << small_size_treshold_ << std::endl;
+
+    if (!config.value("medium_size_treshold", medium_size_treshold_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'medium_size_treshold' not found. Using default: " << medium_size_treshold_ << std::endl;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
 void SizeMatcher::loadConfig(const std::string& config_path) {
 
     module_name_ = "size_matcher";
 
-    difference_thresh_ = 0.8;
-    small_tresh_ = 0.5;
-    medium_tresh_ = 0.7;
+    // default values in case configure(...) is not called!
+    size_diff_threshold_ = 0.8;
+    small_size_treshold_ = 0.5;
+    medium_size_treshold_ = 0.7;
+
+    init_success_ = true;
 
     std::cout << "[" << module_name_ << "] " << "Ready!"<< std::endl;
 }
@@ -67,6 +87,9 @@ void SizeMatcher::loadModel(const std::string& model_name, const std::string& mo
 
 void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) const
 {
+    if (!init_success_)
+        return;
+
     // Get the best measurement from the entity
     ed::MeasurementConstPtr msr = e->lastMeasurement();
     if (!msr)
@@ -128,7 +151,8 @@ void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) cons
             if (best_err > (diff_h + diff_w) / 2) best_err = (diff_h + diff_w) / 2;
         }
 
-        if (best_err < difference_thresh_)
+        // if the size difference between models is less than threshold, use the model
+        if (best_err < size_diff_threshold_)
             hypothesis[label] = std::max(1 - best_err, 0.0);
     }
 
@@ -147,11 +171,11 @@ void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) cons
     result.setValue("height", object_height);
     result.endGroup();
 
-    if ((object_width + object_height) < small_tresh_){
+    if ((object_width + object_height) < small_size_treshold_){
         result.setValue("label", "small_size");
-    }else if (small_tresh_ < (object_width + object_height) && (object_width + object_height) < medium_tresh_){
+    }else if (small_size_treshold_ < (object_width + object_height) && (object_width + object_height) < medium_size_treshold_){
         result.setValue("label", "medium_size");
-    }else if (medium_tresh_ < (object_width + object_height)){
+    }else if (medium_size_treshold_ < (object_width + object_height)){
         result.setValue("label", "large_size");
     }
 

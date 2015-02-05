@@ -28,11 +28,17 @@ public:
 
     void loadConfig(const std::string& config_path);
 
+    void configure(tue::Configuration config);
+
     void process(ed::EntityConstPtr e, tue::Configuration& result) const;
 
 private:
+    bool init_success_;
+    bool debug_mode_;
 
-    std::string config_path_;
+    std::string database_path_;
+    std::string module_path_;
+    std::string module_name_;
 
     void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized, cv::Rect &bounding_box) const;
 

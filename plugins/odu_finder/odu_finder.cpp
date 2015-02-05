@@ -55,15 +55,18 @@ void DocumentInfo::read(std::istream& in) {
 
 
 /////////////////////////////////////////////////////////////////////////////////////
-ODUFinder::ODUFinder(const std::string& plugin_path, bool debug_mode) :
+ODUFinder::ODUFinder(const std::string& database_path, bool debug_mode) :
         camera_image(NULL), template_image(NULL), image(NULL), tree_builder(Feature::Zero()), visualization_mode_(FRAMES),
     tuning_object_(""), current_mode_(odu_finder::RECOGNITION)
 {
 
     debug_mode_ = debug_mode;
     moduleName_ = "odu_finder";
-    database_location = std::string(plugin_path);
-    images_directory = std::string(plugin_path + "/../../models/");
+
+    database_location_ = std::string(database_path);
+    images_directory_ = std::string(database_path + "/../../models/");
+
+    std::cout << "[" << moduleName_ << "] " << "Loading models database..." << std::endl;
 
     // replace the parameter loading through ROS, migh override the previous
     if (!loadParams("load")){
@@ -152,27 +155,29 @@ bool ODUFinder::loadParams(std::string mode) {
 
     // if init build and save the database
     if (mode.compare("build_database") == 0){
-        build_database(images_directory);
-        save_database(database_location);
+        // NOT USED
+        build_database(images_directory_);
+        save_database(database_location_);
 
         std::cout << "[" << moduleName_ << "] " << "Done building the database!" << std::endl;
         std::cout << "[" << moduleName_ << "] " << "Loading new database!" << std::endl;
 
-        if (load_database(database_location) < 0)
+        if (load_database(database_location_) < 0)
             return false;
         else
             return true;
     // if load, load previously built database and perform recognition
     }else if (mode.compare("load") == 0){
 
-        if (load_database(database_location) < 0) return false;
+        if (load_database(database_location_) < 0) return false;
 
         enable_visualization = 1;
         enable_clustering = 1;
 
     // if learn, only extract sift features and save them in a specified images_directory
     }else if (mode.compare("learn") == 0){
-        process_images(images_directory);
+        // NOT USED
+        process_images(images_directory_);
     }else{
         return false;
     }
@@ -510,7 +515,7 @@ void ODUFinder::save_database(std::string& directory) {
 /////////////////////////////////////////////////////
 
 int ODUFinder::load_database(const std::string& directory) {
-    std::cout << "[" << moduleName_ << "] " << "Loading the tree..." << std::endl;
+//    std::cout << "[" << moduleName_ << "] " << "Loading the tree..." << std::endl;
 
     std::string tree_file(directory);
     tree_file.append("/images.tree");
@@ -523,13 +528,13 @@ int ODUFinder::load_database(const std::string& directory) {
         return -1;
     }
 
-    std::cout << "[" << moduleName_ << "] " << "Initializing the database..." << std::endl;
+//    std::cout << "[" << moduleName_ << "] " << "Initializing the database..." << std::endl;
 
     db = new vt::Database(tree.words());//, tree.splits());
     std::string documents_file(directory);
     documents_file.append("/images.documents");
 
-    std::cout << "[" << moduleName_ << "] " << "Loading documents..." << std::endl;
+//    std::cout << "[" << moduleName_ << "] " << "Loading documents..." << std::endl;
 
     std::ifstream in(documents_file.c_str(), std::ios::in | std::ios::binary);
 
@@ -552,14 +557,12 @@ int ODUFinder::load_database(const std::string& directory) {
 
     counter_ = map_size+1; // to avoid overwriting previous images during learning add a unique number behind the image
 
-    std::cout << "[" << moduleName_ << "] " << "Loading weights..." << std::endl;
+//    std::cout << "[" << moduleName_ << "] " << "Loading weights..." << std::endl;
 
     std::string weights_file(directory);
     weights_file.append("/images.weights");
     db->loadWeights(weights_file.c_str());
     in.close();
-
-    std::cout << "[" << moduleName_ << "] " << "Ready!" << std::endl;
 
     return 1;
 }
@@ -571,7 +574,7 @@ void ODUFinder::add_image_to_database(vt::Document& doc, std::string& name) {
     documents_map[db->insert(doc)] = new DocumentInfo(&doc, name);
     db->computeTfIdfWeights(1);
     //TODO: Why do we not update the images.tree???
-    save_database_without_tree(database_location);
+    save_database_without_tree(database_location_);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////

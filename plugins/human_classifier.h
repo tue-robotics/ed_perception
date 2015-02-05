@@ -40,22 +40,22 @@ class HumanClassifier {
 	private:         
 
         // ##### DEBUG VARIABLES #####
-        bool kDebugMode;            /*!< Enable debug mode */
-        std::string	kModuleName;    /*!< Name of the module, for output */
-        std::string kDebugFolder;   /*!< Path of the debug folder */
+        bool debug_mode_;            /*!< Enable debug mode */
+        std::string	module_name_;    /*!< Name of the module, for output */
+        std::string debug_folder_;   /*!< Path of the debug folder */
 
         // ##### SETUP VARIABLES #####
-        std::string	kModelName;
-        bool	kFaceDetectEnabled; /*!< Enable face detection*/
-        int 	kBorderSize;        /*!< Size in pixels for the border added to the DT map */
-        int		kMatchIterations;   /*!< Number of iteration for the Perfect Match algorithm */
-        int		kDtLineWidth;       /*!< Contour line width */
-        double	kMaxTemplateErr;    /*!< Template Matching max error to classify a measure as Human */
+        std::string	model_name_;
+        bool	face_detect_enabled_; /*!< Enable face detection*/
+        int 	border_size_;        /*!< Size in pixels for the border added to the DT map */
+        int		match_iterations_;   /*!< Number of iteration for the Perfect Match algorithm */
+        int		dt_line_width_;       /*!< Contour line width */
+        double	max_template_err_;    /*!< Template Matching max error to classify a measure as Human */
 
         // ##### TEMPLATE MATCHING VARIABLES #####
         std::vector<std::vector<cv::Point> > kTemplatesOriginal;    /*!< Original templates, without scaling */
-        cv::Mat kMorphElement;      /*!< Morphologic operations structural element */
-        int kNumSlicesMatching;     /*!< Number of slices to calculate best match initial position */
+        cv::Mat morph_element_;      /*!< Morphologic operations structural element */
+        int num_slices_matching_;     /*!< Number of slices to calculate best match initial position */
 
         std::string cascade_path_;
 
@@ -134,12 +134,19 @@ class HumanClassifier {
         int ClipInt(int val, int min, int max) const;
 
         // Global variable initializations, templates and face cascade training files loading
-        bool Initializations(const std::string& template_path);
+        bool Initializations(bool debug_mode,
+                             const std::string debug_folder,
+                             const std::string template_front_path,
+                             const std::string template_left_path,
+                             const std::string template_right_path,
+                             int match_iterations,
+                             int dt_line_width,
+                             double max_template_err,
+                             int border_size,
+                             int num_slices_matching);
 
         // Loads a template with the given name and converts it into 2D points
         bool LoadTemplate(const std::string& template_path, std::vector<std::vector<cv::Point> >& template_list);
-
-        void LoadParameters();
 
         // Clean all files inside the debug folder
 		void CleanDebugFolder(const std::string& folder);

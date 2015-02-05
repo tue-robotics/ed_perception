@@ -48,6 +48,7 @@ private:
     bool init_success_;             // signal if initialization is complete
     bool debug_mode_;               // signal if debug mode is active, to enable output communication
     std::string module_name_;       // module name that shows up in the output
+    std::string module_path_;       // module name that shows up in the output
     mutable bool learning_mode_;    // true if face is being learned, false for normal recognition mode
     std::string faces_save_dir_;    // directory where to save the faces learned, for later re-learning
     bool save_learned_faces_;        // wheter to save the faces learned or not
@@ -76,6 +77,8 @@ private:
     bool using_Fisher_;         // is Fisher Faces recognition enabled
     bool using_LBPH_;           // is LBPH recognition enabled
     bool using_histogram_;      // is histogram comparison enabled
+
+    bool enable_learning_service_;
 
     mutable bool trained_Eigen_;          // is Eingen Faces recognition enabled
     mutable bool trained_Fisher_;         // is Fisher Faces recognition enabled
@@ -168,6 +171,8 @@ public:
     void loadConfig(const std::string& config_path);
 
     void process(ed::EntityConstPtr e, tue::Configuration& config) const;
+
+    void configure(tue::Configuration config);
 
 };
 

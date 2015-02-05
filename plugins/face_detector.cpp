@@ -35,25 +35,37 @@ FaceDetector::~FaceDetector()
     }
 }
 
-
 // ----------------------------------------------------------------------------------------------------
 
+void FaceDetector::configure(tue::Configuration config) {
 
-void FaceDetector::loadConfig(const std::string& config_path) {
+    if (!config.value("cascade_front_files_path", cascade_front_files_path_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'cascade_front_files_path' not found. Using default: " << cascade_front_files_path_ << std::endl;
 
-    module_name_ = "face_detector";
-    cascade_files_path_ = config_path + "/cascade_classifiers/";
-    debug_mode_ = false;
+    cascade_front_files_path_ = module_path_ + cascade_front_files_path_;
 
-    classif_front_scale_factor_ = 1.2;
-    classif_front_min_neighbours_ = 3;
-    classif_front_min_size_ = cv::Size(20,20);
+    if (!config.value("cascade_profile_front_path", cascade_profile_files_path_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'cascade_profile_front_path' not found. Using default: " << cascade_profile_files_path_ << std::endl;
 
-    classif_profile_scale_factor_= 1.2;
-    classif_profile_min_neighbours_ = 3;
-    classif_profile_min_size_ = cv::Size(20,20);
+    cascade_profile_files_path_ = module_path_ + cascade_profile_files_path_;
 
-    debug_folder_ = "/tmp/face_detector/";
+    if (!config.value("debug_mode", debug_mode_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_mode' not found. Using default: " << debug_mode_ << std::endl;
+
+    if (!config.value("debug_folder", debug_folder_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_folder' not found. Using default: " << debug_folder_ << std::endl;
+
+    if (!config.value("classifier_front_scale_factor", classif_front_scale_factor_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_front_scale_factor' not found. Using default: " << classif_front_scale_factor_ << std::endl;
+
+    if (!config.value("classifier_front_min_neighbours", classif_front_min_neighbours_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_front_min_neighbours' not found. Using default: " << classif_front_min_neighbours_ << std::endl;
+
+    if (!config.value("classifier_profile_scale_factor", classif_profile_scale_factor_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_profile_scale_factor' not found. Using default: " << classif_profile_scale_factor_ << std::endl;
+
+    if (!config.value("classif_profile_min_neighbours", classif_profile_min_neighbours_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'classif_profile_min_neighbours' not found. Using default: " << classif_profile_min_neighbours_ << std::endl;
 
     if (debug_mode_){
         // clean the debug folder if debugging is active
@@ -72,8 +84,37 @@ void FaceDetector::loadConfig(const std::string& config_path) {
         cv::namedWindow("Face Detector Output", CV_WINDOW_AUTOSIZE);
     }
 
-    init_success_ = true;
-    std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
+    // check if the cascade file exist so they can be loaded later
+    if (!boost::filesystem::exists(cascade_front_files_path_) || !boost::filesystem::exists(cascade_profile_files_path_)){
+        init_success_ = false;
+        std::cout << "[" << module_name_ << "] " << "Couldn't find cascade files for detection (" << cascade_profile_files_path_
+                  <<  "). Face dection will not work!" << std::endl;
+    }else{
+        init_success_ = true;
+        std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
+    }
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+
+void FaceDetector::loadConfig(const std::string& config_path) {
+
+    module_name_ = "face_detector";
+    module_path_ = config_path;
+
+    // default values in case configure(...) is not called!
+    cascade_front_files_path_ = "/cascade_classifiers/haarcascade_frontalface_alt_tree.xml";
+    cascade_profile_files_path_ = "/cascade_classifiers/haarcascade_profileface.xml";
+    debug_mode_ = false;
+    classif_front_scale_factor_ = 1.2;
+    classif_front_min_neighbours_ = 3;
+    classif_front_min_size_ = cv::Size(20,20);
+    classif_profile_scale_factor_= 1.2;
+    classif_profile_min_neighbours_ = 3;
+    classif_profile_min_size_ = cv::Size(20,20);
+    debug_folder_ = "/tmp/face_detector/";
 }
 
 
@@ -211,11 +252,9 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
     normalize(cascade_img, cascade_img, 0, 255, cv::NORM_MINMAX, CV_8UC1);
 
     // load training files for frontal classifier
-    if (!classifier_front_local.load(cascade_files_path_ + "haarcascade_frontalface_alt_tree.xml")) {
-        std::cout << "[" << module_name_ << "] " << "Unable to load frontal haar cascade files ("<< cascade_files_path_
-                  << "haarcascade_frontalface_alt_tree.xml" << ")" << std::endl;
-
-        init_success_ = false;
+    if (!classifier_front_local.load(cascade_front_files_path_)) {
+        std::cout << "[" << module_name_ << "] " << "Unable to load front haar cascade files ("
+                  << cascade_front_files_path_ << ")" << std::endl;
 
         return false;
     }
@@ -244,9 +283,9 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
     // only search profile faces if the frontal face detection failed
     if (faces_front.empty()){
         // load training files for profile classifier
-        if (!classifier_profile_local.load(cascade_files_path_ + "haarcascade_profileface.xml")){
-            std::cout << "[" << module_name_ << "] " << "Unable to load profile haar cascade files ("<< cascade_files_path_
-                      << "haarcascade_profileface.xml" << ")" << std::endl;
+        if (!classifier_profile_local.load(cascade_profile_files_path_)){
+            std::cout << "[" << module_name_ << "] " << "Unable to load profile haar cascade files ("
+                      << cascade_profile_files_path_ << ")" << std::endl;
 
             return false;
         }

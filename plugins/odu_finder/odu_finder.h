@@ -136,7 +136,7 @@ public:
     double object_threshold;
 
     // PARAMETERS
-    std::string command, database_location, images_directory, images_for_visualization_directory;
+    std::string command, database_location_, images_directory_, images_for_visualization_directory;
     int votes_count, tree_k, tree_levels, min_cluster_size, object_id;
     double unknown_object_threshold;
     int enable_clustering, enable_incremental_learning, enable_visualization, sliding_window_size, templates_to_show;

@@ -5,10 +5,10 @@
 */
 
 #include "human_classifier.h"
-
+#include <boost/filesystem.hpp>
 
 HumanClassifier::HumanClassifier(const std::string& module_name) {
-    kModuleName = module_name;
+    module_name_ = module_name;
 }
 
 
@@ -35,25 +35,19 @@ bool HumanClassifier::Classify(const cv::Mat& depth_img,
 
     // try the template matching
     if (TemplateClassification(depth_img, mask, avg_depth, match_pos, match_init_pos, match_error, match_variance, template_match_deviation, template_type, measurement)){
-
-//        std::cout << "[" << kModuleName << "] " << "Template matching result:" << std::endl;
         if (template_type == FaceFront){
             template_stance = "front";
-//            std::cout << "[" << kModuleName << "] " << "\tStance: Front" << std::endl;
         }
         else if (template_type == FaceLeft){
             template_stance = "side_left";
-//            std::cout << "[" << kModuleName << "] " << "\tStance: Left" << std::endl;
         }
         else if (template_type == FaceRight){
             template_stance = "side_right";
-//            std::cout << "[" << kModuleName << "] " << "\tStance: Right" << std::endl;
         }
         else if (template_type == NoMatch){
             template_stance = "";
             template_match_error = 0;
             template_match_deviation = 0;
-//            std::cout << "[" << kModuleName << "] " << "\tStance: No Match!" << std::endl;
         }
 
 //        std::cout << "[" << kModuleName << "] " << "\tError: " << match_error << std::endl;
@@ -64,11 +58,11 @@ bool HumanClassifier::Classify(const cv::Mat& depth_img,
     }
 
     // try the face detection
-    if (kFaceDetectEnabled)
+    if (face_detect_enabled_)
         faceDetected = FaceDetection(color_img, measurement);
 
     template_match_error = match_error;
-    if ((template_match_error < kMaxTemplateErr && template_type != NoMatch) || faceDetected){
+    if ((template_match_error < max_template_err_ && template_type != NoMatch) || faceDetected){
         return true;
     }else{
         return false;
@@ -102,7 +96,7 @@ bool HumanClassifier::TemplateClassification(const cv::Mat& depth_image,
 
     // create and outlined contour
     contour_line = cv::Mat::zeros(depth_image.rows, depth_image.cols, CV_8UC1);
-    drawContours(contour_line, measurement.contour, -1, cv::Scalar(255), kDtLineWidth);
+    drawContours(contour_line, measurement.contour, -1, cv::Scalar(255), dt_line_width_);
 
     // create a minimum area bounding box
     maskBox = boundingRect(measurement.contour[0]);
@@ -111,7 +105,7 @@ bool HumanClassifier::TemplateClassification(const cv::Mat& depth_image,
     threshold(contour_line(maskBox), contour_line, 250, 255, CV_THRESH_BINARY_INV);
 
     // create a border on the image
-    copyMakeBorder(contour_line, contour_line, kBorderSize, kBorderSize, kBorderSize, kBorderSize,
+    copyMakeBorder(contour_line, contour_line, border_size_, border_size_, border_size_, border_size_,
             cv::BORDER_CONSTANT, cv::Scalar(255,255,255) );
 
     // create the distance transform map from the contour line
@@ -164,8 +158,8 @@ bool HumanClassifier::TemplateClassification(const cv::Mat& depth_image,
                 measurement.templType = static_cast<TemplateType>(i);
                 template_type = static_cast<TemplateType>(i);
 
-                measurement.template_box = cv::Rect (ClipInt(current_loc.x + maskBox.x - kBorderSize, 0, depth_image.cols),
-                                                     ClipInt(current_loc.y + maskBox.y - kBorderSize, 0, depth_image.rows),
+                measurement.template_box = cv::Rect (ClipInt(current_loc.x + maskBox.x - border_size_, 0, depth_image.cols),
+                                                     ClipInt(current_loc.y + maskBox.y - border_size_, 0, depth_image.rows),
                                                      ClipInt(template_box_relative.width, 1, depth_image.rows - template_box_relative.width),
                                                      ClipInt(template_box_relative.height, 1, depth_image.cols - template_box_relative.height));
 
@@ -182,20 +176,19 @@ bool HumanClassifier::TemplateClassification(const cv::Mat& depth_image,
 
     // ---------- DEBUGGING ----------
 
-    if (kDebugMode) {
+    if (debug_mode_) {
         // save Distance Transform map with the template overlayed to the debug folder
         if (measurement.templType != NoMatch){
             std::string msrID;
 
-            if (match_error < kMaxTemplateErr){
+            if (match_error < max_template_err_){
                 msrID = GenerateID() + "_HUMAN";
             }else{
                 msrID = GenerateID() + "_NOT";
             }
 
-
-            cv::imwrite(kDebugFolder + msrID + "_debug1_Mask.png", mask);
-            cv::imwrite(kDebugFolder + msrID + "_debug2_Contour_obj_1_.png", contour_line);
+            cv::imwrite(debug_folder_ + msrID + "_debug1_Mask.png", mask);
+            cv::imwrite(debug_folder_ + msrID + "_debug2_Contour_obj_1_.png", contour_line);
 //            cv::imwrite(kDebugFolder + msrID + "_debug3_DistanceTransform_obj_1_.png", map_dt);
 
             // draw the template over the distance transform map
@@ -224,7 +217,7 @@ bool HumanClassifier::TemplateClassification(const cv::Mat& depth_image,
             cvtColor(map_dt, map_dt, CV_GRAY2RGB);
             circle(map_dt, cv::Point(match_pos.x, match_pos.y), 2, cv::Scalar(50, 50, 255), CV_FILLED);
             circle(map_dt, cv::Point(match_init_pos.x, match_init_pos.y), 2, cv::Scalar(100, 255, 100), CV_FILLED);
-            cv::imwrite(kDebugFolder + msrID + "_debug4_Match_Location.png", map_dt);
+            cv::imwrite(debug_folder_ + msrID + "_debug4_Match_Location.png", map_dt);
         }
     }
 
@@ -274,7 +267,7 @@ bool HumanClassifier::PerfectMatch(const cv::Mat& mask,
     templtBox = boundingRect(template_pts);
 
     // discard regions that are too small for the given template
-    if (map_dt.rows - 2*kBorderSize < templtBox.height || map_dt.cols - 2*kBorderSize < templtBox.width) {
+    if (map_dt.rows - 2*border_size_ < templtBox.height || map_dt.cols - 2*border_size_ < templtBox.width) {
         best_pos = cv::Point3i(0,0,0);
         start_pos = cv::Point3i(0,0,0);
         best_error = 0;
@@ -291,24 +284,24 @@ bool HumanClassifier::PerfectMatch(const cv::Mat& mask,
     err = best_error = std::numeric_limits<float>::max();	// initial error
     occupancy_best = 0;
     start_col = 0;
-    colCounter = cv::Rect(0,0, mask.cols / kNumSlicesMatching, mask.rows);
+    colCounter = cv::Rect(0,0, mask.cols / num_slices_matching_, mask.rows);
     variance = 0;
 
     // calculate best start position, divide the regions in vertical sections and choose the most occupied
-    for (int i = 0; i < kNumSlicesMatching; i++) {
+    for (int i = 0; i < num_slices_matching_; i++) {
         // count number of non-black pixels of the current region
-        occupancy = cv::countNonZero( mask(cv::Rect((mask.cols / kNumSlicesMatching) * i, 0, (mask.cols / kNumSlicesMatching), mask.rows)));
+        occupancy = cv::countNonZero( mask(cv::Rect((mask.cols / num_slices_matching_) * i, 0, (mask.cols / num_slices_matching_), mask.rows)));
 
         if (occupancy > occupancy_best) {
             occupancy_best = occupancy;
             // zone = midle of the zone - offset of half the template
-            start_col = ClipInt(floor(((mask.cols / kNumSlicesMatching) * i) - (templtBox.width/2)), 0, mask.cols);
+            start_col = ClipInt(floor(((mask.cols / num_slices_matching_) * i) - (templtBox.width/2)), 0, mask.cols);
         }
     }
 
     // set intial position, add borderSize or remove it for original location
-    pos = cv::Vec3f(start_col + kBorderSize, kBorderSize, 0.0);
-    start_pos = cv::Point3i(start_col + kBorderSize, kBorderSize, 0.0);
+    pos = cv::Vec3f(start_col + border_size_, border_size_, 0.0);
+    start_pos = cv::Point3i(start_col + border_size_, border_size_, 0.0);
 
     // Gradient in X
     Sobel(map_dt, grad_x, CV_32FC1, 1, 0, 3, 1, 0, cv::BORDER_DEFAULT);
@@ -320,18 +313,18 @@ bool HumanClassifier::PerfectMatch(const cv::Mat& mask,
 
 
     // RPROP algorithm
-    for (int i = 0; i < kMatchIterations; i++) {
+    for (int i = 0; i < match_iterations_; i++) {
         curr_err_values.clear();
         err = ErrorFunction(grad_x, grad_y, map_dt, template_pts, pos, curr_grad, curr_err_values);
 
         // paint the path taken by the template in the map, point(0,0) should be close to "white"
-        if (kDebugMode){
+        if (debug_mode_){
             map_dt.at<float>(cv::Point(pos[0], pos[1])) = map_dt.at<float>(0,0);
         }
 
         // sometimes it happened, now it appears to be fixed, but just in case
         if (err < 0)
-             std::cout << "[" << kModuleName << "] " << "Incorrect value for error (" << err << ")\n" << std::endl;
+             std::cout << "[" << module_name_ << "] " << "Incorrect value for error (" << err << ")\n" << std::endl;
 
         // update best error
         if (err < best_error && err > 0) {
@@ -444,7 +437,7 @@ float HumanClassifier::ErrorFunction(const cv::Mat& grad_x,
 
         // a warning just in case..
         if (pos.x > distance_transf.cols || pos.y > distance_transf.rows || pos.x < 0 || pos.y < 0)
-            std::cout << "[" << kModuleName << "] " << "Position outside of the map ("<< pos.x << ", " << pos.y <<")" << std::endl;
+            std::cout << "[" << module_name_ << "] " << "Position outside of the map ("<< pos.x << ", " << pos.y <<")" << std::endl;
     }
 
     return err;
@@ -454,7 +447,7 @@ float HumanClassifier::ErrorFunction(const cv::Mat& grad_x,
 bool HumanClassifier::FaceDetection(const cv::Mat &color_img, Roi &measurement) const{
 
     // if face detection is enabled, and the template matching didnt fail
-    if (kFaceDetectEnabled && measurement.templType != NoMatch){
+    if (face_detect_enabled_ && measurement.templType != NoMatch){
 
         std::vector<cv::Rect> facesFront;
         std::vector<cv::Rect> facesProfile;
@@ -473,7 +466,7 @@ bool HumanClassifier::FaceDetection(const cv::Mat &color_img, Roi &measurement) 
         cv::CascadeClassifier kDetectFaceProfile;
         if (!kDetectFaceFront.load(cascade_path_ + "haarcascade_frontalface_default.xml") ||
                 !kDetectFaceProfile.load(cascade_path_ + "haarcascade_profileface.xml")) {
-            std::cout << "[" << kModuleName << "] " << "Unable to load all haar cascade files" << std::endl;
+            std::cout << "[" << module_name_ << "] " << "Unable to load all haar cascade files" << std::endl;
             return false;
         } else {
 //            std::cout << "[" << kModuleName << "] " << "Haar cascade XML files sucessfully loaded." << std::endl;
@@ -502,7 +495,7 @@ bool HumanClassifier::FaceDetection(const cv::Mat &color_img, Roi &measurement) 
             measurement.faceLocation.push_back(cv::Rect(facesProfile[j]));
         }
 
-        if (kDebugMode && faceDetected){
+        if (debug_mode_ && faceDetected){
             cv::Mat debugImg;
 
             color_img.copyTo(debugImg);
@@ -513,7 +506,7 @@ bool HumanClassifier::FaceDetection(const cv::Mat &color_img, Roi &measurement) 
             for (uint j = 0; j < facesProfile.size(); j++)
                 cv::rectangle(debugImg, facesProfile[j], cv::Scalar(0, 0, 255), 2, CV_AA);
 
-            cv::imwrite(kDebugFolder + GenerateID() + "_debug5_Face_Detection.png", debugImg);
+            cv::imwrite(debug_folder_ + GenerateID() + "_debug5_Face_Detection.png", debugImg);
         }
 
         if (faceDetected)
@@ -563,7 +556,7 @@ float HumanClassifier::ResizeTemplate(std::vector<cv::Point> template_src,
     float scaleFactor;
 
     if (depth <= 0)
-        std::cout << "[" << kModuleName << "] " << "Incorrect depth value = "<< depth << std::endl;
+        std::cout << "[" << module_name_ << "] " << "Incorrect depth value = "<< depth << std::endl;
 
     // scale_factor = -15,763 X + 106,33 (linear)
     // scale_factor = -52.6 * log(X) + 114.06 (logarithmic)
@@ -592,33 +585,58 @@ int HumanClassifier::ClipInt(int val, int min, int max) const{
 }
 
 
-bool HumanClassifier::Initializations(const std::string& module_path) {
+bool HumanClassifier::Initializations(bool debug_mode,
+                                      const std::string debug_folder,
+                                      const std::string template_front_path,
+                                      const std::string template_left_path,
+                                      const std::string template_right_path,
+                                      int match_iterations,
+                                      int dt_line_width,
+                                      double max_template_err,
+                                      int border_size,
+                                      int num_slices_matching) {
 
-    std::string template_path;
-    cascade_path_ = module_path + "cascade_classifiers/";
-    template_path = module_path + "/head_templates/";
+    debug_folder_ = debug_folder;
+    debug_mode_ = debug_mode;
+    face_detect_enabled_ = false;
 
-    LoadParameters();
+//    cascade_path_ = template_path;  // cascades are not being used now
+
+    match_iterations_ = match_iterations;
+    dt_line_width_ = dt_line_width;
+    max_template_err_ = max_template_err;
+    border_size_ = border_size;
+    num_slices_matching_ = num_slices_matching;
 
 	// clean/create debug folder
-    if (kDebugMode) CleanDebugFolder(kDebugFolder);
+    if (debug_mode){
+        try {
+            boost::filesystem::path dir(debug_folder_);
+            boost::filesystem::remove_all(dir);
+            boost::filesystem::create_directories(dir);
+        } catch(const boost::filesystem::filesystem_error& e){
+           if(e.code() == boost::system::errc::permission_denied)
+               std::cout << "[" << module_name_ << "] " << "boost::filesystem permission denied" << std::endl;
+           else
+               std::cout << "[" << module_name_ << "] " << "boost::filesystem failed with error: " << e.code().message() << std::endl;
+        }
+    }
 
-
-    std::cout << "[" << kModuleName << "] " << "Loading templates..." << std::endl;
+    std::cout << "[" << module_name_ << "] " << "Loading templates..." << std::endl;
 
     // Load templates by the same order you enumerate them in "enum TemplateType"
     kTemplatesOriginal.clear();
-    if ( !LoadTemplate(template_path + "template_front_4_trimmed.png", kTemplatesOriginal) ||
-         !LoadTemplate(template_path + "left_close.png", kTemplatesOriginal) ||
-         !LoadTemplate(template_path + "right_close.png", kTemplatesOriginal))
+    if ( !LoadTemplate(template_front_path, kTemplatesOriginal) ||
+         !LoadTemplate(template_left_path, kTemplatesOriginal) ||
+         !LoadTemplate(template_right_path, kTemplatesOriginal))
     {
-        std::cout << "[" << kModuleName << "] " << "Unable to load all templates from " << template_path << std::endl;
+        std::cout << "[" << module_name_ << "] " << "Unable to load all templates!" << std::endl;
         return false;
     }
 
 
     // initialize structuing element for morphological operations
-    kMorphElement = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(4, 4), cv::Point(-1, -1));
+    morph_element_ = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(4, 4), cv::Point(-1, -1));
 
     return true;
 }
@@ -631,7 +649,7 @@ bool HumanClassifier::LoadTemplate(const std::string& template_path, std::vector
     template_img = cv::imread(template_path, CV_LOAD_IMAGE_GRAYSCALE);
 
 	if (!template_img.data){
-        std::cout << "[" << kModuleName << "] " << "Could not load the template " << template_path << std::endl;
+        std::cout << "[" << module_name_ << "] " << "Could not load the template from " << template_path << std::endl;
         return false;
 	}
 
@@ -649,31 +667,6 @@ bool HumanClassifier::LoadTemplate(const std::string& template_path, std::vector
 //    std::cout << "[" << kModuleName << "] " << "Template loaded: " << template_path << ", " << template_list.back().size() << " points" << std::endl;
 
     return true;
-}
-
-
-void HumanClassifier::LoadParameters(){
-    kDebugFolder = "/tmp/human_classifier/";
-
-    kDebugMode = false;
-    kFaceDetectEnabled = false;
-    kMatchIterations = 30;
-    kDtLineWidth = 1;
-    kMaxTemplateErr = 15;
-    kBorderSize = 20;
-    kNumSlicesMatching = 7;
-}
-
-
-void HumanClassifier::CleanDebugFolder(const std::string& folder){
-    std::cout << "[" << kModuleName << "] " << "Cleaning debug/output folders. Don't worry about error comments like 'rm: cannot remove'" << std::endl;
-
-    if (system(std::string("mkdir " + folder + " > nul").c_str()) != 0){
-		//printf("\nUnable to create output folder. Already created?\n");
-	}
-    if (system(std::string("rm " + folder + "*.png" + " > nul").c_str()) != 0){
-		//printf("\nUnable to clean output folder \n");
-	}
 }
 
 

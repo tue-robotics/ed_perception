@@ -31,22 +31,89 @@ HumanContourMatcher::~HumanContourMatcher()
 
 // ----------------------------------------------------------------------------------------------------
 
+void HumanContourMatcher::configure(tue::Configuration config) {
 
-void HumanContourMatcher::loadConfig(const std::string& config_path) {
+    if (!config.value("head_template_front_path", template_front_path_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'head_template_front_path' not found. Using default: " << template_front_path_ << std::endl;
 
-    kModuleName = "human_contour_matcher";
+    template_front_path_ = module_path_ + template_front_path_;
 
+    if (!config.value("head_template_left_path", template_left_path_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'head_template_left_path' not found. Using default: " << template_left_path_ << std::endl;
 
-    if(human_classifier_.Initializations(config_path)){
-            std::cout << "[" << kModuleName << "] " << "Initialization complete" << std::endl;
+    template_left_path_ = module_path_ + template_left_path_;
+
+    if (!config.value("head_template_right_path", template_right_path_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'head_template_right_path' not found. Using default: " << template_right_path_ << std::endl;
+
+    template_right_path_ = module_path_ + template_right_path_;
+
+    if (!config.value("debug_folder", debug_folder_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_folder' not found. Using default: " << debug_folder_ << std::endl;
+
+    if (!config.value("debug_mode", debug_mode_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_mode' not found. Using default: " << debug_mode_ << std::endl;
+
+    if (!config.value("max_match_iterations", match_iterations_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'max_match_iterations' not found. Using default: " << match_iterations_ << std::endl;
+
+    if (!config.value("dt_line_width", dt_line_width_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'dt_line_width' not found. Using default: " << dt_line_width_ << std::endl;
+
+    if (!config.value("max_template_err", max_template_err_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'max_template_err' not found. Using default: " << max_template_err_ << std::endl;
+
+    if (!config.value("dt_border_size", border_size_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'dt_border_size' not found. Using default: " << border_size_ << std::endl;
+
+    if (!config.value("dt_slices_num", num_slices_matching_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'dt_slices_num' not found. Using default: " << num_slices_matching_ << std::endl;
+
+    // initialzie human_classifier
+    if(!human_classifier_.Initializations(debug_mode_,
+                                          debug_folder_,
+                                          template_front_path_,
+                                          template_left_path_,
+                                          template_right_path_,
+                                          match_iterations_,
+                                          dt_line_width_,
+                                          max_template_err_,
+                                          border_size_,
+                                          num_slices_matching_)){
+        std::cout << "[" << module_name_ << "] " << "Initialization incomplete!" << std::endl;
     }
 
     init_success_ = true;
 
-    std::cout << "[" << kModuleName << "] " << "Ready!" << std::endl;
+    std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
 }
 
+
 // ----------------------------------------------------------------------------------------------------
+
+
+void HumanContourMatcher::loadConfig(const std::string& config_path) {
+
+    module_name_ = "human_contour_matcher";
+    module_path_ = config_path;
+
+    // default values in case configure(...) is not called!
+    debug_mode_ = false;
+    debug_folder_ = "/tmp/human_classifier/";
+    template_front_path_ = "/head_templates/template_front_4_trimmed.png";
+    template_left_path_ = "/head_templates/left_close.png";
+    template_right_path_ = "/head_templates/right_close.png";
+    match_iterations_ = 30;
+    dt_line_width_ = 1;
+    max_template_err_ = 15;
+    border_size_ = 20;
+    num_slices_matching_ = 7;
+
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
 
 void HumanContourMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) const
 {
@@ -102,7 +169,7 @@ void HumanContourMatcher::process(ed::EntityConstPtr e, tue::Configuration& resu
     }
 
     // assert the results to the entity
-    result.writeGroup(kModuleName);
+    result.writeGroup(module_name_);
     result.setValue("label", "human_shape");
 
     if (classification_error > 0){

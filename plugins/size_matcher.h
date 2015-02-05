@@ -58,11 +58,16 @@ public:
 
     void process(ed::EntityConstPtr e, tue::Configuration& result) const;
 
+    void configure(tue::Configuration config);
+
 private:
 
-    float small_tresh_;
-    float medium_tresh_;
-    float difference_thresh_;
+    bool init_success_;
+
+    float small_size_treshold_;
+    float medium_size_treshold_;
+    float size_diff_threshold_;
+
     std::map<std::string, std::vector<ObjectSize> > models_;
     std::string	module_name_;    /*!< Name of the module, for output */
 

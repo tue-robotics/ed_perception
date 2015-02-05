@@ -16,7 +16,9 @@
 
 // ----------------------------------------------------------------------------------------------------
 
-ODUFinderModule::ODUFinderModule() : ed::PerceptionModule("odu_finder")
+ODUFinderModule::ODUFinderModule() :
+    ed::PerceptionModule("odu_finder"),
+    init_success_(false)
 {
 }
 
@@ -28,19 +30,44 @@ ODUFinderModule::~ODUFinderModule()
 
 // ----------------------------------------------------------------------------------------------------
 
-void ODUFinderModule::loadConfig(const std::string& config_path)
-{
-    config_path_ = config_path + "/database/";
-    bool debug_mode = false;
+void ODUFinderModule::configure(tue::Configuration config) {
+
+    if (!config.value("database_path", database_path_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'database_path' not found. Using default: " << database_path_ << std::endl;
+
+    database_path_ = module_path_ + database_path_;
+
+    if (!config.value("debug_mode", debug_mode_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_mode' not found. Using default: " << debug_mode_ << std::endl;
 
     // creat odu finder instance
-    odu_finder_ = new odu_finder::ODUFinder(config_path_, debug_mode);
+    odu_finder_ = new odu_finder::ODUFinder(database_path_, debug_mode_);
+
+    init_success_ = true;
+
+    std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ODUFinderModule::loadConfig(const std::string& config_path)
+{
+    module_name_ = "odu_finder";
+    module_path_ = config_path;
+    database_path_ = "/database";
+
+
+    // default values in case configure(...) is not called!
+    debug_mode_ = false;
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 void ODUFinderModule::process(ed::EntityConstPtr e, tue::Configuration& result) const
 {
+
+    if (!init_success_)
+        return;
 
     // Get the best measurement from the entity
     ed::MeasurementConstPtr msr = e->lastMeasurement();
