@@ -45,28 +45,58 @@ FaceRecognition::~FaceRecognition(){
 
 // ----------------------------------------------------------------------------------------------------
 
+
 void FaceRecognition::configure(tue::Configuration config) {
-/*
 
-    debug_mode_ = false;
-    save_learned_faces_ = false;
-    faces_save_dir_ = (std::string)getenv("HOME") + "/faces_learned/";
-    using_Eigen_ = false;
-    using_Fisher_ = true;
-    using_LBPH_ = true;
-    using_histogram_ = true;
-    enable_learning_service_ = true;
-    eigen_treshold_ = 3500;
-    fisher_treshold_ = 800;
-    lbph_treshold_ = 45;
-    recognition_treshold_ = 0.95;
-    face_target_size_ = 150;
-    face_vert_offset_ = 0.35;
-    face_horiz_offset_ = 0.25;
-    learning_mode_ = false;
-    max_faces_learn_ = 10;
+    if (!config.value("debug_mode", debug_mode_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_mode' not found. Using default: " << debug_mode_ << std::endl;
 
+    if (!config.value("save_learned_faces", save_learned_faces_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'save_learned_faces' not found. Using default: " << save_learned_faces_ << std::endl;
 
+    if (!config.value("saved_faces_dir", saved_faces_dir_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'saved_faces_dir' not found. Using default: " << saved_faces_dir_ << std::endl;
+
+    saved_faces_dir_ = (std::string)getenv("HOME") +saved_faces_dir_;
+
+    if (!config.value("use_Eigen", using_Eigen_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'use_Eigen' not found. Using default: " << using_Eigen_ << std::endl;
+
+    if (!config.value("use_Fisher", using_Fisher_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'use_Fisher' not found. Using default: " << using_Fisher_ << std::endl;
+
+    if (!config.value("use_LBPH", using_LBPH_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'use_LBPH' not found. Using default: " << using_LBPH_ << std::endl;
+
+    if (!config.value("use_histogram", using_histogram_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'use_histogram' not found. Using default: " << using_histogram_ << std::endl;
+
+    if (!config.value("enable_learning_service", enable_learning_service_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'enable_learning_service' not found. Using default: " << enable_learning_service_ << std::endl;
+
+    if (!config.value("eigen_treshold", eigen_treshold_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'eigen_treshold' not found. Using default: " << eigen_treshold_ << std::endl;
+
+    if (!config.value("fisher_treshold", fisher_treshold_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'fisher_treshold' not found. Using default: " << fisher_treshold_ << std::endl;
+
+    if (!config.value("lbph_treshold", lbph_treshold_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'lbph_treshold' not found. Using default: " << lbph_treshold_ << std::endl;
+
+    if (!config.value("recognition_treshold", recognition_treshold_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'recognition_treshold' not found. Using default: " << recognition_treshold_ << std::endl;
+
+    if (!config.value("face_target_size", face_target_size_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'face_target_size' not found. Using default: " << face_target_size_ << std::endl;
+
+    if (!config.value("left_eye_vert_offset", face_vert_offset_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'left_eye_vert_offset' not found. Using default: " << face_vert_offset_ << std::endl;
+
+    if (!config.value("left_eye_horiz_offset", face_horiz_offset_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'left_eye_horiz_offset' not found. Using default: " << face_horiz_offset_ << std::endl;
+
+    if (!config.value("max_faces_learn", max_faces_learn_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'max_faces_learn' not found. Using default: " << max_faces_learn_ << std::endl;
 
 
     // create debug window
@@ -75,7 +105,7 @@ void FaceRecognition::configure(tue::Configuration config) {
     }
 
     // Get the path to the CSV file and images
-    std::string csv_file_path = faces_save_dir_ + "face_models.cvs";
+    std::string csv_file_path = saved_faces_dir_ + "face_models.cvs";
 
     // Load faces from CSV file
     if (!csv_file_path.empty()){
@@ -87,9 +117,9 @@ void FaceRecognition::configure(tue::Configuration config) {
 
     // create faces folder
     if (save_learned_faces_){
-        boost::filesystem::path dir(faces_save_dir_);
+        boost::filesystem::path dir(saved_faces_dir_);
         boost::filesystem::create_directories(dir);
-        std::cout << "[" << module_name_ << "] " << "Faces learned will be saved in: " << faces_save_dir_ << std::endl;
+        std::cout << "[" << module_name_ << "] " << "Faces learned will be saved in: " << saved_faces_dir_ << std::endl;
     }
 
     if (enable_learning_service_){
@@ -112,8 +142,8 @@ void FaceRecognition::configure(tue::Configuration config) {
     }
 
     init_success_ = true;
+
     std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
-    */
 }
 
 
@@ -123,27 +153,22 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
 
 
     // default values in case configure(...) is not called!
-    // module configuration
     module_name_ = "face_recognition";
     debug_mode_ = false;
     save_learned_faces_ = false;
-    faces_save_dir_ = (std::string)getenv("HOME") + "/faces_learned/";
-    // recognition parameters
+    saved_faces_dir_ = "/faces_learned/";
     using_Eigen_ = false;
     using_Fisher_ = true;
     using_LBPH_ = true;
     using_histogram_ = true;
     enable_learning_service_ = true;
-    // recognition thresholds
     eigen_treshold_ = 3500;
     fisher_treshold_ = 800;
     lbph_treshold_ = 45;
     recognition_treshold_ = 0.95;
-    // face alignement parameters
     face_target_size_ = 150;
     face_vert_offset_ = 0.35;
     face_horiz_offset_ = 0.25;
-    // learning mode parameters
     learning_mode_ = false;
     max_faces_learn_ = 10;
 
@@ -456,7 +481,7 @@ bool FaceRecognition::learnFace(std::string person_name,
         // -------------------- save faces for re-learning --------------------
 
         // create faces folder if it doesn't exist already
-        std::string local_save_dir = faces_save_dir_ + person_name + "/";
+        std::string local_save_dir = saved_faces_dir_ + person_name + "/";
         boost::filesystem::path dir(local_save_dir);
         if( !(boost::filesystem::exists(dir)))
             boost::filesystem::create_directories(dir);
@@ -471,7 +496,7 @@ bool FaceRecognition::learnFace(std::string person_name,
         path_on_disk << local_save_dir << file_name;
 
         // Add path to cvs file
-        std::string cvs_file_name = faces_save_dir_ + "face_models.cvs";
+        std::string cvs_file_name = saved_faces_dir_ + "face_models.cvs";
         std::fstream myfile;
         myfile.open (cvs_file_name.c_str(), std::fstream::in | std::fstream::out | std::fstream::app);
         myfile << local_save_dir << file_name << ".pgm" << ";" << person_label << ";" << person_name << "\n";
@@ -807,7 +832,7 @@ void FaceRecognition::readCSV( const std::string& filename,
     std::ifstream csv(filename.c_str());
 
     if (!csv) {
-        std::cout << "[" << module_name_ << "] " << "No valid input file was given, check the filepath. " << filename << std::endl;
+        std::cout << "[" << module_name_ << "] " << "No valid CSV file was given, " << filename << std::endl;
     }
 
     std::string line;

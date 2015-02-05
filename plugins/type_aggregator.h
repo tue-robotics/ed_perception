@@ -15,9 +15,6 @@
 #include <cv_bridge/cv_bridge.h>
 
 
-
-
-
 class TypeAggregator : public ed::PerceptionModule
 {
     struct DictionaryMatch{
@@ -59,6 +56,7 @@ public:
 
     void process(ed::EntityConstPtr e, tue::Configuration& result) const;
 
+    void configure(tue::Configuration config);
 
 /*
 * ###########################################

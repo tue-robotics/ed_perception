@@ -50,7 +50,7 @@ private:
     std::string module_name_;       // module name that shows up in the output
     std::string module_path_;       // module name that shows up in the output
     mutable bool learning_mode_;    // true if face is being learned, false for normal recognition mode
-    std::string faces_save_dir_;    // directory where to save the faces learned, for later re-learning
+    std::string saved_faces_dir_;    // directory where to save the faces learned, for later re-learning
     bool save_learned_faces_;        // wheter to save the faces learned or not
 
     // face alignement parameters
@@ -89,7 +89,7 @@ private:
     ros::ServiceServer srv_learn_face;      // service to learn new face
     std::string learning_name_;             // name to be used in the learning process
     mutable uint n_faces_current_;          // number of faces learned for the last request
-    uint max_faces_learn_;                  // total number of faces to be learned for each model
+    int max_faces_learn_;                  // total number of faces to be learned for each model
 
 
 

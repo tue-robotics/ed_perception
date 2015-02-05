@@ -31,6 +31,17 @@ TypeAggregator::~TypeAggregator()
 
 // ----------------------------------------------------------------------------------------------------
 
+
+void TypeAggregator::configure(tue::Configuration config) {
+
+    if (!config.value("classification_threshold", positive_tresh_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'classification_threshold' not found. Using default: " << positive_tresh_ << std::endl;
+
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
 void TypeAggregator::loadConfig(const std::string& config_path) {
     module_name_ = "type_aggregator";
 
@@ -40,6 +51,7 @@ void TypeAggregator::loadConfig(const std::string& config_path) {
     plugin_names_.push_back("odu_finder");
     plugin_names_.push_back("color_matcher");
 
+    // default values in case configure(...) is not called!
     positive_tresh_ = 0.5;
 
     init_success_ = true;
@@ -96,7 +108,6 @@ void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_co
         if (min_y > p_2d.y) min_y = p_2d.y;
         if (max_y < p_2d.y) max_y = p_2d.y;
     }
-
 
     cv::imwrite((std::string)"/tmp/type_aggregator/" + e->id().c_str() + ".png", cropped_image(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
 */
