@@ -19,6 +19,10 @@ find_package(catkin REQUIRED COMPONENTS
 #find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 
+# open_biometrics requires Qt5
+#find_package(Qt5 COMPONENTS QtCore QtGui)
+# find_package(Qt5 COMPONENTS Widgets Declarative)
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -35,9 +39,6 @@ generate_messages(
 
 catkin_package(
 )
-
-
-
 
 
 ###########
@@ -87,6 +88,13 @@ add_library(face_recognition_ed
     plugins/face_recognition.h
 )
 target_link_libraries(face_recognition_ed ${catkin_LIBRARIES})
+
+add_library(open_biometrics_ed
+    plugins/open_biometrics_ed.cpp
+    plugins/open_biometrics_ed.h
+)
+target_link_libraries(open_biometrics_ed ${catkin_LIBRARIES} ${Qt5_LIBRARIES})
+# target_link_libraries(open_biometrics_ed ${catkin_LIBRARIES} ${Qt5_LIBRARIES} /usr/local/lib/libopenbr.so)
 
 add_library(ed_odu_finder
     plugins/odu_finder/odu_finder_module.cpp
