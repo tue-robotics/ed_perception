@@ -31,6 +31,18 @@ private:
     std::string debug_folder_;   /*!< Path of the debug folder */
 
 
+    // open biometrics
+//    QSharedPointer<br::Transform> br_age_estimation;
+//    QSharedPointer<br::Transform> br_gender_estimation;
+//    QSharedPointer<br::Transform> br_face_rec;
+//    QSharedPointer<br::Distance> br_face_rec_dist;
+
+    void showDebugWindow(cv::Mat face_aligned,
+                         std::vector<std::string> predicted_name,
+                         std::vector<double> confidence,
+                         std::string face_match,
+                         double face_confidence) const;
+
 /*
 * ###########################################
 *  				    PUBLIC
