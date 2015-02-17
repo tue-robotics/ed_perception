@@ -37,11 +37,13 @@ private:
 //    QSharedPointer<br::Transform> br_face_rec;
 //    QSharedPointer<br::Distance> br_face_rec_dist;
 
-    void showDebugWindow(cv::Mat face_aligned,
-                         std::vector<std::string> predicted_name,
-                         std::vector<double> confidence,
-                         std::string face_match,
-                         double face_confidence) const;
+    void showDebugWindow(cv::Mat face_img,
+                         std::string name,
+                         double name_confidence,
+                         std::string gender,
+                         double gender_confidence,
+                         int age,
+                         double age_confidence) const;
 
 /*
 * ###########################################
