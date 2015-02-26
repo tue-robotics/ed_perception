@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   ann2
   ed
+  pein_srvs
 )
 
 #find_package(PCL REQUIRED)
