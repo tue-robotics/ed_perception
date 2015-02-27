@@ -130,11 +130,11 @@ void FaceRecognition::configure(tue::Configuration config) {
             ros::init(remapping_args, "ed");
         }
 
-        ros::NodeHandle nh;
+        ros::NodeHandle nh("~");
 
         ros::AdvertiseServiceOptions opt_srv_get_entity_info =
                 ros::AdvertiseServiceOptions::create<ed_perception::LearnPerson>(
-                    "/face_recognition/learn", boost::bind(&FaceRecognition::srvStartLearning, this, _1, _2),
+                    "face_recognition/learn", boost::bind(&FaceRecognition::srvStartLearning, this, _1, _2),
                     ros::VoidPtr(), &cb_queue_);
 
         srv_learn_face = nh.advertiseService(opt_srv_get_entity_info);
