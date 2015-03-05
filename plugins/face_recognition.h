@@ -13,6 +13,8 @@
 #include <ed_perception/LearnPersonRequest.h>
 #include <ed_perception/LearnPersonResponse.h>
 
+#include <ed_perception/FaceLearningAction.h>
+
 // OpenCV includes
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/core/core.hpp"
@@ -21,6 +23,8 @@
 #include <ros/callback_queue.h>
 #include <ros/service_server.h>
 #include <ros/publisher.h>
+#include <ros/ros.h>
+#include <actionlib/server/simple_action_server.h>
 
 #include "color_matcher/color_matcher.h"
 
@@ -92,6 +96,8 @@ private:
     int max_faces_learn_;                  // total number of faces to be learned for each model
 
 
+    actionlib::SimpleActionServer<ed_perception::FaceLearningAction> *as_;
+
 
     // -------------------- FUNCTIONS --------------------
 
@@ -149,12 +155,20 @@ private:
     // trains the opencv FaceRecognizers
     void trainRecognizers(std::vector<cv::Mat>& images, std::vector<int>& labels, std::vector<cv::Ptr<cv::FaceRecognizer> >& models) const;
 
+    // construct an histogram from the entities colors present in the config
     void getEntityHistogram(tue::Configuration config, cv::Mat& entity_histogram) const;
 
+    // get a matching confidence between the current entity histogram and previously learned ones
     void matchHistograms(cv::Mat& entity_histogram,
                          std::map<int, std::vector<cv::Mat> >& learned_histograms,
                          int& color_match_label,
                          double& color_match_confidence) const;
+
+    // preempt callback from the learning action service
+    void learning_as_preempt();
+
+    // goal callback from the learning action service
+    void learning_as_goal();
 
 
 /*

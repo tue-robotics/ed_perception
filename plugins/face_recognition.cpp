@@ -23,10 +23,13 @@
 #include <sstream>
 #include <numeric>
 
+#include <actionlib/server/action_server.h>
+
 // ----------------------------------------------------------------------------------------------------
 
 FaceRecognition::FaceRecognition() :
     PerceptionModule("face_recognition"),
+    as_(0),
     init_success_(false)
 {
 
@@ -123,7 +126,7 @@ void FaceRecognition::configure(tue::Configuration config) {
     }
 
     if (enable_learning_service_){
-        // create and advertise service to initiate learning
+        // initialize connection with ROS
         if (!ros::isInitialized())
         {
             ros::M_string remapping_args;
@@ -131,7 +134,9 @@ void FaceRecognition::configure(tue::Configuration config) {
         }
 
         ros::NodeHandle nh("~");
+        nh.setCallbackQueue(&cb_queue_);
 
+        // advertise service
         ros::AdvertiseServiceOptions opt_srv_get_entity_info =
                 ros::AdvertiseServiceOptions::create<ed_perception::LearnPerson>(
                     "face_recognition/learn", boost::bind(&FaceRecognition::srvStartLearning, this, _1, _2),
@@ -139,6 +144,25 @@ void FaceRecognition::configure(tue::Configuration config) {
 
         srv_learn_face = nh.advertiseService(opt_srv_get_entity_info);
         std::cout << "[" << module_name_ << "] " << "Use 'rosservice call /face_recognition/learn PERSON_NAME' to initialize learning" << std::endl;
+
+
+
+        //----------------------
+
+        std::cout << "[" << module_name_ << "] " << "Creating actionlib for face learning" << saved_faces_dir_ << std::endl;
+
+        // create actionlib learning
+//        as_ = new actionlib::SimpleActionServer<ed_perception::FaceLearningAction>(nh, "face_recognition/learn_face",
+//                                                                                    boost::bind(&FaceRecognition::executeCB, this, _1),
+//                                                                                    false);
+
+
+
+        as_ = new actionlib::SimpleActionServer<ed_perception::FaceLearningAction> (nh, "face_recognition/learn_face", false);
+        as_->registerGoalCallback(boost::bind(&FaceRecognition::learning_as_goal, this));
+        as_->registerPreemptCallback(boost::bind(&FaceRecognition::learning_as_preempt, this));
+
+        as_->start();
     }
 
     init_success_ = true;
@@ -203,6 +227,7 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
     if (enable_learning_service_)
         cb_queue_.callAvailable();
+
 
     // ---------- Prepare measurement ----------
 
@@ -295,6 +320,8 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
         // true when learning is complete
         if (learnFace(learning_name_, last_label_, face_aligned, entity_histogram, n_faces_current_, images_, labels_, labels_info_)){
+            ed_perception::FaceLearningResult learning_result_;
+
             std::cout << "[" << module_name_ << "] " << "Learning complete!" << std::endl;
 
             // reset number of learned faces
@@ -308,9 +335,21 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
             // quit learning mode
             learning_mode_ = false;
+
+            if (as_->isActive()){
+                learning_result_.result_info = "Learning complete";
+                as_->setSucceeded(learning_result_);
+            }
+
         }else{
             // update number of faces learned
             n_faces_current_ ++;
+
+            if (as_->isActive()){
+                ed_perception::FaceLearningFeedback learning_feedback_;
+                learning_feedback_.faces_learned = n_faces_current_;
+                as_->publishFeedback(learning_feedback_);
+            }
         }
     }
 
@@ -626,8 +665,7 @@ void FaceRecognition::matchClassifications(std::vector<std::string> classificati
 // ----------------------------------------------------------------------------------------------------
 
 
-bool FaceRecognition::srvStartLearning(const ed_perception::LearnPerson::Request& ros_req, ed_perception::LearnPerson::Response& ros_res)
-{
+bool FaceRecognition::srvStartLearning(const ed_perception::LearnPerson::Request& ros_req, ed_perception::LearnPerson::Response& ros_res){
     std::cout << "[" << module_name_ << "] " << "Service called, person name: " << ros_req.person_name << std::endl;
 
     if (!learning_mode_){
@@ -637,14 +675,48 @@ bool FaceRecognition::srvStartLearning(const ed_perception::LearnPerson::Request
 
         learning_mode_ = true;
 
-        ros_res.info = "Learning started";
+//        ros_res.info = "Learning started";
 
-        return true;
+//        return true;
     }else{
         ros_res.info = "Learning already in progress! Please wait.";
 
         return false;
     }
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+
+void FaceRecognition::learning_as_goal(){
+
+    std::cout << "[" << module_name_ << "] " << "Learning service, received new goal." << std::endl;
+
+    if (!learning_mode_){
+        n_faces_current_ = 0;
+        learning_mode_ = true;
+
+        // accept the new goal and get the name
+        learning_name_ = as_->acceptNewGoal()->person_name;;
+
+        std::cout << "[" << module_name_ << "] " << "Learning person with name: " << learning_name_ << std::endl;
+    }else{
+        ed_perception::FaceLearningResult learning_result_;
+        learning_result_.result_info = "Learning already in progress! Cannot take another request.";
+        as_->setAborted(learning_result_);
+    }
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+
+void FaceRecognition::learning_as_preempt(){
+    std::cout << "[" << module_name_ << "] " << "" << std::endl;
+
+    // set the action state to preempted
+    as_->setPreempted();
 }
 
 
