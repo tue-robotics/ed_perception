@@ -15,14 +15,14 @@ find_package(catkin REQUIRED COMPONENTS
   ann2
   ed
   pein_srvs
+  genmsg
+  actionlib_msgs
+  actionlib
 )
 
 #find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 
-# open_biometrics requires Qt5
-#find_package(Qt5 COMPONENTS QtCore QtGui)
-# find_package(Qt5 COMPONENTS Widgets Declarative)
 
 ###################################
 ## catkin specific configuration ##
@@ -33,9 +33,16 @@ add_service_files(
    LearnPerson.srv
 )
 
+add_action_files(
+  DIRECTORY
+  action
+  FILES
+  FaceLearning.action)
+
 generate_messages(
   DEPENDENCIES
   std_msgs
+  actionlib_msgs
 )
 
 catkin_package(
