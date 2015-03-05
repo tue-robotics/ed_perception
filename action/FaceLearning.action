@@ -1,0 +1,8 @@
+#goal definition
+string person_name
+---
+#result definition
+string result_info
+---
+#feedback
+int32 faces_learned
