@@ -8,6 +8,7 @@
 
 #include "ed/measurement.h"
 #include <ed/entity.h>
+#include <ed/error_context.h>
 
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
@@ -88,6 +89,8 @@ void OpenBrEd::loadConfig(const std::string& config_path) {
 
 
 void OpenBrEd::process(ed::EntityConstPtr e, tue::Configuration& config) const{
+
+    ed::ErrorContext errc("Processing entity in OpenBrEd");
 
     if (!init_success_)
         return;

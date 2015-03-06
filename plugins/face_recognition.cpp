@@ -8,6 +8,7 @@
 
 #include "ed/measurement.h"
 #include <ed/entity.h>
+#include <ed/error_context.h>
 
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
@@ -24,6 +25,7 @@
 #include <numeric>
 
 #include <actionlib/server/action_server.h>
+
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -60,7 +62,6 @@ void FaceRecognition::configure(tue::Configuration config) {
     if (!config.value("saved_faces_dir", saved_faces_dir_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'saved_faces_dir' not found. Using default: " << saved_faces_dir_ << std::endl;
 
-    saved_faces_dir_ = (std::string)getenv("HOME") +saved_faces_dir_;
 
     if (!config.value("use_Eigen", using_Eigen_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'use_Eigen' not found. Using default: " << using_Eigen_ << std::endl;
@@ -101,6 +102,7 @@ void FaceRecognition::configure(tue::Configuration config) {
     if (!config.value("max_faces_learn", max_faces_learn_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'max_faces_learn' not found. Using default: " << max_faces_learn_ << std::endl;
 
+    saved_faces_dir_ = (std::string)getenv("HOME") + saved_faces_dir_;
 
     // create debug window
     if (debug_mode_){
@@ -143,26 +145,16 @@ void FaceRecognition::configure(tue::Configuration config) {
                     ros::VoidPtr(), &cb_queue_);
 
         srv_learn_face = nh.advertiseService(opt_srv_get_entity_info);
-        std::cout << "[" << module_name_ << "] " << "Use 'rosservice call /face_recognition/learn PERSON_NAME' to initialize learning" << std::endl;
-
-
 
         //----------------------
-
-        std::cout << "[" << module_name_ << "] " << "Creating actionlib for face learning" << saved_faces_dir_ << std::endl;
-
-        // create actionlib learning
-//        as_ = new actionlib::SimpleActionServer<ed_perception::FaceLearningAction>(nh, "face_recognition/learn_face",
-//                                                                                    boost::bind(&FaceRecognition::executeCB, this, _1),
-//                                                                                    false);
-
-
 
         as_ = new actionlib::SimpleActionServer<ed_perception::FaceLearningAction> (nh, "face_recognition/learn_face", false);
         as_->registerGoalCallback(boost::bind(&FaceRecognition::learning_as_goal, this));
         as_->registerPreemptCallback(boost::bind(&FaceRecognition::learning_as_preempt, this));
 
         as_->start();
+
+        std::cout << "[" << module_name_ << "] " << "Face learning service available." << std::endl;
     }
 
     init_success_ = true;
@@ -216,6 +208,8 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
 
 
 void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) const{
+
+    ed::ErrorContext errc("Processing entity in FaceRecognition");
 
     if (!init_success_)
         return;
@@ -315,6 +309,8 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
     // ---------- Learning Mode ----------
     if (learning_mode_){
+        ed::ErrorContext errc("Learning mode started in FaceRecognition");
+
         face_match_result = learning_name_;
         face_confidence_match = 0;
 
@@ -355,6 +351,8 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
 
     // ---------- Recognition ----------
+
+    ed::ErrorContext errc2("Predicting face");
 
     // perform recognition on each module
     if (using_Eigen_ && trained_Eigen_){
@@ -981,6 +979,8 @@ bool FaceRecognition::alignFace(cv::Mat origImg, cv::Rect faceLoc, int targetSiz
     bool faceAligned = false;
     cv::Mat faceDetectGray;
 
+    ed::ErrorContext errc("Aligning face");
+
     // create copy of the image for the haar detector and convert it to gray scale
     cvtColor(origImg(faceLoc), faceDetectGray, CV_BGR2GRAY);
     cv::equalizeHist(faceDetectGray, faceDetectGray);
@@ -1034,8 +1034,8 @@ bool FaceRecognition::alignFace(cv::Mat origImg, cv::Rect faceLoc, int targetSiz
         origImg.copyTo(faceImg);
 
         // draw circles on the eyes
-        circle(faceImg, leftEye + refOrigin, 2, cv::Scalar(0, 255, 0), 1);
-        circle(faceImg, rightEye + refOrigin, 2, cv::Scalar(0, 0, 255), 1);
+//        circle(faceImg, leftEye + refOrigin, 2, cv::Scalar(0, 255, 0), 1);
+//        circle(faceImg, rightEye + refOrigin, 2, cv::Scalar(0, 0, 255), 1);
 
         // determine the horizontal and vertical offeset for the left eye
         horizOffsetEye = floor(horizOffset * targetSize);

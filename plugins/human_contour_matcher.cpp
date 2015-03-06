@@ -8,6 +8,7 @@
 
 #include "ed/measurement.h"
 #include <ed/entity.h>
+#include <ed/error_context.h>
 
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
@@ -117,6 +118,8 @@ void HumanContourMatcher::loadConfig(const std::string& config_path) {
 
 void HumanContourMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) const
 {
+    ed::ErrorContext errc("Processing entity in HumanContourMatcher");
+
     // if initialization failed, return
     if (!init_success_)
         return;

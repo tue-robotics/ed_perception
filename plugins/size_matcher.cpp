@@ -8,6 +8,8 @@
 
 #include "ed/measurement.h"
 #include "ed/entity.h"
+#include <ed/error_context.h>
+
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
@@ -87,6 +89,8 @@ void SizeMatcher::loadModel(const std::string& model_name, const std::string& mo
 
 void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) const
 {
+    ed::ErrorContext errc("Processing entity in SizeMatcher");
+
     if (!init_success_)
         return;
 

@@ -7,6 +7,8 @@
 #include "human_classifier.h"
 #include <boost/filesystem.hpp>
 
+#include <ed/error_context.h>
+
 HumanClassifier::HumanClassifier(const std::string& module_name) {
     module_name_ = module_name;
 }
@@ -23,6 +25,8 @@ bool HumanClassifier::Classify(const cv::Mat& depth_img,
                                float& template_match_error,
                                float& template_match_deviation,
                                std::string& template_stance) const {
+
+    ed::ErrorContext errc("Processing entity in HumanClassifier, Classify(...)");
 
 //    std::cout << "[" << kModuleName << "] " << "Classifying object" << std::endl;
 

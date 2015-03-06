@@ -7,6 +7,8 @@
 #include "type_aggregator.h"
 #include "ed/measurement.h"
 #include <ed/entity.h>
+#include <ed/error_context.h>
+
 #include <algorithm>
 
 #include <rgbd/Image.h>
@@ -63,6 +65,8 @@ void TypeAggregator::loadConfig(const std::string& config_path) {
 
 void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_conf) const
 {
+    ed::ErrorContext errc("Processing entity in TypeAggregator");
+
     // if initialization failed, return
     if (!init_success_)
         return;
