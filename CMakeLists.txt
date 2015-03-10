@@ -37,7 +37,8 @@ add_action_files(
   DIRECTORY
   action
   FILES
-  FaceLearning.action)
+  FaceLearning.action
+)
 
 generate_messages(
   DEPENDENCIES
@@ -45,8 +46,7 @@ generate_messages(
   actionlib_msgs
 )
 
-catkin_package(
-)
+catkin_package()
 
 
 ###########
@@ -56,7 +56,23 @@ catkin_package(
 include_directories(
 #    ${PCL_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
+    3rdparty/people_detector/PeopleDetector
+    3rdparty/people_detector/common
+    3rdparty/people_detector/features
+    3rdparty/people_detector/linalg
 )
+
+
+# ----- Build Oscar Martinez Mozos people detector -----
+file(GLOB_RECURSE PEOPLE_DETECTOR_SRC
+    3rdparty/people_detector/PeopleDetector/*.cpp
+    3rdparty/people_detector/common/*.cpp
+    3rdparty/people_detector/features/*.cpp
+    3rdparty/people_detector/linalg/*.cc
+)
+
+add_library(people_detector ${PEOPLE_DETECTOR_SRC})
+target_link_libraries(people_detector gsl gslcblas m)
 
 # ------------------------------------------------------------------------------------------------
 #                                          PERCEPTION MODULES
@@ -128,6 +144,12 @@ add_library(color_matcher
     plugins/color_matcher/color_name_table.h
 )
 target_link_libraries(color_matcher ${catkin_LIBRARIES})
+
+add_library(laser_human_chest_classifier
+    plugins/laser_human_classifier/laser_human_chest_classifier.cpp
+    plugins/laser_human_classifier/laser_human_chest_classifier.h
+)
+target_link_libraries(laser_human_chest_classifier people_detector ${catkin_LIBRARIES})
 
 add_library(odu_finder_db_builder
     tools/odu_finder_db_builder.cpp
