@@ -16,7 +16,7 @@ def learn_person(person_name, service_name):
     print "Waiting for server"
     client.wait_for_server()
 
-    print "Creating goal with person_name: " + person_name
+    print "Creating goal with person name: " + person_name
     goal = ed_perception.msg.FaceLearningGoal(person_name)
 
     print "Sending goal"
@@ -32,14 +32,15 @@ def learn_person(person_name, service_name):
 
 if __name__ == '__main__':
 
-    if len(sys.argv) > 1:
-        person_name = sys.argv[1]
+    if len(sys.argv) > 2:
+        robot_name = sys.argv[1]
+        person_name = sys.argv[2]
     else:
-        print "Usage: learn_person.py <person_name>"
+        print "Usage: learn_person.py <robot_name> <person_name>"
         exit(1)
 
     result = None
-    service_name = "/amigo/ed/face_recognition/learn_face"
+    service_name = "/" + robot_name + "/ed/face_recognition/learn_face"
 
     try:
         print "Contacting learning service on " + service_name
