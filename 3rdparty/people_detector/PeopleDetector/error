@@ -1,0 +1,25 @@
+g++ -O3 -Wall -I./ -I../common -I../features -c -o WeakHypothesis.o WeakHypothesis.cpp
+g++ -O3 -Wall -I./ -I../common -I../features -c -o PeopleDetector.o PeopleDetector.cpp
+./PeopleDetector.h:9: error: expected initializer before ‘<’ token
+./PeopleDetector.h:26: error: ISO C++ forbids declaration of ‘dyntab_hypotheses’ with no type
+./PeopleDetector.h:26: error: expected ‘;’ before ‘*’ token
+PeopleDetector.cpp: In constructor ‘PeopleDetector::PeopleDetector()’:
+PeopleDetector.cpp:14: error: ‘weak_classifiers’ was not declared in this scope
+PeopleDetector.cpp: In destructor ‘PeopleDetector::~PeopleDetector()’:
+PeopleDetector.cpp:22: error: ‘weak_classifiers’ was not declared in this scope
+PeopleDetector.cpp:23: error: ‘weak_classifers’ was not declared in this scope
+PeopleDetector.cpp:24: error: type ‘<type error>’ argument given to ‘delete’, expected pointer
+PeopleDetector.cpp: At global scope:
+PeopleDetector.cpp:33: error: no ‘void PeopleDetector::load(FILE*, int)’ member function declared in class ‘PeopleDetector’
+PeopleDetector.cpp: In member function ‘void PeopleDetector::load(FILE*, int)’:
+PeopleDetector.cpp:37: error: ‘weak_classifiers’ was not declared in this scope
+PeopleDetector.cpp:37: error: expected type-specifier before ‘dyntab_hypotheses’
+PeopleDetector.cpp:37: error: expected `;' before ‘dyntab_hypotheses’
+PeopleDetector.cpp: At global scope:
+PeopleDetector.cpp:50: error: no ‘double PeopleDetector::classify(Segment*)’ member function declared in class ‘PeopleDetector’
+PeopleDetector.cpp: In member function ‘double PeopleDetector::classify(Segment*)’:
+PeopleDetector.cpp:56: error: ‘weak_classifiers’ was not declared in this scope
+PeopleDetector.cpp:61: error: ‘alpha’ was not declared in this scope
+PeopleDetector.cpp:64: error: ‘sign’ was not declared in this scope
+PeopleDetector.cpp:67: warning: no return statement in function returning non-void
+make: *** [PeopleDetector.o] Error 1
