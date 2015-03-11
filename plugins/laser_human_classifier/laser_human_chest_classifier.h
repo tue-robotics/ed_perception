@@ -29,14 +29,19 @@ private:
     std::string debug_folder_;   /*!< Path of the debug folder */
 
     // Administration
-    std::string hypotheses_filename_;
-    FILE *f_hypotheses;
+
 
     //People Detector object
-    PeopleDetector pd;
+    mutable PeopleDetector people_detector_;
 
     // Parameters
-    int num_hypotheses_;
+    double people_detector_threshold_;
+    int people_detector_n_hypotheses_;
+    double max_point_distance_;
+    int list_size_;
+    int min_n_points_;  // min_n_points_person
+    double min_segment_size_;
+    std::string hypotheses_filename_;
 
 
 /*
