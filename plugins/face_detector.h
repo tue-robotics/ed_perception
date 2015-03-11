@@ -42,8 +42,8 @@ private:
     cv::Size classif_profile_min_size_;   // Minimum possible object size. Objects smaller than that are ignored.
 
     // Haar cascade classifiers
-    mutable cv::CascadeClassifier classifier_front;
-    mutable cv::CascadeClassifier classifier_profile;
+    mutable cv::CascadeClassifier classifier_front_;
+    mutable cv::CascadeClassifier classifier_profile_;
 
     // detect frontal and profile faces on an image, true if a face was detected
     bool DetectFaces(const cv::Mat &cropped_img,
