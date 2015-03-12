@@ -114,11 +114,13 @@ void LaserHumanChestClassifier::loadConfig(const std::string& config_path) {
 // ----------------------------------------------------------------------------------------------------
 
 
-void LaserHumanChestClassifier::process(ed::EntityConstPtr e, tue::Configuration& result) const{
+void LaserHumanChestClassifier::process(ed::EntityConstPtr e, tue::Configuration& config) const{
     ed::ErrorContext errc("Processing entity in LaserHumanDetector");
 
     if (!init_success_)
         return;
+
+    // ---------- Prepare measurement ----------
 
     sensor_msgs::LaserScan::ConstPtr msg;
 
@@ -159,6 +161,10 @@ void LaserHumanChestClassifier::process(ed::EntityConstPtr e, tue::Configuration
     // Iterate over all segments
     int index_laser_point = 0;
 //    double t2 = ros::Time::now().toSec();
+
+    // ----------------------- Process -----------------------
+
+    std::vector<cv::Point> people_locations;
 
     for (int i=0; i < list_segments->num(); i++)
     {
@@ -216,6 +222,7 @@ void LaserHumanChestClassifier::process(ed::EntityConstPtr e, tue::Configuration
 //                    ev.addProperty("position", pbl::Gaussian(pbl::Vector3(x_pos, y_pos, HARDCODED_Z_OFFSET), cov), msg->header.frame_id);
 //                    ev_vector.push_back(ev);
 //                    ROS_DEBUG("Position person is (%f,%f), #points is %d, size is %f [m]", x_pos, y_pos, s->num(), size_segment);
+                    people_locations.push_back(cv::Point(x_pos, y_pos));
                     std::cout << "[" << module_name_ << "] " << "Person found at (" << x_pos << "," << y_pos << "), #point"
                                  << s->num() << " and size " << size_segment << std::endl;
 
@@ -245,6 +252,31 @@ void LaserHumanChestClassifier::process(ed::EntityConstPtr e, tue::Configuration
 
 //    ROS_INFO("Full ppl_detection took %f [ms] for %zu ppl", 1000*(ros::Time::now().toSec()-t_start), ev_vector.size());
 
+    // ----------------------- Assert results -----------------------
+
+    // create group if it doesnt exist
+    if (!config.readGroup("perception_result", tue::OPTIONAL))
+    {
+        config.writeGroup("perception_result");
+    }
+
+    config.writeGroup("laser_human_chest_classifier");
+
+    if (people_locations.size() > 0){
+        config.writeArray("detections");
+        for (uint j = 0; j < people_locations.size(); j++){
+            config.addArrayItem();
+            config.setValue("x", people_locations[j].x);
+            config.setValue("y", people_locations[j].y);
+            config.endArrayItem();
+        }
+        config.endArray();
+    }
+
+    config.endGroup();  // close face_recognizer group
+    config.endGroup();  // close perception_result group
+
+
     // Delete the list of segments
     list_segments->setAutoDelete(true);
     delete list_segments;
@@ -253,7 +285,6 @@ void LaserHumanChestClassifier::process(ed::EntityConstPtr e, tue::Configuration
     // Free memory
     delete [] ranges;
     delete [] angles;
-
 }
 
 
