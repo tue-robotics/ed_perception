@@ -138,13 +138,16 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
 
     std::vector<cv::Rect> faces_front;
     std::vector<cv::Rect> faces_profile;
-    uint min_x, max_x, min_y, max_y;
+    int min_x, max_x, min_y, max_y;
 
     // create a view
     rgbd::View view(*msr->image(), msr->image()->getRGBImage().cols);
 
     // get color image
     const cv::Mat& color_image = msr->image()->getRGBImage();
+
+    // get color image
+    const cv::Mat& depth_image = msr->image()->getDepthImage();
 
     // crop it to match the view
     cv::Mat cropped_image(color_image(cv::Rect(0,0,view.getWidth(), view.getHeight())));
@@ -187,16 +190,40 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
 
     // Detect faces in the measurment and assert the results
     if(DetectFaces(cropped_image(bouding_box), faces_front, faces_profile)){
+        geo::Vector3 projection;
+        geo::Vector3 point_map;
 
         // if front faces were detected
         if (faces_front.size() > 0){
             result.writeArray("faces_front");
             for (uint j = 0; j < faces_front.size(); j++) {
+
                 result.addArrayItem();
-                result.setValue("x", faces_front[j].x + (int)min_x);
-                result.setValue("y", faces_front[j].y + (int)min_y);
+                // add 2D location of the face
+                result.setValue("x", faces_front[j].x + min_x);
+                result.setValue("y", faces_front[j].y + min_y);
                 result.setValue("width", faces_front[j].width);
                 result.setValue("height", faces_front[j].height);
+
+                // calculate the center point of the face
+                cv::Point2i p_2d(faces_front[j].x + min_x + faces_front[j].width/2,
+                                 faces_front[j].y + min_y + faces_front[j].height/2);
+
+                cv::Mat face_area = depth_image(faces_front[j]);
+                float avg_depth = GetAverageDist(face_area);
+
+//                cv::imshow("asd",face_area);
+//                cv::waitKey(3);
+
+                projection = view.getRasterizer().project2Dto3D(p_2d.x, p_2d.y) * avg_depth;
+                point_map = msr->sensorPose() * projection;
+
+//                std::cout << "p_map " << point_map.x << ", " << point_map.y << ", " << point_map.z << std::endl;
+                // add 3D location of the face
+                result.setValue("map_x", point_map.x);
+                result.setValue("map_y", point_map.y);
+                result.setValue("map_z", point_map.z);
+
                 result.endArrayItem();
             }
             result.endArray();
@@ -207,10 +234,27 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
             result.writeArray("faces_profile");
             for (uint j = 0; j < faces_profile.size(); j++) {
                 result.addArrayItem();
-                result.setValue("x", faces_profile[j].x + (int)min_x);
-                result.setValue("y", faces_profile[j].y + + (int)min_y);
+                // add 2D location of the face
+                result.setValue("x", faces_profile[j].x + min_x);
+                result.setValue("y", faces_profile[j].y + + min_y);
                 result.setValue("width", faces_profile[j].width);
                 result.setValue("height", faces_profile[j].height);
+
+                // calculate the center point of the face
+                cv::Point2i p_2d(faces_profile[j].x + min_x + faces_profile[j].width/2,
+                                 faces_profile[j].y + min_y + faces_profile[j].height/2);
+
+                cv::Mat face_area = depth_image(faces_profile[j]);
+                float avg_depth = GetAverageDist(face_area);
+
+                projection = view.getRasterizer().project2Dto3D(p_2d.x, p_2d.y) * avg_depth;
+                point_map = msr->sensorPose() * projection;
+
+                // add 3D location of the face
+                result.setValue("map_x", point_map.x);
+                result.setValue("map_y", point_map.y);
+                result.setValue("map_z", point_map.z);
+
                 result.endArrayItem();
             }
             result.endArray();
@@ -231,6 +275,35 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
 
     result.endGroup();  // close face_detector group
     result.endGroup();  // close perception_result group
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+
+float FaceDetector::GetAverageDist(cv::Mat& depth_img) const{
+
+    float median = 0;
+    std::vector<float> depths;
+
+    // fill vector with depth values
+    for (uint x = 0 ; x < depth_img.rows ; x++){
+        for (uint y = 0 ; y < depth_img.cols ; y++){
+            depths.push_back(depth_img.at<float>(y,x));
+        }
+    }
+
+    // sort and pick the center value
+    std::sort(depths.begin(),depths.end());
+
+    if (depths.size() % 2 == 0){
+        median = (depths[depths.size()/2-1] + depths[depths.size()/2]) / 2;
+    }
+    else{
+        median = depths[depths.size() / 2];
+    }
+
+    return median;
 }
 
 

@@ -59,6 +59,8 @@ private:
     // create a new mask based on a blured version of the original mask, smoother and expanded
     void OptimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
 
+    float GetAverageDist(cv::Mat& depth_img) const;
+
 /*
 * ###########################################
 *  				    PUBLIC
