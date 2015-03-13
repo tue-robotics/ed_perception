@@ -212,13 +212,9 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
                 cv::Mat face_area = depth_image(faces_front[j]);
                 float avg_depth = GetAverageDist(face_area);
 
-//                cv::imshow("asd",face_area);
-//                cv::waitKey(3);
-
                 projection = view.getRasterizer().project2Dto3D(p_2d.x, p_2d.y) * avg_depth;
                 point_map = msr->sensorPose() * projection;
 
-//                std::cout << "p_map " << point_map.x << ", " << point_map.y << ", " << point_map.z << std::endl;
                 // add 3D location of the face
                 result.setValue("map_x", point_map.x);
                 result.setValue("map_y", point_map.y);
@@ -246,6 +242,7 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
 
                 cv::Mat face_area = depth_image(faces_profile[j]);
                 float avg_depth = GetAverageDist(face_area);
+
 
                 projection = view.getRasterizer().project2Dto3D(p_2d.x, p_2d.y) * avg_depth;
                 point_map = msr->sensorPose() * projection;
