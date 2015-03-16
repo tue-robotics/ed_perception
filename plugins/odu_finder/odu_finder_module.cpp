@@ -8,6 +8,7 @@
 
 #include "ed/measurement.h"
 #include <ed/entity.h>
+#include <ed/error_context.h>
 
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
@@ -65,6 +66,7 @@ void ODUFinderModule::loadConfig(const std::string& config_path)
 
 void ODUFinderModule::process(ed::EntityConstPtr e, tue::Configuration& result) const
 {
+    ed::ErrorContext errc("Processing entity in ODUFinderModule");
 
     if (!init_success_)
         return;
