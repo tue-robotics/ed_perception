@@ -62,7 +62,6 @@ void FaceRecognition::configure(tue::Configuration config) {
     if (!config.value("saved_faces_dir", saved_faces_dir_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'saved_faces_dir' not found. Using default: " << saved_faces_dir_ << std::endl;
 
-
     if (!config.value("use_Eigen", using_Eigen_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'use_Eigen' not found. Using default: " << using_Eigen_ << std::endl;
 
@@ -201,6 +200,27 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
     models_[EIGEN] = cv::createEigenFaceRecognizer();
     models_[FISHER] = cv::createFisherFaceRecognizer();
     models_[LBPH] = cv::createLBPHFaceRecognizer();
+
+    // ---------------- DEBUGGGGGGGG
+
+    // Get the path to the CSV file and images
+//    saved_faces_dir_ = (std::string)getenv("HOME") + "/faces_learned/";
+//    std::string csv_file_path = saved_faces_dir_ + "face_models.cvs";
+
+//    // Load faces from CSV file
+//    if (!csv_file_path.empty()){
+//        readCSV(csv_file_path, images_, labels_, labels_info_);
+//        trainRecognizers(images_, labels_, models_);
+//    }else {
+//        std::cout << "[" << module_name_ << "] " << "No CSV faces file was loaded! Recognizers not trained" << std::endl;
+//    }
+
+//    lbph_treshold_ = 80;
+
+//    init_success_ = true;
+
+//    std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
+
 }
 
 
@@ -269,53 +289,47 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
     // ----------------------- Process -----------------------
 
     // face recognition
-    cv::Rect face_rect;
-    cv::Mat face_aligned;
-    std::string face_match_result;
-    double face_confidence_match;
+    std::vector<FaceInfo> faces_detected;
 
     // color recognition, for clothes
     cv::Mat entity_histogram;
 
-    std::vector<int> predicted_label;
-    std::vector<double> confidence;
-    std::vector<std::string> predicted_name;
-
-    // initialize values
-    predicted_label.resize(4);
-    confidence.resize(4);
-    predicted_name.resize(4);
-    predicted_label[EIGEN] = -1;
-    predicted_label[FISHER] = -1;
-    predicted_label[LBPH] = -1;
-    predicted_label[HIST] = -1;
-    confidence[EIGEN] = 0.0;
-    confidence[FISHER] = 0.0;
-    confidence[LBPH] = 0.0;
-    confidence[HIST] = 0.0;
-
-    // get location of face
-    if (!getFaceInfo(config.limitScope(), face_rect)){
+    // get location of faces, if there are none then return
+    if (!getFacesInfo(config.limitScope(), faces_detected)){
         return;
     }
 
     // get color information from the entity config and creat a histogram with it
     getEntityHistogram(config.limitScope(), entity_histogram);
 
-    // align, grayscale and resize face
-    if (!alignFace(cropped_image, face_rect, face_target_size_, face_horiz_offset_, face_vert_offset_, face_aligned))
-        std::cout << "[" << module_name_ << "] " << "Could not align face!" << std::endl;
+    // pre-process every face
+    for (uint i=0 ; i<faces_detected.size() ; i++){
+        // align, grayscale and resize face
+        if (!alignFace(cropped_image, faces_detected[i].features, face_target_size_, face_horiz_offset_, face_vert_offset_, faces_detected[i].face_img))
+            std::cout << "[" << module_name_ << "] " << "Could not align face!" << std::endl;
+    }
 
 
-    // ---------- Learning Mode ----------
+    // ---------- Learning (if active)----------
     if (learning_mode_){
+        int biggest_i = 0;
+        int biggest_area = 0;
+
         ed::ErrorContext errc("Learning mode started in FaceRecognition");
 
-        face_match_result = learning_name_;
-        face_confidence_match = 0;
+//        face_match_result = learning_name_;
+//        face_confidence_match = 0;
+
+        // get biggest face available
+        for (uint i=0 ; i<faces_detected.size() ; i++){
+            if (faces_detected[i].features.width * faces_detected[i].features.height > biggest_area){
+                biggest_area = faces_detected[i].features.width * faces_detected[i].features.height;
+                biggest_i = i;
+            }
+        }
 
         // true when learning is complete
-        if (learnFace(learning_name_, last_label_, face_aligned, entity_histogram, n_faces_current_, images_, labels_, labels_info_)){
+        if (learnFace(learning_name_, last_label_, faces_detected[biggest_i].face_img, entity_histogram, n_faces_current_, images_, labels_, labels_info_)){
             ed_perception::FaceLearningResult learning_result_;
 
             std::cout << "[" << module_name_ << "] " << "Learning complete!" << std::endl;
@@ -354,33 +368,54 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
     ed::ErrorContext errc2("Predicting face");
 
-    // perform recognition on each module
-    if (using_Eigen_ && trained_Eigen_){
-        models_[EIGEN]->predict(face_aligned, predicted_label[EIGEN], confidence[EIGEN]);
+    for (uint i=0 ; i<faces_detected.size() ; i++){
+
+        // perform recognition on each module
+        if (using_Eigen_ && trained_Eigen_){
+            models_[EIGEN]->predict(faces_detected[i].face_img,
+                                    faces_detected[i].predicted_label[EIGEN],
+                                    faces_detected[i].confidence[EIGEN]);
+        }
+
+        if (using_Fisher_ && trained_Fisher_){
+            models_[FISHER]->predict(faces_detected[i].face_img,
+                                     faces_detected[i].predicted_label[FISHER],
+                                     faces_detected[i].confidence[FISHER]);
+        }
+
+        if (using_LBPH_ && trained_LBPH_){
+            models_[LBPH]->predict(faces_detected[i].face_img,
+                                   faces_detected[i].predicted_label[LBPH],
+                                   faces_detected[i].confidence[LBPH]);
+        }
+
+        if (using_histogram_){
+            matchHistograms(entity_histogram,
+                            learned_histograms_,
+                            faces_detected[i].predicted_label[HIST],
+                            faces_detected[i].confidence[HIST]);
+        }
+
+        // fill labels with the predicted name, in case there was a prediction
+        faces_detected[i].predicted_name[EIGEN] = faces_detected[i].predicted_label[EIGEN] > -1 ?
+                    labels_info_.at(faces_detected[i].predicted_label[EIGEN]) : "";
+
+        faces_detected[i].predicted_name[FISHER] = faces_detected[i].predicted_label[FISHER] > -1 ?
+                    labels_info_.at(faces_detected[i].predicted_label[FISHER]) : "";
+
+        faces_detected[i].predicted_name[LBPH] = faces_detected[i].predicted_label[LBPH] > -1 ?
+                    labels_info_.at(faces_detected[i].predicted_label[LBPH]) : "";
+
+        faces_detected[i].predicted_name[HIST] = faces_detected[i].predicted_label[HIST] > -1 ?
+                    labels_info_.at(faces_detected[i].predicted_label[HIST]) : "";
+
+
+        // match different classifications into a single result
+        matchClassifications(faces_detected[i].predicted_name,
+                             faces_detected[i].confidence,
+                             faces_detected[i].face_match_result,
+                             faces_detected[i].face_confidence_match);
     }
-
-    if (using_Fisher_ && trained_Fisher_){
-        models_[FISHER]->predict(face_aligned, predicted_label[FISHER], confidence[FISHER]);
-    }
-
-    if (using_LBPH_ && trained_LBPH_){
-        models_[LBPH]->predict(face_aligned, predicted_label[LBPH], confidence[LBPH]);
-    }
-
-    if (using_histogram_){
-        matchHistograms(entity_histogram, learned_histograms_, predicted_label[HIST], confidence[HIST]);
-    }
-
-    // fill labels with the predicted name, in case there was a prediction
-    predicted_name[EIGEN] = predicted_label[EIGEN] > -1 ? labels_info_.at(predicted_label[EIGEN]) : "";
-    predicted_name[FISHER] = predicted_label[FISHER] > -1 ? labels_info_.at(predicted_label[FISHER]) : "";
-    predicted_name[LBPH] = predicted_label[LBPH] > -1 ? labels_info_.at(predicted_label[LBPH]) : "";
-    predicted_name[HIST] = predicted_label[HIST] > -1 ? labels_info_.at(predicted_label[HIST]) : "";
-
-
-    // match different classifications into a single result
-    matchClassifications(predicted_name, confidence, face_match_result, face_confidence_match);
-
 
     // ----------------------- Assert results -----------------------
 
@@ -392,45 +427,59 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
     config.writeGroup("face_recognizer");
 
-    // only publish a name if the error is bellow the treshold
-    if (!face_match_result.empty() && face_confidence_match < recognition_treshold_){
-        config.setValue("label", face_match_result);
-        config.setValue("score", face_confidence_match);
-    }else{
-        config.setValue("label", "");
-        config.setValue("score", 0);
-    }
+    if (faces_detected.size() > 0){
+        config.writeArray("face");
 
-    if (using_Eigen_ && predicted_label[EIGEN] > -1){
-        config.writeGroup("eigen");
-        config.setValue("name", predicted_name[EIGEN]);
-        config.setValue("score", confidence[EIGEN]);
-        config.endGroup();  // close eigen group
-    }
+        for (uint i=0 ; i<faces_detected.size() ; i++){
+            config.addArrayItem();
 
-    if (using_Fisher_ && predicted_label[FISHER] > -1){
-        config.writeGroup("fisher");
-        config.setValue("name", predicted_name[FISHER]);
-        config.setValue("score", confidence[FISHER]);
-        config.endGroup();  // close fisher group
-    }
+            // only publish a name if the error is bellow the treshold
+            if (!faces_detected[i].face_match_result.empty() && faces_detected[i].face_confidence_match < recognition_treshold_){
+                config.setValue("label", faces_detected[i].face_match_result);
+                config.setValue("score", faces_detected[i].face_confidence_match);
+                config.setValue("index", faces_detected[i].index);
+            }else{
+                config.setValue("label", "");
+                config.setValue("score", 0);
+                config.setValue("index", faces_detected[i].index);
+            }
 
-    if (using_LBPH_ && predicted_label[LBPH] > -1){
-        config.writeGroup("lbph");
-        config.setValue("name", predicted_name[LBPH]);
-        config.setValue("score", confidence[LBPH]);
-        config.endGroup();  // close lbph group
+            if (using_Eigen_ && faces_detected[i].predicted_label[EIGEN] > -1){
+                config.writeGroup("eigen");
+                config.setValue("name", faces_detected[i].predicted_name[EIGEN]);
+                config.setValue("score", faces_detected[i].confidence[EIGEN]);
+                config.endGroup();  // close eigen group
+            }
+
+            if (using_Fisher_ && faces_detected[i].predicted_label[FISHER] > -1){
+                config.writeGroup("fisher");
+                config.setValue("name", faces_detected[i].predicted_name[FISHER]);
+                config.setValue("score", faces_detected[i].confidence[FISHER]);
+                config.endGroup();  // close fisher group
+            }
+
+            if (using_LBPH_ && faces_detected[i].predicted_label[LBPH] > -1){
+                config.writeGroup("lbph");
+                config.setValue("name", faces_detected[i].predicted_name[LBPH]);
+                config.setValue("score", faces_detected[i].confidence[LBPH]);
+                config.endGroup();  // close lbph group
+            }
+
+            config.endArrayItem();
+        }
+
+        config.endArray();
     }
 
     config.endGroup();  // close face_recognizer group
     config.endGroup();  // close perception_result group
 
     if (debug_mode_){
-        showDebugWindow(face_aligned,
-                        predicted_name,
-                        confidence,
-                        face_match_result,
-                        face_confidence_match);
+//        showDebugWindow(face_aligned,
+//                        predicted_name,
+//                        confidence,
+//                        face_match_result,
+//                        face_confidence_match);
     }
 }
 
@@ -828,27 +877,27 @@ bool FaceRecognition::isFaceFound(tue::Configuration config) const{
 // ----------------------------------------------------------------------------------------------------
 
 
-bool FaceRecognition::getFaceInfo(tue::Configuration config, cv::Rect& faceRect) const{
+bool FaceRecognition::getFacesInfo(tue::Configuration config, std::vector<FaceInfo>& faces) const{
 
-    int topX = 0, topY= 0, width= 0, height= 0;
+    int topX = 0, topY= 0, width= 0, height= 0, index = 0;
 
     if (!config.readGroup("perception_result", tue::OPTIONAL)) return false;
-
     if (!config.readGroup("face_detector", tue::OPTIONAL)) return false;
-
     if (!config.readArray("faces_front", tue::OPTIONAL)) return false;
 
-    // get the region of the first face found in the config
     while(config.nextArrayItem()){
-        if (!config.value("x", topX) || !config.value("y", topY) || !config.value("height", height) || !config.value("width", width)){
-           std::cout << "[" << module_name_ << "] " << "Incorrect construction of face information" << std::endl;
-           return false;
+        // if all info is available, then save it
+        if (config.value("x", topX) && config.value("y", topY) && config.value("height", height) && config.value("width", width) &&
+                config.value("index", index)){
+
+           faces.push_back(FaceInfo(index, cv::Rect(topX, topY, width, height)));
         }
     }
 
-    faceRect = cv::Rect(topX, topY, width, height);
-
-    return true;
+    if (faces.size() > 0)
+        return true;
+    else
+        return false;
 }
 
 

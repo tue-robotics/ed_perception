@@ -43,12 +43,8 @@ void FaceDetector::configure(tue::Configuration config) {
     if (!config.value("cascade_front_files_path", cascade_front_files_path_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'cascade_front_files_path' not found. Using default: " << cascade_front_files_path_ << std::endl;
 
-    cascade_front_files_path_ = module_path_ + cascade_front_files_path_;
-
     if (!config.value("cascade_profile_front_path", cascade_profile_files_path_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'cascade_profile_front_path' not found. Using default: " << cascade_profile_files_path_ << std::endl;
-
-    cascade_profile_files_path_ = module_path_ + cascade_profile_files_path_;
 
     if (!config.value("debug_mode", debug_mode_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'debug_mode' not found. Using default: " << debug_mode_ << std::endl;
@@ -67,6 +63,9 @@ void FaceDetector::configure(tue::Configuration config) {
 
     if (!config.value("classif_profile_min_neighbours", classif_profile_min_neighbours_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'classif_profile_min_neighbours' not found. Using default: " << classif_profile_min_neighbours_ << std::endl;
+
+    cascade_front_files_path_ = module_path_ + cascade_front_files_path_;
+    cascade_profile_files_path_ = module_path_ + cascade_profile_files_path_;
 
     if (debug_mode_){
         // clean the debug folder if debugging is active
@@ -116,6 +115,21 @@ void FaceDetector::loadConfig(const std::string& config_path) {
     classif_profile_min_neighbours_ = 3;
     classif_profile_min_size_ = cv::Size(20,20);
     debug_folder_ = "/tmp/face_detector/";
+
+
+    // --------------DEBUGGGGGGGG
+//    cascade_front_files_path_ = module_path_ + cascade_front_files_path_;
+//    cascade_profile_files_path_ = module_path_ + cascade_profile_files_path_;
+
+//    // check if the cascade file exist so they can be loaded later
+//    if (!boost::filesystem::exists(cascade_front_files_path_) || !boost::filesystem::exists(cascade_profile_files_path_)){
+//        init_success_ = false;
+//        std::cout << "[" << module_name_ << "] " << "Couldn't find cascade files for detection (" << cascade_profile_files_path_
+//                  <<  "). Face dection will not work!" << std::endl;
+//    }else{
+//        init_success_ = true;
+//        std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
+//    }
 }
 
 
@@ -139,6 +153,8 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
     std::vector<cv::Rect> faces_front;
     std::vector<cv::Rect> faces_profile;
     int min_x, max_x, min_y, max_y;
+    int face_counter = 0;
+
 
     // create a view
     rgbd::View view(*msr->image(), msr->image()->getRGBImage().cols);
@@ -187,7 +203,6 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
 
     result.writeGroup("face_detector");
 
-
     // Detect faces in the measurment and assert the results
     if(DetectFaces(cropped_image(bouding_box), faces_front, faces_profile)){
         geo::Vector3 projection;
@@ -199,6 +214,9 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
             for (uint j = 0; j < faces_front.size(); j++) {
 
                 result.addArrayItem();
+
+                result.setValue("index", face_counter);
+
                 // add 2D location of the face
                 result.setValue("x", faces_front[j].x + min_x);
                 result.setValue("y", faces_front[j].y + min_y);
@@ -221,6 +239,7 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
                 result.setValue("map_z", point_map.z);
 
                 result.endArrayItem();
+                face_counter++;
             }
             result.endArray();
         }
@@ -230,6 +249,9 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
             result.writeArray("faces_profile");
             for (uint j = 0; j < faces_profile.size(); j++) {
                 result.addArrayItem();
+
+                result.setValue("index", face_counter);
+
                 // add 2D location of the face
                 result.setValue("x", faces_profile[j].x + min_x);
                 result.setValue("y", faces_profile[j].y + + min_y);
@@ -253,6 +275,7 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
                 result.setValue("map_z", point_map.z);
 
                 result.endArrayItem();
+                face_counter++;
             }
             result.endArray();
         }

@@ -38,6 +38,52 @@ enum Recognizers{
     HIST = 3
 };
 
+struct FaceInfo
+{
+    int index;
+    cv::Rect features;
+    cv::Mat face_img;
+
+    std::vector<int> predicted_label;
+    std::vector<std::string> predicted_name;
+    std::vector<double> confidence;
+
+    std::string face_match_result;
+    double face_confidence_match;
+
+    void initalize(){
+        // initialize values
+        predicted_label.resize(4);
+        confidence.resize(4);
+        predicted_name.resize(4);
+
+        predicted_label[EIGEN] = -1;
+        predicted_label[FISHER] = -1;
+        predicted_label[LBPH] = -1;
+        predicted_label[HIST] = -1;
+
+        confidence[EIGEN] = 0.0;
+        confidence[FISHER] = 0.0;
+        confidence[LBPH] = 0.0;
+        confidence[HIST] = 0.0;
+
+        predicted_name[EIGEN] = "";
+        predicted_name[FISHER] = "";
+        predicted_name[LBPH] = "";
+        predicted_name[HIST] = "";
+
+        face_match_result = "";
+        face_confidence_match = 0;
+    }
+
+    FaceInfo(){this->initalize();}
+
+    FaceInfo(int index, cv::Rect face_rect){
+        features = face_rect;
+        this->index = index;
+        this->initalize();
+    }
+};
 
 /*
  * ###########################################
@@ -112,7 +158,7 @@ private:
     bool isFaceFound(tue::Configuration config) const;
 
     // reads the config to get the information about a face, such as face location and eye location
-    bool getFaceInfo(tue::Configuration config, cv::Rect& faceRect) const;
+    bool getFacesInfo(tue::Configuration config, std::vector<FaceInfo>& faces) const;
 
     // process face for recognition, alignement, grayscale, histogram equalization and cutting
     bool alignFace(cv::Mat origImg, cv::Rect faceLoc, int targetSize, float horizOffset, float vertOffset, cv::Mat& faceImg) const;
