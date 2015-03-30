@@ -233,6 +233,10 @@ void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) con
                 projection = view.getRasterizer().project2Dto3D(p_2d.x, p_2d.y) * avg_depth;
                 point_map = msr->sensorPose() * projection;
 
+                if (avg_depth == 0){
+                    std::cout << "[" << module_name_ << "] " << "Could not calculate face's average depth. Map coordinates might be invalid!" << std::endl;
+                }
+
                 // add 3D location of the face
                 result.setValue("map_x", point_map.x);
                 result.setValue("map_y", point_map.y);
