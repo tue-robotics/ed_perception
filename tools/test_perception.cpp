@@ -1,4 +1,4 @@
-#include <ed/perception_modules/perception_module.h>
+#include <ed/perception/module.h>
 //#include <ed/perception/aggregator.h>
 
 #include <ed/entity.h>
@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
 
     // - - - - -
 
-    std::vector<ed::PerceptionModulePtr> modules;
+    std::vector<boost::shared_ptr<ed::perception::Module> > modules;
 
     std::vector<class_loader::ClassLoader*> perception_loaders(perception_libs.size(), 0);
     for(unsigned int i = 0; i < perception_libs.size(); ++i)
@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
         class_loader::ClassLoader* class_loader = new class_loader::ClassLoader(perception_libs[i]);
         perception_loaders[i] = class_loader;
 
-        ed::PerceptionModulePtr perception_mod = ed::loadPerceptionModule(class_loader);
+        boost::shared_ptr<ed::perception::Module> perception_mod = ed::perception::loadPerceptionModule(class_loader);
         if (perception_mod)
         {
             modules.push_back(perception_mod);
@@ -111,10 +111,16 @@ int main(int argc, char **argv) {
         std::cout << "    " << filename.withoutExtension() << std::endl;
         std::cout << "------------------------------------------------------------" << std::endl << std::endl;
 
+        ed::perception::WorkerInput input;
+        input.entity = e;
+
+        ed::perception::WorkerOutput output;
         tue::Configuration result;
-        for(std::vector<ed::PerceptionModulePtr>::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
+        output.data = result;
+
+        for(std::vector<boost::shared_ptr<ed::perception::Module> >::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
         {
-            (*it_mod)->process(e, result);
+            (*it_mod)->process(input, output);
 
             // Display the result
         }
@@ -130,7 +136,7 @@ int main(int argc, char **argv) {
         std::cout << "No measurements found." << std::endl;
 
     // Delete all perception modules
-    for(std::vector<ed::PerceptionModulePtr>::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
+    for(std::vector<boost::shared_ptr<ed::perception::Module> >::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
         it_mod->reset();
 
     // Delete the class loaders (which will unload the libraries)

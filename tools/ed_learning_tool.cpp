@@ -5,7 +5,8 @@
 */
 
 // ed includes
-#include <ed/perception_modules/perception_module.h>
+#include <ed/perception/module.h>
+
 #include <ed/entity.h>
 
 // Measurement data structures
@@ -337,7 +338,7 @@ int main(int argc, char **argv) {
 
     std::cout << "[" << module_name_ << "] " << "Loading perception libraries" << std::endl;
 
-    std::vector<ed::PerceptionModulePtr> modules;
+    std::vector<boost::shared_ptr<ed::perception::Module> > modules;
 
     std::vector<class_loader::ClassLoader*> perception_loaders(perception_libs.size(), 0);
     for(unsigned int i = 0; i < perception_libs.size(); ++i)
@@ -345,7 +346,7 @@ int main(int argc, char **argv) {
         class_loader::ClassLoader* class_loader = new class_loader::ClassLoader(perception_libs[i]);
         perception_loaders[i] = class_loader;
 
-        ed::PerceptionModulePtr perception_mod = ed::loadPerceptionModule(class_loader);
+        boost::shared_ptr<ed::perception::Module> perception_mod = ed::perception::loadPerceptionModule(class_loader);
         if (perception_mod)
         {
             modules.push_back(perception_mod);
@@ -409,11 +410,18 @@ int main(int argc, char **argv) {
         e->addMeasurement(msr);
 
         // ---------------- PROCESS MEASUREMENTS WITH LIBRARIES----------------
-        for(std::vector<ed::PerceptionModulePtr>::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
+
+        ed::perception::WorkerInput input;
+        input.entity = e;
+
+        ed::perception::WorkerOutput output;
+        tue::Configuration entity_conf;
+        output.data = entity_conf;
+
+        for(std::vector<boost::shared_ptr<ed::perception::Module> >::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
         {
-            tue::Configuration entity_conf;
-            (*it_mod)->process(e, entity_conf);
-            parse_config(entity_conf, (*it_mod)->name(), model_name, parsed_conf);
+            (*it_mod)->process(input, output);
+            parse_config(output.data, (*it_mod)->name(), model_name, parsed_conf);
         }
 
         // send the object image to the OduFinder database
@@ -439,7 +447,7 @@ int main(int argc, char **argv) {
 
 
     // Delete all perception modules
-    for(std::vector<ed::PerceptionModulePtr>::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
+    for(std::vector<boost::shared_ptr<ed::perception::Module> >::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
         it_mod->reset();
 
     // Delete the class loaders (which will unload the libraries)

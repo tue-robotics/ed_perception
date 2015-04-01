@@ -193,11 +193,11 @@ add_executable(view-measurement tools/view_measurement.cpp)
 target_link_libraries(view-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(test-perception tools/test_perception.cpp)
-target_link_libraries(test-perception ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(test-perception ed_perception2 ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(create-rgbd-measurement tools/create_rgbd_measurement.cpp)
 target_link_libraries(create-rgbd-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(ed-learning-tool tools/ed_learning_tool.cpp)
-target_link_libraries(ed-learning-tool odu_finder_db_builder ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(ed-learning-tool ed_perception2 odu_finder_db_builder ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
