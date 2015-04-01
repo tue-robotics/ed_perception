@@ -4,6 +4,8 @@
 #include <ed/entity.h>
 #include <ed/measurement.h>
 
+#include <ed/error_context.h>
+
 namespace ed
 {
 
@@ -71,7 +73,11 @@ void Worker::run()
 
     // Do the actual processing
     for(std::vector<boost::shared_ptr<Module> >::const_iterator it = modules_.begin(); it != modules_.end(); ++it)
+    {
+        std::string context_msg = "Perception module '" + (*it)->name() + "', entity '" + entity_->id().str() + "'";
+        ed::ErrorContext errc(context_msg.c_str());
         (*it)->process(input, output);
+    }
 
     // Set state to DONE
     state_ = DONE;

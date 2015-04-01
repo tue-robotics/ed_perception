@@ -5,6 +5,7 @@
 #include <ed/world_model.h>
 #include <ed/entity.h>
 #include <ed/update_request.h>
+#include <ed/error_context.h>
 
 #include <tue/filesystem/path.h>
 
@@ -109,6 +110,7 @@ void PerceptionPlugin::initialize(ed::InitData& init)
                 // Configure the module if there is a 'parameters' group in the config
                 if (config.readGroup("parameters"))
                 {
+                    ed::ErrorContext errc("Configuring perception module", perception_module->name().c_str());
                     perception_module->configure(config.limitScope());
                     config.endGroup();
                 }

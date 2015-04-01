@@ -6,6 +6,8 @@
 #include <ros/package.h>
 #include <tue/filesystem/crawler.h>
 
+#include <ed/error_context.h>
+
 namespace ed
 {
 
@@ -45,7 +47,10 @@ boost::shared_ptr<Module> loadPerceptionModule(class_loader::ClassLoader* loader
 
     std::string model_list_path = object_models_path + "/configs/model_lists/" + model_list_name;
 
-    perception_mod->loadConfig(config_path);
+    {
+        ed::ErrorContext errc("Calling 'loadConfig' on perception module", perception_mod->name().c_str());
+        perception_mod->loadConfig(config_path);
+    }
 
     if(!model_list_name.empty()){
         if(!loadModelList(model_list_path, model_list))
@@ -68,6 +73,7 @@ boost::shared_ptr<Module> loadPerceptionModule(class_loader::ClassLoader* loader
 
         if (full_model_path.isDirectory() && full_model_path.exists() && in_model_list)
         {
+            ed::ErrorContext errc("Calling 'loadModel' on perception module", perception_mod->name().c_str());
             perception_mod->loadModel(model_name, full_model_path.string());
         }
     }
