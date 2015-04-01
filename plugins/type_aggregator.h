@@ -7,7 +7,7 @@
 #ifndef ED_TYPE_AGGREGATOR_H_
 #define ED_TYPE_AGGREGATOR_H_
 
-#include <ed/perception_modules/perception_module.h>
+#include <ed/perception/module.h>
 
 // OpenCV includes
 #include <opencv/cv.h>
@@ -15,7 +15,7 @@
 #include <cv_bridge/cv_bridge.h>
 
 
-class TypeAggregator : public ed::PerceptionModule
+class TypeAggregator : public ed::perception::Module
 {
     struct DictionaryMatch{
         uint matches;
@@ -54,7 +54,7 @@ public:
 
     void loadConfig(const std::string& config_path);
 
-    void process(ed::EntityConstPtr e, tue::Configuration& result) const;
+    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const;
 
     void configure(tue::Configuration config);
 

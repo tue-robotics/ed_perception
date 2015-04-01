@@ -20,7 +20,7 @@
 // ----------------------------------------------------------------------------------------------------
 
 OpenBrEd::OpenBrEd() :
-    PerceptionModule("face_detector"),
+    ed::perception::Module("face_detector"),
     init_success_(false)
 {
 //    br::Context::finalize();
@@ -88,9 +88,12 @@ void OpenBrEd::loadConfig(const std::string& config_path) {
 // ----------------------------------------------------------------------------------------------------
 
 
-void OpenBrEd::process(ed::EntityConstPtr e, tue::Configuration& config) const{
+void OpenBrEd::process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const{
 
     ed::ErrorContext errc("Processing entity in OpenBrEd");
+
+    const ed::EntityConstPtr& e = input.entity;
+    tue::Configuration& config = output.data;
 
     if (!init_success_)
         return;

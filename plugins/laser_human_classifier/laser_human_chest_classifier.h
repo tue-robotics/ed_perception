@@ -7,13 +7,14 @@
 #ifndef LASER_HUMAN_CHEST_CLASSIFIER_H_
 #define LASER_HUMAN_CHEST_CLASSIFIER_H_
 
-#include <ed/perception_modules/perception_module.h>
+#include <ed/perception/module.h>
 
 // People detector
 #include <PeopleDetector.h>
 
 
-class LaserHumanChestClassifier : public ed::PerceptionModule{
+class LaserHumanChestClassifier : public ed::perception::Module
+{
 /*
  * ###########################################
  *  				PRIVATE
@@ -57,7 +58,7 @@ public:
 
     void loadConfig(const std::string& config_path);
 
-    void process(ed::EntityConstPtr e, tue::Configuration& result) const;
+    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const;
 
     void configure(tue::Configuration config);
 

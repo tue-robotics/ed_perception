@@ -7,12 +7,7 @@
 #ifndef ED_PERCEPTION_SIZE_MATCHER_H_
 #define ED_PERCEPTION_SIZE_MATCHER_H_
 
-#include <ed/perception_modules/perception_module.h>
-
-namespace ed
-{
-namespace perception
-{
+#include <ed/perception/module.h>
 
 struct ObjectSize
 {
@@ -43,7 +38,7 @@ struct ObjectSize
 // ##################################################################################
 
 
-class SizeMatcher : public PerceptionModule
+class SizeMatcher : public ed::perception::Module
 {
 
 public:
@@ -56,7 +51,7 @@ public:
 
     void loadConfig(const std::string& config_path);
 
-    void process(ed::EntityConstPtr e, tue::Configuration& result) const;
+    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const;
 
     void configure(tue::Configuration config);
 
@@ -73,9 +68,5 @@ private:
 
     bool loadLearnedModel(std::string path, std::string model_name);
 };
-
-}
-
-}
 
 #endif

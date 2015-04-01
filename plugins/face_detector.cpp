@@ -19,7 +19,7 @@
 // ----------------------------------------------------------------------------------------------------
 
 FaceDetector::FaceDetector() :
-    PerceptionModule("face_detector"),
+    ed::perception::Module("face_detector"),
     init_success_(false)
 {
 
@@ -136,9 +136,12 @@ void FaceDetector::loadConfig(const std::string& config_path) {
 // ----------------------------------------------------------------------------------------------------
 
 
-void FaceDetector::process(ed::EntityConstPtr e, tue::Configuration& result) const
+void FaceDetector::process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const
 {
     ed::ErrorContext errc("Processing entity in FaceDetector");
+
+    const ed::EntityConstPtr& e = input.entity;
+    tue::Configuration& result = output.data;
 
     if (!init_success_)
         return;

@@ -7,7 +7,7 @@
 #ifndef ED_PERCEPTION_FACE_RECOGNITION_H_
 #define ED_PERCEPTION_FACE_RECOGNITION_H_
 
-#include <ed/perception_modules/perception_module.h>
+#include <ed/perception/module.h>
 
 #include <ed_perception/LearnPerson.h>
 #include <ed_perception/LearnPersonRequest.h>
@@ -28,7 +28,7 @@
 
 #include "color_matcher/color_matcher.h"
 
-class FaceRecognition : public ed::PerceptionModule
+class FaceRecognition : public ed::perception::Module
 {
 
 enum Recognizers{
@@ -230,7 +230,7 @@ public:
 
     void loadConfig(const std::string& config_path);
 
-    void process(ed::EntityConstPtr e, tue::Configuration& config) const;
+    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const;
 
     void configure(tue::Configuration config);
 

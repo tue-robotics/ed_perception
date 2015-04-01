@@ -19,7 +19,7 @@
 // ----------------------------------------------------------------------------------------------------
 
 HumanContourMatcher::HumanContourMatcher() :
-    PerceptionModule("human_contour_matcher"),
+    ed::perception::Module("human_contour_matcher"),
     human_classifier_("human_contour_matcher"), init_success_(false)
 {
 }
@@ -116,9 +116,12 @@ void HumanContourMatcher::loadConfig(const std::string& config_path) {
 // ----------------------------------------------------------------------------------------------------
 
 
-void HumanContourMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) const
+void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const
 {
     ed::ErrorContext errc("Processing entity in HumanContourMatcher");
+
+    const ed::EntityConstPtr& e = input.entity;
+    tue::Configuration& result = output.data;
 
     // if initialization failed, return
     if (!init_success_)

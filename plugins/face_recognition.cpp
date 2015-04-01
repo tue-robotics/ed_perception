@@ -30,7 +30,7 @@
 // ----------------------------------------------------------------------------------------------------
 
 FaceRecognition::FaceRecognition() :
-    PerceptionModule("face_recognition"),
+    ed::perception::Module("face_recognition"),
     as_(0),
     init_success_(false)
 {
@@ -227,9 +227,12 @@ void FaceRecognition::loadConfig(const std::string& config_path) {
 // ----------------------------------------------------------------------------------------------------
 
 
-void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) const{
+void FaceRecognition::process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const{
 
     ed::ErrorContext errc("Processing entity in FaceRecognition");
+
+    const ed::EntityConstPtr& e = input.entity;
+    tue::Configuration& config = output.data;
 
     if (!init_success_)
         return;
@@ -241,7 +244,6 @@ void FaceRecognition::process(ed::EntityConstPtr e, tue::Configuration& config) 
 
     if (enable_learning_service_)
         cb_queue_.callAvailable();
-
 
     // ---------- Prepare measurement ----------
 

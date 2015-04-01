@@ -20,7 +20,7 @@
 // ----------------------------------------------------------------------------------------------------
 
 TypeAggregator::TypeAggregator():
-    PerceptionModule("type_aggregator"),
+    ed::perception::Module("type_aggregator"),
     init_success_(false)
 {
 }
@@ -63,9 +63,12 @@ void TypeAggregator::loadConfig(const std::string& config_path) {
 
 // ----------------------------------------------------------------------------------------------------
 
-void TypeAggregator::process(ed::EntityConstPtr e, tue::Configuration& entity_conf) const
+void TypeAggregator::process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const
 {
     ed::ErrorContext errc("Processing entity in TypeAggregator");
+
+    const ed::EntityConstPtr& e = input.entity;
+    tue::Configuration& entity_conf = output.data;
 
     // if initialization failed, return
     if (!init_success_)

@@ -7,13 +7,13 @@
 #ifndef ED_PERCEPTION_FACE_DETECTOR_H_
 #define ED_PERCEPTION_FACE_DETECTOR_H_
 
-#include <ed/perception_modules/perception_module.h>
+#include <ed/perception/module.h>
 
 // OpenCV includes
 #include <opencv/cv.h>
 #include "opencv2/highgui/highgui.hpp"
 
-class FaceDetector : public ed::PerceptionModule
+class FaceDetector : public ed::perception::Module
 {
 
 /*
@@ -74,7 +74,7 @@ public:
 
     void loadConfig(const std::string& config_path);
 
-    void process(ed::EntityConstPtr e, tue::Configuration& result) const;
+    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const;
 
     void configure(tue::Configuration config);
 

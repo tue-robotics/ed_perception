@@ -14,7 +14,7 @@
 
 
 ColorMatcher::ColorMatcher() :
-    PerceptionModule("color_matcher"),
+    ed::perception::Module("color_matcher"),
     color_table_(ColorNameTable::instance()),  // Init colorname table
     init_success_(false)
 {
@@ -92,10 +92,13 @@ void ColorMatcher::loadModel(const std::string& model_name, const std::string& m
 // ---------------------------------------------------------------------------------------------------
 
 
-void ColorMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) const
+void ColorMatcher::process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const
 {
     if (!init_success_)
         return;
+
+    const ed::EntityConstPtr& e = input.entity;
+    tue::Configuration& result = output.data;
 
     // ---------- PREPARE MEASUREMENT ----------
 

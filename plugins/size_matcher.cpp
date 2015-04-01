@@ -16,15 +16,10 @@
 // Loading models
 #include <fstream>
 
-namespace ed
-{
-namespace perception
-{
-
 // ----------------------------------------------------------------------------------------------------
 
 SizeMatcher::SizeMatcher() :
-    PerceptionModule("size_matcher"),
+    Module("size_matcher"),
     init_success_(false)
 {
 }
@@ -87,8 +82,11 @@ void SizeMatcher::loadModel(const std::string& model_name, const std::string& mo
 
 // ----------------------------------------------------------------------------------------------------
 
-void SizeMatcher::process(ed::EntityConstPtr e, tue::Configuration& result) const
+void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const
 {
+    const ed::EntityConstPtr& e = input.entity;
+    tue::Configuration& result = output.data;
+
     ed::ErrorContext errc("Processing entity in SizeMatcher");
 
     if (!init_success_)
@@ -245,7 +243,5 @@ bool SizeMatcher::loadLearnedModel(std::string path, std::string model_name){
     return true;
 }
 
-
 ED_REGISTER_PERCEPTION_MODULE(SizeMatcher)
-}
-}
+

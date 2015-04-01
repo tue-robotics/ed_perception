@@ -18,7 +18,7 @@
 // ----------------------------------------------------------------------------------------------------
 
 ODUFinderModule::ODUFinderModule() :
-    ed::PerceptionModule("odu_finder"),
+    ed::perception::Module("odu_finder"),
     init_success_(false)
 {
 }
@@ -64,8 +64,11 @@ void ODUFinderModule::loadConfig(const std::string& config_path)
 
 // ----------------------------------------------------------------------------------------------------
 
-void ODUFinderModule::process(ed::EntityConstPtr e, tue::Configuration& result) const
+void ODUFinderModule::process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const
 {
+    const ed::EntityConstPtr& e = input.entity;
+    tue::Configuration& result = output.data;
+
     ed::ErrorContext errc("Processing entity in ODUFinderModule");
 
     if (!init_success_)

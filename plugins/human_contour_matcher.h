@@ -7,10 +7,10 @@
 #ifndef ED_PERCEPTION_HUMAN_CONTOUR_MATCHER_H_
 #define ED_PERCEPTION_HUMAN_CONTOUR_MATCHER_H_
 
-#include <ed/perception_modules/perception_module.h>
+#include <ed/perception/module.h>
 #include "human_classifier.h"
 
-class HumanContourMatcher : public ed::PerceptionModule
+class HumanContourMatcher : public ed::perception::Module
 {
 
 private:
@@ -44,7 +44,7 @@ public:
 
     void loadConfig(const std::string& config_path);
 
-    void process(ed::EntityConstPtr e, tue::Configuration& result) const;
+    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const;
 
 };
 

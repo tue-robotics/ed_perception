@@ -7,7 +7,7 @@
 #ifndef ED_PERCEPTION_HUMAN_CONTOUR_MATCHER_H_
 #define ED_PERCEPTION_HUMAN_CONTOUR_MATCHER_H_
 
-#include <ed/perception_modules/perception_module.h>
+#include <ed/perception/module.h>
 #include <boost/thread.hpp>
 
 #include <opencv2/core/core.hpp>
@@ -17,7 +17,7 @@ namespace odu_finder
     class ODUFinder;
 }
 
-class ODUFinderModule : public ed::PerceptionModule
+class ODUFinderModule : public ed::perception::Module
 {
 
 public:
@@ -30,7 +30,7 @@ public:
 
     void configure(tue::Configuration config);
 
-    void process(ed::EntityConstPtr e, tue::Configuration& result) const;
+    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const;
 
 private:
     bool init_success_;

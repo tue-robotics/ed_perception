@@ -35,7 +35,7 @@ void snapZHorizontalOrVertical(const geo::Pose3D& pose, geo::Pose3D& pose_snappe
 
 // ----------------------------------------------------------------------------------------------------
 
-QRDetector::QRDetector() : PerceptionModule("qr_detector")
+QRDetector::QRDetector() : ed::perception::Module("qr_detector")
 {
 }
 
@@ -61,8 +61,11 @@ void QRDetector::loadModel(const std::string& model_name, const std::string& mod
 
 // ----------------------------------------------------------------------------------------------------
 
-void QRDetector::process(ed::EntityConstPtr e, tue::Configuration& result) const
+void QRDetector::process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const
 {
+    const ed::EntityConstPtr& e = input.entity;
+    tue::Configuration& result = output.data;
+
     // Get the best measurement from the entity
     ed::MeasurementConstPtr msr = e->bestMeasurement();
     if (!msr)

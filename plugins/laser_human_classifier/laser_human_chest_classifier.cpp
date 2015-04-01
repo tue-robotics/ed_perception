@@ -22,7 +22,7 @@
 // ----------------------------------------------------------------------------------------------------
 
 LaserHumanChestClassifier::LaserHumanChestClassifier() :
-    PerceptionModule("laser_human_chest_classifier"),
+    ed::perception::Module("laser_human_chest_classifier"),
     init_success_(false)
 {
 
@@ -114,11 +114,14 @@ void LaserHumanChestClassifier::loadConfig(const std::string& config_path) {
 // ----------------------------------------------------------------------------------------------------
 
 
-void LaserHumanChestClassifier::process(ed::EntityConstPtr e, tue::Configuration& config) const{
+void LaserHumanChestClassifier::process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const{
     ed::ErrorContext errc("Processing entity in LaserHumanDetector");
 
     if (!init_success_)
         return;
+
+    const ed::EntityConstPtr& e = input.entity;
+    tue::Configuration& config = output.data;
 
     // ---------- Prepare measurement ----------
 

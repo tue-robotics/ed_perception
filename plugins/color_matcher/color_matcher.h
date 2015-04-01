@@ -15,12 +15,12 @@
 // Color name table
 #include "color_name_table.h"
 
-#include <ed/perception_modules/perception_module.h>
+#include <ed/perception/module.h>
 
 using namespace ColorNames;
 
 
-class ColorMatcher : public ed::PerceptionModule
+class ColorMatcher : public ed::perception::Module
 {
 
 public:
@@ -35,7 +35,7 @@ public:
 
     void loadConfig(const std::string& config_path);
 
-    void process(ed::EntityConstPtr e, tue::Configuration& result) const;
+    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const;
 
 private:
 
