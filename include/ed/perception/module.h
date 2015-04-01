@@ -2,7 +2,7 @@
 #define ED_PERCEPTION_MODULE_H_
 
 #include <class_loader/class_loader.h>
-#define ED_REGISTER_PERCEPTION_WORKER(Derived)  CLASS_LOADER_REGISTER_CLASS(Derived, ed::perception::Worker)
+#define ED_REGISTER_PERCEPTION_MODULE(Derived)  CLASS_LOADER_REGISTER_CLASS(Derived, ed::perception::Module)
 
 #include "ed/perception/worker_input.h"
 #include "ed/perception/worker_output.h"
@@ -21,7 +21,7 @@ public:
 
     virtual ~Module() {}
 
-    virtual void process(const WorkerInput& input, WorkerOutput& output) = 0;
+    virtual void process(const WorkerInput& input, WorkerOutput& output) const = 0;
 
     virtual void loadModel(const std::string& model_name, const std::string& model_path) {}
 

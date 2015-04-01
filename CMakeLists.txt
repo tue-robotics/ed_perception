@@ -55,15 +55,7 @@ catkin_package()
 
 # ------------------------------------------------------------------------------------------------
 
-add_library(ed_perception_plugin
-    src/perception_plugin.cpp
-)
-target_link_libraries(ed_perception_plugin ${catkin_LIBRARIES})
-
-
-# ------------------------------------------------------------------------------------------------
-
-add_library(ed_perception2    
+add_library(ed_perception2
     include/ed/perception/categorical_distribution.h
     include/ed/perception/worker_input.h
     include/ed/perception/worker_output.h
@@ -74,6 +66,18 @@ add_library(ed_perception2
     src/module.cpp
     src/worker.cpp
 )
+
+# ------------------------------------------------------------------------------------------------
+
+add_library(ed_perception_plugin
+    src/perception_plugin.cpp
+)
+target_link_libraries(ed_perception_plugin ${catkin_LIBRARIES} ed_perception2)
+
+
+# ------------------------------------------------------------------------------------------------
+
+
 
 # ------------------------------------------------------------------------------------------------
 

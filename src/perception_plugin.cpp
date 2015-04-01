@@ -76,46 +76,55 @@ void PerceptionPlugin::initialize(ed::InitData& init)
     {
         while(config.nextArrayItem())
         {
+            std::cout << "Module" << std::endl;
+
             std::string lib;
-            if (config.value("lib", lib))
+            if (!config.value("lib", lib))
+                continue;
+
+            std::cout << lib << std::endl;
+
+            std::string lib_file;
+            for(std::vector<std::string>::const_iterator it = plugin_paths_.begin(); it != plugin_paths_.end(); ++it)
             {
-                std::string lib_file;
-                for(std::vector<std::string>::const_iterator it = plugin_paths_.begin(); it != plugin_paths_.end(); ++it)
+                std::string lib_file_test = *it + "/" + lib;
+                if (tue::filesystem::Path(lib_file_test).exists())
                 {
-                    std::string lib_file_test = *it + "/" + lib;
-                    if (tue::filesystem::Path(lib_file_test).exists())
-                    {
-                        lib_file = lib_file_test;
-                        break;
-                    }
-                }
-
-                if (lib_file.empty())
-                {
-                    config.addError("Perception plugin '" + lib + "' could not be found.");
-                    return;
-                }
-
-                // Load the library
-                class_loader::ClassLoader* class_loader = new class_loader::ClassLoader(lib_file);
-                perception_loaders_.push_back(class_loader);
-
-                // Create perception module
-                boost::shared_ptr<Module> perception_module = ed::perception::loadPerceptionModule(class_loader, model_list_name);
-
-                if (perception_module)
-                {
-                    // Configure the module if there is a 'parameters' group in the config
-                    if (config.readGroup("parameters"))
-                    {
-                        perception_module->configure(config.limitScope());
-                        config.endGroup();
-                    }
-
-                    // Add the perception module to the aggregator
-                    perception_modules_.push_back(perception_module);
+                    lib_file = lib_file_test;
+                    break;
                 }
             }
+
+            if (lib_file.empty())
+            {
+                config.addError("Perception plugin '" + lib + "' could not be found.");
+                return;
+            }
+
+            // Load the library
+            class_loader::ClassLoader* class_loader = new class_loader::ClassLoader(lib_file);
+            perception_loaders_.push_back(class_loader);
+
+            // Create perception module
+            boost::shared_ptr<Module> perception_module = ed::perception::loadPerceptionModule(class_loader, model_list_name);
+
+            if (perception_module)
+            {
+                // Configure the module if there is a 'parameters' group in the config
+                if (config.readGroup("parameters"))
+                {
+                    perception_module->configure(config.limitScope());
+                    config.endGroup();
+                }
+
+                // Add the perception module to the aggregator
+                perception_modules_.push_back(perception_module);
+            }
+            else
+            {
+                config.addError("No valid perception module could be found in '" + lib_file + "'.");
+            }
+
         }
 
         config.endArray();
