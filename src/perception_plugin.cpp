@@ -76,13 +76,9 @@ void PerceptionPlugin::initialize(ed::InitData& init)
     {
         while(config.nextArrayItem())
         {
-            std::cout << "Module" << std::endl;
-
             std::string lib;
             if (!config.value("lib", lib))
                 continue;
-
-            std::cout << lib << std::endl;
 
             std::string lib_file;
             for(std::vector<std::string>::const_iterator it = plugin_paths_.begin(); it != plugin_paths_.end(); ++it)
