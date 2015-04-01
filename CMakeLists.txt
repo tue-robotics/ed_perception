@@ -53,7 +53,32 @@ catkin_package()
 ## Build ##
 ###########
 
+# ------------------------------------------------------------------------------------------------
+
+add_library(ed_perception_plugin
+    src/perception_plugin.cpp
+)
+target_link_libraries(ed_perception_plugin ${catkin_LIBRARIES})
+
+
+# ------------------------------------------------------------------------------------------------
+
+add_library(ed_perception2    
+    include/ed/perception/categorical_distribution.h
+    include/ed/perception/worker_input.h
+    include/ed/perception/worker_output.h
+    include/ed/perception/module.h
+    include/ed/perception/worker.h
+
+    src/categorical_distribution.cpp
+    src/module.cpp
+    src/worker.cpp
+)
+
+# ------------------------------------------------------------------------------------------------
+
 include_directories(
+    include
 #    ${PCL_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
     3rdparty/people_detector/PeopleDetector
