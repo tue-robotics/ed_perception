@@ -15,7 +15,6 @@
 
 #include <boost/filesystem.hpp>
 
-
 // ----------------------------------------------------------------------------------------------------
 
 FaceDetector::FaceDetector() :
@@ -220,15 +219,18 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
 
                 result.setValue("index", face_counter);
 
+                faces_front[j].x += min_x;
+                faces_front[j].y += min_y;
+
                 // add 2D location of the face
-                result.setValue("x", faces_front[j].x + min_x);
-                result.setValue("y", faces_front[j].y + min_y);
+                result.setValue("x", faces_front[j].x);
+                result.setValue("y", faces_front[j].y);
                 result.setValue("width", faces_front[j].width);
                 result.setValue("height", faces_front[j].height);
 
                 // calculate the center point of the face
-                cv::Point2i p_2d(faces_front[j].x + min_x + faces_front[j].width/2,
-                                 faces_front[j].y + min_y + faces_front[j].height/2);
+                cv::Point2i p_2d(faces_front[j].x + faces_front[j].width/2,
+                                 faces_front[j].y + faces_front[j].height/2);
 
                 cv::Mat face_area = depth_image(faces_front[j]);
                 float avg_depth = GetAverageDist(face_area);
@@ -255,19 +257,23 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
         if (faces_profile.size() > 0){
             result.writeArray("faces_profile");
             for (uint j = 0; j < faces_profile.size(); j++) {
+
+                faces_profile[j].x += min_x;
+                faces_profile[j].y += min_y;
+
                 result.addArrayItem();
 
                 result.setValue("index", face_counter);
 
                 // add 2D location of the face
-                result.setValue("x", faces_profile[j].x + min_x);
-                result.setValue("y", faces_profile[j].y + + min_y);
+                result.setValue("x", faces_profile[j].x);
+                result.setValue("y", faces_profile[j].y);
                 result.setValue("width", faces_profile[j].width);
                 result.setValue("height", faces_profile[j].height);
 
                 // calculate the center point of the face
-                cv::Point2i p_2d(faces_profile[j].x + min_x + faces_profile[j].width/2,
-                                 faces_profile[j].y + min_y + faces_profile[j].height/2);
+                cv::Point2i p_2d(faces_profile[j].x + faces_profile[j].width/2,
+                                 faces_profile[j].y + faces_profile[j].height/2);
 
                 cv::Mat face_area = depth_image(faces_profile[j]);
                 float avg_depth = GetAverageDist(face_area);
