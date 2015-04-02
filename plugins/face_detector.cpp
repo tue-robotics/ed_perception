@@ -83,12 +83,15 @@ void FaceDetector::configure(tue::Configuration config) {
         cv::namedWindow("Face Detector Output", CV_WINDOW_AUTOSIZE);
     }
 
+
     // check if the cascade file exist so they can be loaded later
     if (!boost::filesystem::exists(cascade_front_files_path_) || !boost::filesystem::exists(cascade_profile_files_path_)){
         init_success_ = false;
         std::cout << "[" << module_name_ << "] " << "Couldn't find cascade files for detection (" << cascade_profile_files_path_
                   <<  "). Face dection will not work!" << std::endl;
     }else{
+        std::cout << "[" << module_name_ << "] " << "Face Detection cascade files found." << std::endl;
+
         init_success_ = true;
         std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
     }

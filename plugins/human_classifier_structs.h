@@ -2,7 +2,7 @@
 #define HUMAN_CLASSIFIER_STRUCTS_H
 
 // STL includes
-#include <vector>
+//#include <vector>
 
 
 // OpenCV includes
