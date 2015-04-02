@@ -11,26 +11,21 @@
 
 struct ObjectSize
 {
-    double min_height;
-    double max_height;
-    double min_width;
-    double max_width;
+    double height;
+    double width;
 
     ObjectSize(){}
 
-    ObjectSize(double hmin, double hmax, double wmin, double wmax)
+    ObjectSize(double width_, double height_)
+        : width(width_), height(height_)
     {
-        min_height = std::max(hmin, 0.0);
-        max_height = hmax;
-        min_width = std::max(wmin, 0.0);
-        max_width = wmax;
     }
 
-    // Update values
-    void updateHMin(double hmin) {min_height = std::max(hmin, 0.0);}
-    void updateHMax(double hmax) {max_height = hmax;}
-    void updateWMin(double wmin) {min_width = std::max(wmin, 0.0);}
-    void updateWmax(double wmax) {max_width = wmax;}
+//    // Update values
+//    void updateHMin(double hmin) {min_height = std::max(hmin, 0.0);}
+//    void updateHMax(double hmax) {height = hmax;}
+//    void updateWMin(double wmin) {min_width = std::max(wmin, 0.0);}
+//    void updateWmax(double wmax) {width = wmax;}
 };
 
 

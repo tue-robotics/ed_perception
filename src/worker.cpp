@@ -61,6 +61,9 @@ void Worker::stop()
 
 void Worker::run()
 {
+//    if (input_.entity->pose().t.x < 0.94)
+//        return;
+
     // Reset from possible previous time
     output_.data = tue::Configuration();
 
