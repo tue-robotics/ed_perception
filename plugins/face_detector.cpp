@@ -294,9 +294,15 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
         }
 
         if (faces_front.size() + faces_profile.size() > 1)
+        {
             result.setValue("label", "multiple_faces");
+            output.type_update.setScore("human", 0.9);
+        }
         else
+        {
             result.setValue("label", "face");
+            output.type_update.setScore("human", 0.9);
+        }
 
         result.setValue("score", 1.0);
 
@@ -304,6 +310,8 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
         // no faces detected
         result.setValue("label", "face");
         result.setValue("score", 0.0);
+
+        output.type_update.setScore("human", 0.2);
     }
 
     result.endGroup();  // close face_detector group

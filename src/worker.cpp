@@ -14,7 +14,8 @@ namespace perception
 
 // ----------------------------------------------------------------------------------------------------
 
-Worker::Worker() : t_last_processing(0), state_(IDLE)
+Worker::Worker(const std::vector<std::string>& model_list)
+    : model_list_(model_list), t_last_processing(0), state_(IDLE)
 {
 }
 
@@ -29,9 +30,9 @@ Worker::~Worker()
 
 double Worker::timestamp() const
 {
-    if (entity_)
+    if (input_.entity)
     {
-        MeasurementConstPtr msr = entity_->lastMeasurement();
+        MeasurementConstPtr msr = input_.entity->lastMeasurement();
         if (msr)
             return msr->timestamp();
     }
@@ -42,7 +43,7 @@ double Worker::timestamp() const
 
 void Worker::start()
 {
-    if (!entity_)
+    if (!input_.entity)
         return;
 
     state_ = RUNNING;
@@ -61,22 +62,31 @@ void Worker::stop()
 void Worker::run()
 {
     // Reset from possible previous time
-    result_ = tue::config::DataPointer();
+    output_.data = tue::Configuration();
 
-    tue::Configuration rw(result_);
+    if (input_.type_distribution.empty())
+    {
+        // Add all possible model types to the type distribution
+        for(std::vector<std::string>::const_iterator it = model_list_.begin(); it != model_list_.end(); ++it)
+            input_.type_distribution.setScore(*it, 1);
 
-    WorkerInput input;
-    input.entity = entity_;
+        input_.type_distribution.setUnknownScore(0.01); // TODO: magic number (probability that an object you encounter is unknown (not in the model list))
 
-    WorkerOutput output;
-    output.data = rw;
+        input_.type_distribution.normalize();
+    }
 
     // Do the actual processing
     for(std::vector<boost::shared_ptr<Module> >::const_iterator it = modules_.begin(); it != modules_.end(); ++it)
     {
-        std::string context_msg = "Perception module '" + (*it)->name() + "', entity '" + entity_->id().str() + "'";
+        // Clear type distribution update
+        output_.type_update = CategoricalDistribution();
+
+        std::string context_msg = "Perception module '" + (*it)->name() + "', entity '" + input_.entity->id().str() + "'";
         ed::ErrorContext errc(context_msg.c_str());
-        (*it)->process(input, output);
+        (*it)->process(input_, output_);
+
+        // Update total type distribution
+        input_.type_distribution.update(output_.type_update);
     }
 
     // Set state to DONE

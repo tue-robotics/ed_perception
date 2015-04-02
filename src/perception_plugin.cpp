@@ -9,6 +9,8 @@
 
 #include <tue/filesystem/path.h>
 
+#include <ros/package.h>
+
 // ----------------------------------------------------------------------------------------------------
 
 namespace
@@ -22,6 +24,30 @@ bool getEnvironmentVariable(const std::string& var, std::string& value)
 
      value = val;
      return true;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+bool loadModelList(std::string& model_list_path, std::vector<std::string>& model_list){
+    tue::Configuration conf;
+    std::string model_name;
+
+    if (!conf.loadFromYAMLFile(model_list_path)) // read YAML configuration
+        return false;
+
+    if (!conf.readArray("models"))           // read Model group
+    {
+        std::cout << "[ED PERCEPTION] While reading file " << model_list_path << ": could not find 'models' group." << std::endl;
+        return false;
+    }
+
+    while(conf.nextArrayItem())
+    {
+        if(conf.value("name", model_name))
+            model_list.push_back(model_name);
+    }
+
+    return true;
 }
 
 }
@@ -70,8 +96,21 @@ void PerceptionPlugin::initialize(ed::InitData& init)
     }
 
     // read model list name to be used
-    if(!config.value("model_list", model_list_name))
-        std::cout << "Could not find model list name. Using all models." << std::endl;
+    if (!config.value("model_list", model_list_name))
+    {
+//        std::cout << "Could not find model list name. Using all models." << std::endl;
+        return;
+    }
+
+    std::string object_models_path = ros::package::getPath("ed_object_models");
+    std::string model_list_path = object_models_path + "/configs/model_lists/" + model_list_name;
+
+    model_list_.clear();
+    if (!loadModelList(model_list_path, model_list_))
+    {
+        init.config.addError("Error reading file '" + model_list_path + "'");
+        return;
+    }
 
     if (config.readArray("modules"))
     {
@@ -141,6 +180,9 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
     {
         const ed::EntityConstPtr& e = *it;
 
+        if (e->shape() || e->convexHull().chull.empty())
+            continue;
+
         const ed::UUID& id = e->id();
 
 //        if (e->type() != "")
@@ -165,7 +207,7 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
             // No worker active for this entity, so create one
 
             // create worker and add measurements
-            boost::shared_ptr<Worker> worker(new Worker);
+            boost::shared_ptr<Worker> worker(new Worker(model_list_));
             worker->setEntity(e);
             worker->setPerceptionModules(perception_modules_);
 
@@ -196,6 +238,15 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
             // Check if it just finished processing
             else if (worker->isDone())
             {
+                const CategoricalDistribution& type_dist = worker->getTypeDistribution();
+
+                std::string expected_type;
+                double type_score;
+
+                // Set type, if score is high enough
+                if (type_dist.getMaximum(expected_type, type_score) && type_score > type_dist.getUnknownScore())
+                    req.setType(e->id(), expected_type);
+
                 // Update the entity with the results from the worker
                 if (!worker->getResult().empty())
                     req.addData(e->id(), worker->getResult());
@@ -206,9 +257,8 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
                 worker->t_last_processing = worker->timestamp();
             }
         }
-
     }
-
+    
     // Filter idle workers of deleted entities
     for(std::map<UUID, boost::shared_ptr<Worker> >::iterator it = workers_.begin(); it != workers_.end();)
     {

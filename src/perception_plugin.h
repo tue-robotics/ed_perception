@@ -27,6 +27,9 @@ public:
 
 private:
 
+    // List of possible object types
+    std::vector<std::string> model_list_;
+
     std::vector<std::string> plugin_paths_;
 
     std::vector<class_loader::ClassLoader*> perception_loaders_;

@@ -4,6 +4,8 @@
 #include <map>
 #include <string>
 
+#include <ostream>
+
 namespace ed
 {
 namespace perception
@@ -20,13 +22,21 @@ public:
 
     void setScore(const std::string& label, double score);
 
-    double getScore(const std::string& label) const;
+    bool getScore(const std::string& label, double& score) const;
+
+    bool getMaximum(std::string& label, double& score) const;
 
     void setUnknownScore(double score);
+
+    double getUnknownScore() const { return unknown_score_; }
 
     void normalize();
 
     void update(const CategoricalDistribution& other);
+
+    bool empty() const { return pmf_.empty(); }
+
+    friend std::ostream& operator<< (std::ostream& out, const CategoricalDistribution& c);
 
 private:
 
@@ -35,6 +45,7 @@ private:
     std::map<std::string, double> pmf_;
 
 };
+
 
 } // end namespace ed
 
