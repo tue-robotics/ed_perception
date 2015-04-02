@@ -179,6 +179,7 @@ void ColorMatcher::process(const ed::perception::WorkerInput& input, ed::percept
         result.endArray();
     }
 
+    output.type_update.setUnknownScore(0.1);
 
     // assert hypothesis
     if (!hypothesis.empty()){
@@ -189,6 +190,8 @@ void ColorMatcher::process(const ed::perception::WorkerInput& input, ed::percept
             result.setValue("name", it->first);
             result.setValue("score", it->second);
             result.endArrayItem();
+
+            output.type_update.setScore(it->first, it->second);
         }
         result.endArray();
     }
@@ -309,6 +312,8 @@ void ColorMatcher::getHypothesis(cv::Mat& curr_hist, std::map<std::string, doubl
         // save hypothesis score, 1 is correct, 0 is incorrect, sometimes get negative dont know why
         if (best_score > 0)
             hypothesis.insert(std::pair<std::string, double>(model_name, best_score));
+        else
+            hypothesis[model_name] = 0.001;
     }
 }
 

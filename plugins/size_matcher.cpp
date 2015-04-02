@@ -156,6 +156,8 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
         // if the size difference between models is less than threshold, use the model
         if (best_err < size_diff_threshold_)
             hypothesis[label] = std::max(1 - best_err, 0.0);
+        else
+            hypothesis[label] = 0.001; // TODO: magic number
     }
 
     // ----------------------- SAVE RESULTS -----------------------
@@ -183,6 +185,8 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
 
     result.setValue("score", 1.0);
 
+    output.type_update.setUnknownScore(0.1); // TODO: magic number
+
     // assert hypothesis
     if (!hypothesis.empty()){
         result.writeArray("hypothesis");
@@ -192,6 +196,8 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
             result.setValue("name", it->first);
             result.setValue("score", std::max(it->second, 0.0));
             result.endArrayItem();
+
+            output.type_update.setScore(it->first, std::max(it->second, 0.0));
         }
         result.endArray();
     }

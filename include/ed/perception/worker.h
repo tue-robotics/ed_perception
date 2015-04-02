@@ -21,7 +21,7 @@ public:
         IDLE
     };
 
-    Worker();
+    Worker(const std::vector<std::string>& model_list);
 
     virtual ~Worker();
 
@@ -46,18 +46,21 @@ public:
 
     inline void setEntity(const EntityConstPtr& e)
     {
-        entity_ = e;
+        input_.entity = e;
     }
 
     double timestamp() const;
 
-    inline tue::config::DataConstPointer getResult() const { return result_; }
+    inline tue::config::DataConstPointer getResult() const { return output_.data.data(); }
+
+    inline const CategoricalDistribution& getTypeDistribution() const { return input_.type_distribution; }
 
     double t_last_processing;
 
-    EntityConstPtr entity_;
-
 protected:
+
+    // List of possible object types
+    std::vector<std::string> model_list_;
 
     WorkerState state_;
 
@@ -65,7 +68,11 @@ protected:
 
     std::vector<boost::shared_ptr<Module> > modules_;
 
-    tue::config::DataPointer result_;
+    WorkerInput input_;
+
+    WorkerOutput output_;
+
+//    tue::config::DataPointer result_;
 
     void run();
 

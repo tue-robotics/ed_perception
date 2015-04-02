@@ -142,6 +142,8 @@ void ODUFinderModule::process(const ed::perception::WorkerInput& input, ed::perc
 
     result.writeGroup("odu_finder");
 
+    output.type_update.setUnknownScore(0.5);
+
     // if an hypothesis is found, assert it
     if (!results.empty())
     {
@@ -152,6 +154,8 @@ void ODUFinderModule::process(const ed::perception::WorkerInput& input, ed::perc
             result.setValue("name", it->first);
             result.setValue("score", it->second);
             result.endArrayItem();
+
+            output.type_update.setScore(it->first, it->second);
         }
         result.endArray();
     }
