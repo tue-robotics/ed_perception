@@ -122,26 +122,26 @@ void HumanContourMatcher::loadConfig(const std::string& config_path) {
 
 
     // -------------- For debugging! --------------
-    debug_mode_ = true;
-    template_front_path_ = module_path_ + template_front_path_;
-    template_left_path_ = module_path_ + template_left_path_;
-    template_right_path_ = module_path_ + template_right_path_;
-    // initialzie human_classifier
-    if(!human_classifier_.Initializations(debug_mode_,
-                                          debug_folder_,
-                                          template_front_path_,
-                                          template_left_path_,
-                                          template_right_path_,
-                                          match_iterations_,
-                                          dt_line_width_,
-                                          max_template_err_,
-                                          border_size_,
-                                          num_slices_matching_)){
-        std::cout << "[" << module_name_ << "] " << "Initialization incomplete!" << std::endl;
-    }
+//    debug_mode_ = true;
+//    template_front_path_ = module_path_ + template_front_path_;
+//    template_left_path_ = module_path_ + template_left_path_;
+//    template_right_path_ = module_path_ + template_right_path_;
+//    // initialzie human_classifier
+//    if(!human_classifier_.Initializations(debug_mode_,
+//                                          debug_folder_,
+//                                          template_front_path_,
+//                                          template_left_path_,
+//                                          template_right_path_,
+//                                          match_iterations_,
+//                                          dt_line_width_,
+//                                          max_template_err_,
+//                                          border_size_,
+//                                          num_slices_matching_)){
+//        std::cout << "[" << module_name_ << "] " << "Initialization incomplete!" << std::endl;
+//    }
 
-    init_success_ = true;
-    std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
+//    init_success_ = true;
+//    std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
     // --------------------------------------------
 }
 
