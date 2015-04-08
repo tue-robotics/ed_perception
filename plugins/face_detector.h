@@ -13,6 +13,8 @@
 #include <opencv/cv.h>
 #include "opencv2/highgui/highgui.hpp"
 
+#include "shared_methods.h"
+
 class FaceDetector : public ed::perception::Module
 {
 
@@ -33,17 +35,24 @@ private:
     std::string cascade_profile_files_path_;   /*!< Path of the cascade training folder */
 
     // Cascade classifier configuration
-    double classif_front_scale_factor_;  // Parameter specifying how much the image size is reduced at each image scale
-    int classif_front_min_neighbours_;    // Parameter specifying how many neighbors each candidate rectangle should have to retain it.
+    double classifier_front_scale_factor_;  // Parameter specifying how much the image size is reduced at each image scale
+    int classifier_front_min_neighbours_;    // Parameter specifying how many neighbors each candidate rectangle should have to retain it.
     cv::Size classif_front_min_size_;    // Minimum possible object size. Objects smaller than that are ignored.
 
-    double classif_profile_scale_factor_;  // Parameter specifying how much the image size is reduced at each image scale
-    int classif_profile_min_neighbours_;    // Parameter specifying how many neighbors each candidate rectangle should have to retain it.
+    double classifier_profile_scale_factor_;  // Parameter specifying how much the image size is reduced at each image scale
+    int classifier_profile_min_neighbours_;    // Parameter specifying how many neighbors each candidate rectangle should have to retain it.
     cv::Size classif_profile_min_size_;   // Minimum possible object size. Objects smaller than that are ignored.
 
     // Haar cascade classifiers
     mutable cv::CascadeClassifier classifier_front_;
     mutable cv::CascadeClassifier classifier_profile_;
+
+    double type_positive_score_;
+    double type_negative_score_;
+
+    SharedMethods shared_methods;
+
+    //------------------------------------
 
     // detect frontal and profile faces on an image, true if a face was detected
     bool DetectFaces(const cv::Mat &cropped_img,
@@ -59,7 +68,7 @@ private:
     // create a new mask based on a blured version of the original mask, smoother and expanded
     void OptimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
 
-    float GetAverageDist(cv::Mat& depth_img) const;
+    float GetAverageDepth(cv::Mat& depth_img) const;
 
 /*
 * ###########################################

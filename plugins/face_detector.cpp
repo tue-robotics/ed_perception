@@ -51,17 +51,23 @@ void FaceDetector::configure(tue::Configuration config) {
     if (!config.value("debug_folder", debug_folder_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'debug_folder' not found. Using default: " << debug_folder_ << std::endl;
 
-    if (!config.value("classifier_front_scale_factor", classif_front_scale_factor_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_front_scale_factor' not found. Using default: " << classif_front_scale_factor_ << std::endl;
+    if (!config.value("classifier_front_scale_factor", classifier_front_scale_factor_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_front_scale_factor' not found. Using default: " << classifier_front_scale_factor_ << std::endl;
 
-    if (!config.value("classifier_front_min_neighbours", classif_front_min_neighbours_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_front_min_neighbours' not found. Using default: " << classif_front_min_neighbours_ << std::endl;
+    if (!config.value("classifier_front_min_neighbours", classifier_front_min_neighbours_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_front_min_neighbours' not found. Using default: " << classifier_front_min_neighbours_ << std::endl;
 
-    if (!config.value("classifier_profile_scale_factor", classif_profile_scale_factor_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_profile_scale_factor' not found. Using default: " << classif_profile_scale_factor_ << std::endl;
+    if (!config.value("classifier_profile_scale_factor", classifier_profile_scale_factor_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_profile_scale_factor' not found. Using default: " << classifier_profile_scale_factor_ << std::endl;
 
-    if (!config.value("classif_profile_min_neighbours", classif_profile_min_neighbours_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'classif_profile_min_neighbours' not found. Using default: " << classif_profile_min_neighbours_ << std::endl;
+    if (!config.value("classifier_profile_min_neighbours", classifier_profile_min_neighbours_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_profile_min_neighbours' not found. Using default: " << classifier_profile_min_neighbours_ << std::endl;
+
+    if (!config.value("type_positive_score", type_positive_score_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'type_positive_score' not found. Using default: " << type_positive_score_ << std::endl;
+
+    if (!config.value("type_negative_score", type_negative_score_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'type_negative_score' not found. Using default: " << type_negative_score_ << std::endl;
 
     cascade_front_files_path_ = module_path_ + cascade_front_files_path_;
     cascade_profile_files_path_ = module_path_ + cascade_profile_files_path_;
@@ -110,13 +116,17 @@ void FaceDetector::loadConfig(const std::string& config_path) {
     cascade_front_files_path_ = "/cascade_classifiers/haarcascade_frontalface_alt_tree.xml";
     cascade_profile_files_path_ = "/cascade_classifiers/haarcascade_profileface.xml";
     debug_mode_ = false;
-    classif_front_scale_factor_ = 1.2;
-    classif_front_min_neighbours_ = 3;
+    classifier_front_scale_factor_ = 1.2;
+    classifier_front_min_neighbours_ = 3;
     classif_front_min_size_ = cv::Size(20,20);
-    classif_profile_scale_factor_= 1.2;
-    classif_profile_min_neighbours_ = 3;
+    classifier_profile_scale_factor_= 1.2;
+    classifier_profile_min_neighbours_ = 3;
     classif_profile_min_size_ = cv::Size(20,20);
     debug_folder_ = "/tmp/face_detector/";
+    type_positive_score_ = 0.9;
+    type_negative_score_ = 0.4;
+
+    shared_methods = SharedMethods();
 
 
     // --------------DEBUGGGGGGGG
@@ -236,14 +246,14 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
                                  faces_front[j].y + faces_front[j].height/2);
 
                 cv::Mat face_area = depth_image(faces_front[j]);
-                float avg_depth = GetAverageDist(face_area);
+                float avg_depth = shared_methods.getAverageDepth(face_area);
+
+                if (avg_depth == 0){
+                    std::cout << "[" << module_name_ << "] " << "Could not calculate face's average depth. Map coordinates might be incorrect!" << std::endl;
+                }
 
                 projection = view.getRasterizer().project2Dto3D(p_2d.x, p_2d.y) * avg_depth;
                 point_map = msr->sensorPose() * projection;
-
-                if (avg_depth == 0){
-                    std::cout << "[" << module_name_ << "] " << "Could not calculate face's average depth. Map coordinates might be invalid!" << std::endl;
-                }
 
                 // add 3D location of the face
                 result.setValue("map_x", point_map.x);
@@ -279,8 +289,11 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
                                  faces_profile[j].y + faces_profile[j].height/2);
 
                 cv::Mat face_area = depth_image(faces_profile[j]);
-                float avg_depth = GetAverageDist(face_area);
+                float avg_depth = shared_methods.getAverageDepth(face_area);
 
+                if (avg_depth == 0){
+                    std::cout << "[" << module_name_ << "] " << "Could not calculate face's average depth. Map coordinates might be incorrect!" << std::endl;
+                }
 
                 projection = view.getRasterizer().project2Dto3D(p_2d.x, p_2d.y) * avg_depth;
                 point_map = msr->sensorPose() * projection;
@@ -296,58 +309,26 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
             result.endArray();
         }
 
-        if (faces_front.size() + faces_profile.size() > 1)
-        {
+        if (faces_front.size() + faces_profile.size() > 1){
             result.setValue("label", "multiple_faces");
-            output.type_update.setScore("human", 0.9);
         }
-        else
-        {
+        else{
             result.setValue("label", "face");
-            output.type_update.setScore("human", 0.9);
         }
 
-        result.setValue("score", 1.0);
+        output.type_update.setScore("human", type_positive_score_);
+        result.setValue("score", type_positive_score_);
 
     }else{
         // no faces detected
         result.setValue("label", "face");
-        result.setValue("score", 0.0);
+        result.setValue("score", type_negative_score_);
 
-        output.type_update.setScore("human", 0.2);
+        output.type_update.setScore("human", type_negative_score_);
     }
 
     result.endGroup();  // close face_detector group
     result.endGroup();  // close perception_result group
-}
-
-
-// ----------------------------------------------------------------------------------------------------
-
-
-float FaceDetector::GetAverageDist(cv::Mat& depth_img) const{
-
-    float median = 0;
-    std::vector<float> depths;
-
-    // fill vector with depth values
-    for (uint x = 0 ; x < depth_img.rows ; x++){
-        for (uint y = 0 ; y < depth_img.cols ; y++){
-            depths.push_back(depth_img.at<float>(y,x));
-        }
-    }
-
-    // sort and pick the center value
-    std::sort(depths.begin(),depths.end());
-
-    if (depths.size() % 2 == 0){
-        median = (depths[depths.size()/2-1] + depths[depths.size()/2]) / 2;
-    }
-    else{
-        median = depths[depths.size() / 2];
-    }
-
-    return median;
 }
 
 
@@ -382,8 +363,8 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
     // detect frontal faces
     classifier_front_local.detectMultiScale(cascade_img,
                                             faces_front,
-                                            classif_front_scale_factor_,
-                                            classif_front_min_neighbours_,
+                                            classifier_front_scale_factor_,
+                                            classifier_front_min_neighbours_,
                                             0|CV_HAAR_SCALE_IMAGE,
                                             classif_front_min_size_);
 
@@ -412,8 +393,8 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
 
         classifier_profile_local.detectMultiScale(cascade_img,
                                                   faces_profile,
-                                                  classif_profile_scale_factor_,
-                                                  classif_profile_min_neighbours_,
+                                                  classifier_profile_scale_factor_,
+                                                  classifier_profile_min_neighbours_,
                                                   0|CV_HAAR_SCALE_IMAGE,
                                                   classif_profile_min_size_);
 
