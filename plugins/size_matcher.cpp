@@ -210,7 +210,7 @@ bool SizeMatcher::loadLearnedModel(std::string path, std::string model_name){
 
     if (!conf.loadFromYAMLFile(path))
     {
-        std::cout << "Could not load " << path << std::endl;
+//        std::cout << "Could not load " << path << std::endl;
         return false;
     }
 

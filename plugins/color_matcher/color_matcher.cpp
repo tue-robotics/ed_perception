@@ -400,7 +400,7 @@ bool ColorMatcher::loadLearning(std::string path, std::string model_name_not_nee
 
     if (!conf.loadFromYAMLFile(path))       // read YAML configuration
     {
-        std::cout << "Could not load config file: " << path << std::endl;
+//        std::cout << "Could not load config file: " << path << std::endl;
         return false;
     }
 
