@@ -153,7 +153,7 @@ int main(int argc, char **argv)
         if (e->lastMeasurement())
             showMeasurement(*e->lastMeasurement());
 
-        std::cout << std::endl << "------------------------------------------------------------" << std::endl;
+        std::cout << "\n\n------------------------------------------------------------" << std::endl;
         std::cout << "    " << filename.withoutExtension() << std::endl;
         std::cout << "------------------------------------------------------------" << std::endl << std::endl;
 
@@ -172,6 +172,7 @@ int main(int argc, char **argv)
 
         input.type_distribution.normalize();
 
+
         const std::vector<boost::shared_ptr<ed::perception::Module> >& modules = plugin.perception_modules();
 
         for(std::vector<boost::shared_ptr<ed::perception::Module> >::const_iterator it = modules.begin(); it != modules.end(); ++it)
@@ -185,14 +186,18 @@ int main(int argc, char **argv)
 
             output.type_update.normalize();
 
-            std::cout << module->name() << ": " << output.type_update << std::endl;
+
+            std::cout << module->name() << ":\n\t" << output.type_update << "\n" << std::endl;
 
             // Update total type distribution
             input.type_distribution.update(output.type_update);
         }
 
-        std::cout << "Total: " << input.type_distribution << std::endl;
+        std::cout << "Total: \n\t" << input.type_distribution << std::endl;
         std::cout << std::endl;
+
+        // print perception result
+        std::cout << result << std::endl;
 
         std::string max_type;
         double max_score;
