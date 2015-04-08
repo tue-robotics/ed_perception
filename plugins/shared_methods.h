@@ -16,11 +16,13 @@ public:
 
     ~SharedMethods();
 
-    void prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& cropped_image, cv::Mat& depth_image, cv::Rect& bouding_box) const;
+    void prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& cropped_image, cv::Mat& depth_image, cv::Mat& mask, cv::Rect& bouding_box) const;
 
-    void OptimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
+    float getAverageDepth(cv::Mat& depth_img) const;
 
-    void OptimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
+    void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
+
+    void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
 
 private:
 
