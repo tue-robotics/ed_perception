@@ -201,6 +201,9 @@ target_link_libraries(view-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_executable(test-perception tools/test_perception.cpp)
 target_link_libraries(test-perception ed_perception2 ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
+add_executable(test-perception2 tools/test_perception2.cpp)
+target_link_libraries(test-perception2 ed_perception2 ed_perception_plugin ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
 add_executable(create-rgbd-measurement tools/create_rgbd_measurement.cpp)
 target_link_libraries(create-rgbd-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
