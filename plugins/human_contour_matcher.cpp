@@ -15,7 +15,6 @@
 
 #include <boost/filesystem.hpp>
 
-
 // ----------------------------------------------------------------------------------------------------
 
 HumanContourMatcher::HumanContourMatcher() :
@@ -37,17 +36,11 @@ void HumanContourMatcher::configure(tue::Configuration config) {
     if (!config.value("head_template_front_path", template_front_path_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'head_template_front_path' not found. Using default: " << template_front_path_ << std::endl;
 
-    template_front_path_ = module_path_ + template_front_path_;
-
     if (!config.value("head_template_left_path", template_left_path_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'head_template_left_path' not found. Using default: " << template_left_path_ << std::endl;
 
-    template_left_path_ = module_path_ + template_left_path_;
-
     if (!config.value("head_template_right_path", template_right_path_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'head_template_right_path' not found. Using default: " << template_right_path_ << std::endl;
-
-    template_right_path_ = module_path_ + template_right_path_;
 
     if (!config.value("debug_folder", debug_folder_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'debug_folder' not found. Using default: " << debug_folder_ << std::endl;
@@ -69,6 +62,19 @@ void HumanContourMatcher::configure(tue::Configuration config) {
 
     if (!config.value("dt_slices_num", num_slices_matching_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'dt_slices_num' not found. Using default: " << num_slices_matching_ << std::endl;
+
+    if (!config.value("dt_slices_num", num_slices_matching_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'dt_slices_num' not found. Using default: " << num_slices_matching_ << std::endl;
+
+    if (!config.value("type_positive_score", type_positive_score_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'type_positive_score' not found. Using default: " << type_positive_score_ << std::endl;
+
+    if (!config.value("type_negative_score", type_negative_score_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'type_negative_score' not found. Using default: " << type_negative_score_ << std::endl;
+
+    template_front_path_ = module_path_ + template_front_path_;
+    template_left_path_ = module_path_ + template_left_path_;
+    template_right_path_ = module_path_ + template_right_path_;
 
     // initialzie human_classifier
     if(!human_classifier_.Initializations(debug_mode_,
@@ -109,7 +115,34 @@ void HumanContourMatcher::loadConfig(const std::string& config_path) {
     max_template_err_ = 15;
     border_size_ = 20;
     num_slices_matching_ = 7;
+    type_positive_score_ = 0.9;
+    type_negative_score_ = 0.4;
 
+    shared_methods = SharedMethods();
+
+
+    // -------------- For debugging! --------------
+    debug_mode_ = true;
+    template_front_path_ = module_path_ + template_front_path_;
+    template_left_path_ = module_path_ + template_left_path_;
+    template_right_path_ = module_path_ + template_right_path_;
+    // initialzie human_classifier
+    if(!human_classifier_.Initializations(debug_mode_,
+                                          debug_folder_,
+                                          template_front_path_,
+                                          template_left_path_,
+                                          template_right_path_,
+                                          match_iterations_,
+                                          dt_line_width_,
+                                          max_template_err_,
+                                          border_size_,
+                                          num_slices_matching_)){
+        std::cout << "[" << module_name_ << "] " << "Initialization incomplete!" << std::endl;
+    }
+
+    init_success_ = true;
+    std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
+    // --------------------------------------------
 }
 
 
@@ -120,51 +153,75 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
 {
     ed::ErrorContext errc("Processing entity in HumanContourMatcher");
 
-    const ed::EntityConstPtr& e = input.entity;
-    tue::Configuration& result = output.data;
-
     // if initialization failed, return
     if (!init_success_)
         return;
+
+    const ed::EntityConstPtr& e = input.entity;
+    tue::Configuration& result = output.data;
+
+    float classification_error = 0;
+    float classification_deviation = 0;
+    std::string classification_stance;
+    bool is_human = false;
+
+    // ---------- Prepare measurement ----------
 
     // Get the best measurement from the entity
     ed::MeasurementConstPtr msr = e->lastMeasurement();
     if (!msr)
         return;
 
-    float depth_sum = 0;
-    float avg_depht;
-    float classification_error = 0;
-    float classification_deviation = 0;
-    std::string classification_stance;
-    uint point_counter = 0;
-    bool is_human = false;
+    int min_x, max_x, min_y, max_y;
 
-    // Get the depth image from the measurement
-    const cv::Mat& depth_image = msr->image()->getDepthImage();
+    // create a view
+    rgbd::View view(*msr->image(), msr->image()->getRGBImage().cols);
+
+    // get color image
     const cv::Mat& color_image = msr->image()->getRGBImage();
 
-    cv::Mat mask_cv = cv::Mat::zeros(depth_image.rows, depth_image.cols, CV_8UC1);
+    // get color image
+    const cv::Mat& depth_image = msr->image()->getDepthImage();
 
-    // Iterate over all points in the mask. You must specify the width of the image on which you
-    // want to apply the mask (see the begin(...) method).
-    for(ed::ImageMask::const_iterator it = msr->imageMask().begin(depth_image.cols); it != msr->imageMask().end(); ++it)
+    // crop it to match the view
+    cv::Mat cropped_image(color_image(cv::Rect(0,0,view.getWidth(), view.getHeight())));
+
+    // initialize bounding box points
+    max_x = 0;
+    max_y = 0;
+    min_x = view.getWidth();
+    min_y = view.getHeight();
+
+    cv::Mat mask = cv::Mat::zeros(view.getHeight(), view.getWidth(), CV_8UC1);
+    // Iterate over all points in the mask
+    for(ed::ImageMask::const_iterator it = msr->imageMask().begin(view.getWidth()); it != msr->imageMask().end(); ++it)
     {
         // mask's (x, y) coordinate in the depth image
         const cv::Point2i& p_2d = *it;
 
-        // TODO dont creat a Mat mask, just give human_classifier_.Classify a vector of 2D points!
         // paint a mask
-        mask_cv.at<unsigned char>(p_2d) = 255;
+        mask.at<unsigned char>(*it) = 255;
 
-        // calculate measurement average depth
-        depth_sum += depth_image.at<float>(p_2d);
-        point_counter++;
+        // update the boundary coordinates
+        if (min_x > p_2d.x) min_x = p_2d.x;
+        if (max_x < p_2d.x) max_x = p_2d.x;
+        if (min_y > p_2d.y) min_y = p_2d.y;
+        if (max_y < p_2d.y) max_y = p_2d.y;
     }
 
-    avg_depht = depth_sum/(float)point_counter;
+    cv::Rect bouding_box (min_x, min_y, max_x - min_x, max_y - min_y);
 
-    is_human = human_classifier_.Classify(depth_image, color_image, mask_cv, avg_depht, classification_error, classification_deviation, classification_stance);
+    // create a copy of the depth image region of interest, masked
+    cv::Mat masked_depth_image(depth_image);
+    masked_depth_image.copyTo(masked_depth_image, mask);
+    masked_depth_image = masked_depth_image(bouding_box);
+
+    // get entity average depth
+    float avg_depth = shared_methods.getAverageDepth(masked_depth_image);
+
+    // call classifier
+    is_human = human_classifier_.Classify(depth_image, color_image, mask, avg_depth, classification_error, classification_deviation, classification_stance);
+
 
     // ----------------------- assert results -----------------------
 
@@ -186,11 +243,11 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
 
     if(is_human)
     {
-        result.setValue("score", 1.0);
-        output.type_update.setScore("human", 0.8);
+        result.setValue("score", type_positive_score_);
+        output.type_update.setScore("human", type_positive_score_);
     }else{
-        result.setValue("score", 0.0);
-        output.type_update.setScore("human", 0.2);
+        result.setValue("score", type_negative_score_);
+        output.type_update.setScore("human", type_negative_score_);
     }
 
     result.endGroup();  // close human_contour_matcher group

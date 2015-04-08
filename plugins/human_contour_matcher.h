@@ -8,7 +8,10 @@
 #define ED_PERCEPTION_HUMAN_CONTOUR_MATCHER_H_
 
 #include <ed/perception/module.h>
+
 #include "human_classifier.h"
+
+#include "shared_methods.h"
 
 class HumanContourMatcher : public ed::perception::Module
 {
@@ -33,6 +36,10 @@ private:
     int border_size_;
     int num_slices_matching_;
     double max_template_err_;
+    double type_positive_score_;
+    double type_negative_score_;
+
+    SharedMethods shared_methods;
 
 public:
 
