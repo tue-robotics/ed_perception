@@ -98,6 +98,9 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
 
     const ed::ConvexHull2D& chull = e->convexHull();
 
+    if (chull.chull.empty())
+        return;
+
     double object_height = chull.height();
     double object_width = 0;
 
@@ -139,14 +142,17 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
 
 //        std::cout << label << ": " << best_score << std::endl;
 
-        // if the size difference between models is less than threshold, use the model
         hypothesis[label] = 0.5 * best_score; // TODO: magic number
     }
 
 //    std::cout << "Size matcher: " << e->id() << ": " << object_width << ", " << object_height << std::endl;
 
     if (object_height < 1)
-        hypothesis["human"] = 0;
+    {
+        // TODO: remove hard-coded
+        output.type_update.setScore("human", 0);
+        output.type_update.setScore("crowd", 0);
+    }
 
     // ----------------------- SAVE RESULTS -----------------------
 

@@ -25,6 +25,10 @@ public:
 
     void process(const ed::PluginInput& data, ed::UpdateRequest& req);
 
+    const std::vector<boost::shared_ptr<Module> >& perception_modules() const { return perception_modules_; }
+
+    const std::vector<std::string>& model_list() const { return model_list_; }
+
 private:
 
     // List of possible object types

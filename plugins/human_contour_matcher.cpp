@@ -241,6 +241,8 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
         result.setValue("deviation", classification_deviation);
     }
 
+    output.type_update.setUnknownScore(0.1); // TODO: magic number
+
     if(is_human)
     {
         result.setValue("score", type_positive_score_);

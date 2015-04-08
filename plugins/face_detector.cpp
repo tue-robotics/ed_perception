@@ -325,7 +325,10 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
         result.setValue("score", type_negative_score_);
 
         output.type_update.setScore("human", type_negative_score_);
+
     }
+
+    output.type_update.setUnknownScore(0.1); // TODO: magic number
 
     result.endGroup();  // close face_detector group
     result.endGroup();  // close perception_result group
