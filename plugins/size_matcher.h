@@ -17,15 +17,9 @@ struct ObjectSize
     ObjectSize(){}
 
     ObjectSize(double width_, double height_)
-        : width(width_), height(height_)
-    {
-    }
+        : width(width_), height(height_){}
 
-//    // Update values
-//    void updateHMin(double hmin) {min_height = std::max(hmin, 0.0);}
-//    void updateHMax(double hmax) {height = hmax;}
-//    void updateWMin(double wmin) {min_width = std::max(wmin, 0.0);}
-//    void updateWmax(double wmax) {width = wmax;}
+
 };
 
 
@@ -60,6 +54,9 @@ private:
 
     std::map<std::string, std::vector<ObjectSize> > models_;
     std::string	module_name_;    /*!< Name of the module, for output */
+
+    double type_positive_score_;
+    double type_negative_score_;
 
     bool loadLearnedModel(std::string path, std::string model_name);
 };

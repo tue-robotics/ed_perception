@@ -127,21 +127,6 @@ void FaceDetector::loadConfig(const std::string& config_path) {
     type_negative_score_ = 0.4;
 
     shared_methods = SharedMethods();
-
-
-    // --------------DEBUGGGGGGGG
-//    cascade_front_files_path_ = module_path_ + cascade_front_files_path_;
-//    cascade_profile_files_path_ = module_path_ + cascade_profile_files_path_;
-
-//    // check if the cascade file exist so they can be loaded later
-//    if (!boost::filesystem::exists(cascade_front_files_path_) || !boost::filesystem::exists(cascade_profile_files_path_)){
-//        init_success_ = false;
-//        std::cout << "[" << module_name_ << "] " << "Couldn't find cascade files for detection (" << cascade_profile_files_path_
-//                  <<  "). Face dection will not work!" << std::endl;
-//    }else{
-//        init_success_ = true;
-//        std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
-//    }
 }
 
 
@@ -215,6 +200,8 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
     {
         result.writeGroup("perception_result");
     }
+
+    output.type_update.setUnknownScore(0.1); // TODO: magic number
 
     result.writeGroup("face_detector");
 
@@ -311,24 +298,24 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
 
         if (faces_front.size() + faces_profile.size() > 1){
             result.setValue("label", "multiple_faces");
+            output.type_update.setScore("crowd", type_positive_score_);
+            output.type_update.setScore("human", type_positive_score_);
         }
         else{
             result.setValue("label", "face");
+            output.type_update.setScore("human", type_positive_score_);
         }
 
-        output.type_update.setScore("human", type_positive_score_);
         result.setValue("score", type_positive_score_);
 
     }else{
         // no faces detected
         result.setValue("label", "face");
-        result.setValue("score", type_negative_score_);
-
-        output.type_update.setScore("human", type_negative_score_);
-
+        result.setValue("score", 0);
+//        output.type_update.setScore("human", type_negative_score_);
+        output.type_update.setUnknownScore(0.1); // TODO: magic number
     }
 
-    output.type_update.setUnknownScore(0.1); // TODO: magic number
 
     result.endGroup();  // close face_detector group
     result.endGroup();  // close perception_result group

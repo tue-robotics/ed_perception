@@ -119,30 +119,6 @@ void HumanContourMatcher::loadConfig(const std::string& config_path) {
     type_negative_score_ = 0.4;
 
     shared_methods = SharedMethods();
-
-
-    // -------------- For debugging! --------------
-//    debug_mode_ = true;
-//    template_front_path_ = module_path_ + template_front_path_;
-//    template_left_path_ = module_path_ + template_left_path_;
-//    template_right_path_ = module_path_ + template_right_path_;
-//    // initialzie human_classifier
-//    if(!human_classifier_.Initializations(debug_mode_,
-//                                          debug_folder_,
-//                                          template_front_path_,
-//                                          template_left_path_,
-//                                          template_right_path_,
-//                                          match_iterations_,
-//                                          dt_line_width_,
-//                                          max_template_err_,
-//                                          border_size_,
-//                                          num_slices_matching_)){
-//        std::cout << "[" << module_name_ << "] " << "Initialization incomplete!" << std::endl;
-//    }
-
-//    init_success_ = true;
-//    std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
-    // --------------------------------------------
 }
 
 
@@ -223,7 +199,7 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
     is_human = human_classifier_.Classify(depth_image, color_image, mask, avg_depth, classification_error, classification_deviation, classification_stance);
 
 
-    // ----------------------- assert results -----------------------
+    // ----------------------- Assert results -----------------------
 
     // create group if it doesnt exist
     if (!result.readGroup("perception_result", tue::OPTIONAL))
@@ -231,25 +207,34 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
         result.writeGroup("perception_result");
     }
 
-    // assert the results to the entity
-    result.writeGroup(module_name_);
+    output.type_update.setUnknownScore(0.1); // TODO: magic number
+
+    result.writeGroup("human_contour_matcher");
+
     result.setValue("label", "human_shape");
 
+    // if classification_error == 0, fitting could not even be completed
     if (classification_error > 0){
         result.setValue("stance", classification_stance);
         result.setValue("error", classification_error);
         result.setValue("deviation", classification_deviation);
     }
 
-    output.type_update.setUnknownScore(0.1); // TODO: magic number
-
-    if(is_human)
-    {
+    if(is_human){
+        // classified as human
         result.setValue("score", type_positive_score_);
         output.type_update.setScore("human", type_positive_score_);
-    }else{
+
+    }else if (!is_human && classification_error > 0){
+        // not classified as human but matching was possible
         result.setValue("score", type_negative_score_);
-        output.type_update.setScore("human", type_negative_score_);
+//        output.type_update.setScore("human", type_negative_score_);
+//        output.type_update.setUnknownScore(0.1 + type_negative_score_); // TODO: magic number
+
+    }else if (!is_human && classification_error == 0){
+        // not classified as human and matching was not possible
+        result.setValue("score", 0);
+//        output.type_update.setScore("human", type_negative_score_);
     }
 
     result.endGroup();  // close human_contour_matcher group

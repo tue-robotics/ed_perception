@@ -166,6 +166,8 @@ void ColorMatcher::process(const ed::perception::WorkerInput& input, ed::percept
 
     result.writeGroup("color_matcher");
 
+    output.type_update.setUnknownScore(0.1); // TODO: magic number
+
     // assert colors
     if (!color_amount.empty()){
         result.writeArray("colors");
@@ -179,21 +181,19 @@ void ColorMatcher::process(const ed::perception::WorkerInput& input, ed::percept
         result.endArray();
     }
 
-    output.type_update.setUnknownScore(0.1); // TODO: magic number
-
     // assert hypothesis
     if (!hypothesis.empty()){
-        result.writeArray("hypothesis");
+//        result.writeArray("hypothesis");
         for (std::map<std::string, double>::const_iterator it = hypothesis.begin(); it != hypothesis.end(); ++it)
         {
-            result.addArrayItem();
-            result.setValue("name", it->first);
-            result.setValue("score", it->second);
-            result.endArrayItem();
+//            result.addArrayItem();
+//            result.setValue("name", it->first);
+//            result.setValue("score", it->second);
+//            result.endArrayItem();
 
             output.type_update.setScore(it->first, it->second);
         }
-        result.endArray();
+//        result.endArray();
     }
 
     result.endGroup();  // close color_matcher group
