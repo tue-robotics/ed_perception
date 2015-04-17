@@ -11,18 +11,15 @@
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
-// ---------------------------------------------------------------------------------------------------
 
-SharedMethods::SharedMethods(){
-}
-
-
-SharedMethods::~SharedMethods(){
-}
+namespace ed
+{
+namespace perception
+{
 
 // ---------------------------------------------------------------------------------------------------
 
-void SharedMethods::prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& view_color_img, cv::Mat& view_depth_img, cv::Mat& mask, cv::Rect& bouding_box) const{
+void prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& view_color_img, cv::Mat& view_depth_img, cv::Mat& mask, cv::Rect& bouding_box) {
 
     // Get the best measurement from the entity
     ed::MeasurementConstPtr msr = e->lastMeasurement();
@@ -73,10 +70,9 @@ void SharedMethods::prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& vie
     bouding_box = cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y);
 }
 
-
 // ----------------------------------------------------------------------------------------------------
 
-float SharedMethods::getAverageDepth(cv::Mat& depth_img) const{
+float getAverageDepth(cv::Mat& depth_img) {
 
     float median = 0;
     std::vector<float> depths;
@@ -111,7 +107,7 @@ float SharedMethods::getAverageDepth(cv::Mat& depth_img) const{
 
 // ----------------------------------------------------------------------------------------------------
 
-void SharedMethods::optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const{
+void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) {
 
     std::vector<std::vector<cv::Point> > hull;
     std::vector<std::vector<cv::Point> > contours;
@@ -132,7 +128,7 @@ void SharedMethods::optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_
 // ----------------------------------------------------------------------------------------------------
 
 
-void SharedMethods::optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const{
+void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) {
 
     mask_orig.copyTo(mask_optimized);
 
@@ -144,3 +140,37 @@ void SharedMethods::optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_
     cv::threshold(mask_optimized, mask_optimized, 50, 255, CV_THRESH_BINARY);
 }
 
+// ----------------------------------------------------------------------------------------------------
+
+cv::Mat maskImage(const cv::Mat& img, const ed::ImageMask& mask, cv::Rect& roi)
+{
+    // initialize bounding box points
+    uint max_x = 0;
+    uint max_y = 0;
+    uint min_x = img.cols;
+    uint min_y = img.rows;
+
+    // Created masked image
+    cv::Mat masked_img = cv::Mat::zeros(img.rows, img.cols, img.type());
+
+    for(ed::ImageMask::const_iterator it = mask.begin(img.cols); it != mask.end(); ++it)
+    {
+        const cv::Point2i& p_2d = *it;
+
+        masked_img.at<cv::Vec3b>(p_2d) = img.at<cv::Vec3b>(p_2d);
+
+        // update the boundary coordinates
+        if (min_x > p_2d.x) min_x = p_2d.x;
+        if (max_x < p_2d.x) max_x = p_2d.x;
+        if (min_y > p_2d.y) min_y = p_2d.y;
+        if (max_y < p_2d.y) max_y = p_2d.y;
+    }
+
+    roi = cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y);
+
+    return masked_img;
+}
+
+}
+
+}

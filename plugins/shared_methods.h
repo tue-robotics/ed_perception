@@ -1,4 +1,3 @@
-
 #ifndef SHARED_METHODS_H_
 #define SHARED_METHODS_H_
 
@@ -8,26 +7,23 @@
 #include "ed/measurement.h"
 #include <ed/entity.h>
 
-class SharedMethods{
+namespace ed
+{
+namespace perception
+{
 
-public:
+void prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& cropped_image, cv::Mat& depth_image, cv::Mat& mask, cv::Rect& bouding_box);
 
-    SharedMethods();
+float getAverageDepth(cv::Mat& depth_img);
 
-    ~SharedMethods();
+void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized);
 
-    void prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& cropped_image, cv::Mat& depth_image, cv::Mat& mask, cv::Rect& bouding_box) const;
+void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized);
 
-    float getAverageDepth(cv::Mat& depth_img) const;
+cv::Mat maskImage(const cv::Mat& img, const ed::ImageMask& mask, cv::Rect& roi);
 
-    void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
+}
 
-    void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
-
-private:
-
-protected:
-
-};
+}
 
 #endif

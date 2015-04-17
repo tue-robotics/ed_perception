@@ -13,8 +13,6 @@
 #include <opencv/cv.h>
 #include "opencv2/highgui/highgui.hpp"
 
-#include "shared_methods.h"
-
 class FaceDetector : public ed::perception::Module
 {
 
@@ -49,8 +47,6 @@ private:
 
     double type_positive_score_;
     double type_negative_score_;
-
-    SharedMethods shared_methods;
 
     //------------------------------------
 

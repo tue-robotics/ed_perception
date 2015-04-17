@@ -252,8 +252,6 @@ void FaceRecognition::process(const ed::perception::WorkerInput& input, ed::perc
     if (!msr)
         return;
 
-    uint min_x, max_x, min_y, max_y;
-
     // create a view
     rgbd::View view(*msr->image(), msr->image()->getRGBImage().cols);
 
@@ -262,31 +260,6 @@ void FaceRecognition::process(const ed::perception::WorkerInput& input, ed::perc
 
     // crop it to match the view
     cv::Mat cropped_image(color_image(cv::Rect(0,0,view.getWidth(), view.getHeight())));
-
-    // initialize bounding box points
-    max_x = 0;
-    max_y = 0;
-    min_x = view.getWidth();
-    min_y = view.getHeight();
-
-    cv::Mat mask = cv::Mat::zeros(view.getHeight(), view.getWidth(), CV_8UC1);
-    // Iterate over all points in the mask
-    for(ed::ImageMask::const_iterator it = msr->imageMask().begin(view.getWidth()); it != msr->imageMask().end(); ++it)
-    {
-        // mask's (x, y) coordinate in the depth image
-        const cv::Point2i& p_2d = *it;
-
-        // paint a mask
-        mask.at<unsigned char>(*it) = 255;
-
-        // update the boundary coordinates
-        if (min_x > p_2d.x) min_x = p_2d.x;
-        if (max_x < p_2d.x) max_x = p_2d.x;
-        if (min_y > p_2d.y) min_y = p_2d.y;
-        if (max_y < p_2d.y) max_y = p_2d.y;
-    }
-
-//    cv::Rect bouding_box (min_x, min_y, max_x - min_x, max_y - min_y);
 
     // ----------------------- Process -----------------------
 

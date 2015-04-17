@@ -11,8 +11,6 @@
 
 #include "human_classifier.h"
 
-#include "shared_methods.h"
-
 class HumanContourMatcher : public ed::perception::Module
 {
 
@@ -38,8 +36,6 @@ private:
     double max_template_err_;
     double type_positive_score_;
     double type_negative_score_;
-
-    SharedMethods shared_methods;
 
 public:
 

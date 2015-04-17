@@ -107,53 +107,13 @@ void ColorMatcher::process(const ed::perception::WorkerInput& input, ed::percept
     if (!msr)
         return;
 
-    uint min_x, max_x, min_y, max_y;
-    std::map<std::string, double> hypothesis;
-
-    // create a view
-    rgbd::View view(*msr->image(), msr->image()->getRGBImage().cols);
-
     // get color image
     const cv::Mat& color_image = msr->image()->getRGBImage();
 
-    // crop it to match the view
-    cv::Mat cropped_image(color_image(cv::Rect(0,0,view.getWidth(), view.getHeight())));
-
-    // initialize bounding box points
-    max_x = 0;
-    max_y = 0;
-    min_x = view.getWidth();
-    min_y = view.getHeight();
-
-    // initialize mask
-    cv::Mat mask = cv::Mat::zeros(view.getHeight(), view.getWidth(), CV_8UC1);
-    // Iterate over all points in the mask
-    for(ed::ImageMask::const_iterator it = msr->imageMask().begin(view.getWidth()); it != msr->imageMask().end(); ++it)
-    {
-        // mask's (x, y) coordinate in the depth image
-        const cv::Point2i& p_2d = *it;
-
-        // paint a mask
-        mask.at<unsigned char>(*it) = 255;
-
-        // update the boundary coordinates
-        if (min_x > p_2d.x) min_x = p_2d.x;
-        if (max_x < p_2d.x) max_x = p_2d.x;
-        if (min_y > p_2d.y) min_y = p_2d.y;
-        if (max_y < p_2d.y) max_y = p_2d.y;
-    }
-
-    optimizeContourBlur(mask, mask);
-
-    // ---------- PROCESS MEASUREMENT ----------
-
-    // Calculate img color prob
-    cv::Mat roi (cropped_image(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
-    cv::Mat roi_mask (mask(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
-
     cv::Mat color_hist;
-    std::map<std::string, double> color_amount = getImageColorProbability(roi, roi_mask, color_hist);
+    std::map<std::string, double> color_amount = getImageColorProbability(color_image, msr->imageMask(), color_hist);
 
+    std::map<std::string, double> hypothesis;
     getHypothesis(color_amount, hypothesis);
 
     // ---------- ASSERT RESULTS ----------
@@ -202,67 +162,54 @@ void ColorMatcher::process(const ed::perception::WorkerInput& input, ed::percept
 
     // ---------- DEBUG ----------
 
-    if (debug_mode_){
-        cv::Mat temp;
-        ed::UUID id = ed::Entity::generateID();
+//    if (debug_mode_){
+//        cv::Mat temp;
+//        ed::UUID id = ed::Entity::generateID();
 
-        roi.copyTo(temp, roi_mask);
+//        roi.copyTo(temp, roi_mask);
 
-        cv::imwrite(debug_folder_ + id.str() + "_color_matcher_full.png", roi);
-        cv::imwrite(debug_folder_ + id.str() + "_color_matcher_masked.png", temp);
-    }
+//        cv::imwrite(debug_folder_ + id.str() + "_color_matcher_full.png", roi);
+//        cv::imwrite(debug_folder_ + id.str() + "_color_matcher_masked.png", temp);
+//    }
 }
 
 // ---------------------------------------------------------------------------------------------------
 
-std::map<std::string, double> ColorMatcher::getImageColorProbability(const cv::Mat& img, const cv::Mat& mask, cv::Mat& histogram) const
+std::map<std::string, double> ColorMatcher::getImageColorProbability(const cv::Mat& img, const ed::ImageMask& mask, cv::Mat& histogram) const
 {
     std::map<std::string, double> color_count;
     uint pixel_count = 0;
 
-    // Loop over the image
-    for(int y = 0; y < img.rows; ++y) {
-        for(int x = 0; x < img.cols; ++x) {
+    for(ed::ImageMask::const_iterator it = mask.begin(img.cols); it != mask.end(); ++it)
+    {
+        pixel_count ++;
+        const cv::Point2i& p = *it;
 
-            // only use the points covered by the mask
-            if (mask.at<unsigned char>(y, x) == 0)
-                continue;
+        // Calculate prob distribution
+        const cv::Vec3b& c = img.at<cv::Vec3b>(p);
 
-            pixel_count ++;
+        ColorNamePoint cp((float) c[2],(float) c[1],(float) c[0]);
+        std::vector<ColorProbability> probs = color_table_.getProbabilities(cp);
 
-            // Calculate prob distribution
-            const cv::Vec3b& c = img.at<cv::Vec3b>(y, x);
+        //            std::string highest_prob_name;
+        //            float highest_prob = 0;
 
-            ColorNamePoint cp((float) c[2],(float) c[1],(float) c[0]);
-            std::vector<ColorProbability> probs = color_table_.getProbabilities(cp);
+        for (std::vector<ColorProbability>::iterator it = probs.begin(); it != probs.end(); ++it)
+        {
+            //                if (it->probability() > highest_prob) {
+            //                    highest_prob = it->probability();
+            //                    highest_prob_name = it->name();
+            //                }
 
-//            std::string highest_prob_name;
-//            float highest_prob = 0;
+            const std::string& name = it->name();
+            double prob = it->probability();
 
-            for (std::vector<ColorProbability>::iterator it = probs.begin(); it != probs.end(); ++it)
-            {
-//                if (it->probability() > highest_prob) {
-//                    highest_prob = it->probability();
-//                    highest_prob_name = it->name();
-//                }
-
-                const std::string& name = it->name();
-                double prob = it->probability();
-
-                // Check if the highest prob name exists in the map
-                std::map<std::string, double>::iterator found_it = color_count.find(name);
-                if (found_it == color_count.end()) // init on 1
-                    color_count[name] = prob;
-                else // +1
-                    color_count[name] += prob;
-            }
-
-
-            // Set the color in the image (vis purposes only)
-
-//            int r,g,b;
-//            colorToRGB(stringToColor(highest_prob_name),r,g,b);
-            //                img.at<cv::Vec3b>(y, x) = cv::Vec3b(b,g,r);       // Paint over the image for debugging
+            // Check if the highest prob name exists in the map
+            std::map<std::string, double>::iterator found_it = color_count.find(name);
+            if (found_it == color_count.end()) // init on 1
+                color_count[name] = prob;
+            else // +1
+                color_count[name] += prob;
         }
     }
 

@@ -13,6 +13,8 @@
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
+#include "shared_methods.h"
+
 #include <boost/filesystem.hpp>
 
 // ----------------------------------------------------------------------------------------------------
@@ -117,8 +119,6 @@ void HumanContourMatcher::loadConfig(const std::string& config_path) {
     num_slices_matching_ = 7;
     type_positive_score_ = 0.9;
     type_negative_score_ = 0.4;
-
-    shared_methods = SharedMethods();
 }
 
 
@@ -151,7 +151,7 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
     int min_x, max_x, min_y, max_y;
 
     // create a view
-    rgbd::View view(*msr->image(), msr->image()->getRGBImage().cols);
+//    rgbd::View view(*msr->image(), msr->image()->getRGBImage().cols);
 
     // get color image
     const cv::Mat& color_image = msr->image()->getRGBImage();
@@ -160,17 +160,17 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
     const cv::Mat& depth_image = msr->image()->getDepthImage();
 
     // crop it to match the view
-    cv::Mat cropped_image(color_image(cv::Rect(0,0,view.getWidth(), view.getHeight())));
+//    cv::Mat cropped_image(color_image(cv::Rect(0,0,view.getWidth(), view.getHeight())));
 
     // initialize bounding box points
     max_x = 0;
     max_y = 0;
-    min_x = view.getWidth();
-    min_y = view.getHeight();
+    min_x = depth_image.cols;
+    min_y = depth_image.rows;
 
-    cv::Mat mask = cv::Mat::zeros(view.getHeight(), view.getWidth(), CV_8UC1);
+    cv::Mat mask = cv::Mat::zeros(depth_image.rows, depth_image.cols, CV_8UC1);
     // Iterate over all points in the mask
-    for(ed::ImageMask::const_iterator it = msr->imageMask().begin(view.getWidth()); it != msr->imageMask().end(); ++it)
+    for(ed::ImageMask::const_iterator it = msr->imageMask().begin(depth_image.cols); it != msr->imageMask().end(); ++it)
     {
         // mask's (x, y) coordinate in the depth image
         const cv::Point2i& p_2d = *it;
@@ -193,7 +193,7 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
     masked_depth_image = masked_depth_image(bouding_box);
 
     // get entity average depth
-    float avg_depth = shared_methods.getAverageDepth(masked_depth_image);
+    float avg_depth = ed::perception::getAverageDepth(masked_depth_image);
 
     // call classifier
     is_human = human_classifier_.Classify(depth_image, color_image, mask, avg_depth, classification_error, classification_deviation, classification_stance);

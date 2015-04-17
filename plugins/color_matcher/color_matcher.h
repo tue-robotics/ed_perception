@@ -51,7 +51,7 @@ private:
     std::string color_table_path_;
 
     // Module methods
-    std::map<std::string, double> getImageColorProbability(const cv::Mat &img, const cv::Mat &mask, cv::Mat &histogram) const;
+    std::map<std::string, double> getImageColorProbability(const cv::Mat& img, const ed::ImageMask& mask, cv::Mat &histogram) const;
 
     std::string getHighestProbColor(std::map<std::string, double>& map) const;
 

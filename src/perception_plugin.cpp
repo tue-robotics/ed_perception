@@ -116,6 +116,10 @@ void PerceptionPlugin::initialize(ed::InitData& init)
     {
         while(config.nextArrayItem())
         {
+            int enabled = 1;
+            if (config.value("enabled", enabled, tue::OPTIONAL) && enabled == 0)
+                continue;
+
             std::string lib;
             if (!config.value("lib", lib))
                 continue;
