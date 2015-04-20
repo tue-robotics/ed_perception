@@ -144,3 +144,10 @@ void SharedMethods::optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_
     cv::threshold(mask_optimized, mask_optimized, 50, 255, CV_THRESH_BINARY);
 }
 
+
+// ----------------------------------------------------------------------------------------------------
+
+
+int SharedMethods::clipInt(int val, int min, int max) const{
+    return val <= min ? min : val >= max ? max : val;
+}

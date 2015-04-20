@@ -12,6 +12,12 @@ class SharedMethods{
 
 public:
 
+    /*
+    * ###########################################
+    *  				    PUBLIC
+    * ###########################################
+    */
+
     SharedMethods();
 
     ~SharedMethods();
@@ -20,13 +26,27 @@ public:
 
     float getAverageDepth(cv::Mat& depth_img) const;
 
+    // create a new mask based on the convex hull of the original mask
     void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
 
+    // create a new mask based on a blured version of the original mask, smoother and expanded
     void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
+
+    // clip an integer value
+    int clipInt(int val, int min, int max) const;
+
 
 private:
 
+    /*
+     * ###########################################
+     *  				PRIVATE
+     * ###########################################
+     */
+
+
 protected:
+
 
 };
 
