@@ -41,6 +41,9 @@ void ColorMatcher::configure(tue::Configuration config) {
     if (!config.value("debug_folder", debug_folder_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'debug_folder' not found. Using default: " << debug_folder_ << std::endl;
 
+    if (!config.value("type_unknown_score", type_unknown_score_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'type_unknown_score' not found. Using default: " << type_unknown_score_ << std::endl;
+
     if (debug_mode_)
         cleanDebugFolder(debug_folder_);
 
@@ -67,6 +70,7 @@ void ColorMatcher::loadConfig(const std::string& config_path) {
     debug_folder_ = "/tmp/color_matcher/";
     debug_mode_ = false;
     color_table_path_ = config_path + "/color_names.txt";
+    type_unknown_score_ = 0.05;
 }
 
 
@@ -166,7 +170,6 @@ void ColorMatcher::process(const ed::perception::WorkerInput& input, ed::percept
 
     result.writeGroup("color_matcher");
 
-    output.type_update.setUnknownScore(0.1); // TODO: magic number
 
     // assert colors
     if (!color_amount.empty()){
@@ -183,7 +186,6 @@ void ColorMatcher::process(const ed::perception::WorkerInput& input, ed::percept
 
     // assert hypothesis
     if (!hypothesis.empty()){
-//        result.writeArray("hypothesis");
         for (std::map<std::string, double>::const_iterator it = hypothesis.begin(); it != hypothesis.end(); ++it)
         {
 //            result.addArrayItem();
@@ -193,8 +195,9 @@ void ColorMatcher::process(const ed::perception::WorkerInput& input, ed::percept
 
             output.type_update.setScore(it->first, it->second);
         }
-//        result.endArray();
     }
+
+    output.type_update.setUnknownScore(type_unknown_score_);
 
     result.endGroup();  // close color_matcher group
     result.endGroup();  // close perception_result group

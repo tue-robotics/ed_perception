@@ -36,8 +36,10 @@ private:
     int border_size_;
     int num_slices_matching_;
     double max_template_err_;
+
     double type_positive_score_;
     double type_negative_score_;
+    double type_unknown_score_;
 
     SharedMethods shared_methods;
 
@@ -52,7 +54,6 @@ public:
     void loadConfig(const std::string& config_path);
 
     void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const;
-
 };
 
 #endif

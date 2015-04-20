@@ -50,6 +50,8 @@ private:
     std::string module_path_;
     std::string color_table_path_;
 
+    double type_unknown_score_;
+
     // Module methods
     std::map<std::string, double> getImageColorProbability(const cv::Mat &img, const cv::Mat &mask, cv::Mat &histogram) const;
 

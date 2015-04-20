@@ -72,6 +72,9 @@ void HumanContourMatcher::configure(tue::Configuration config) {
     if (!config.value("type_negative_score", type_negative_score_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'type_negative_score' not found. Using default: " << type_negative_score_ << std::endl;
 
+    if (!config.value("type_unknown_score", type_unknown_score_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'type_unknown_score' not found. Using default: " << type_unknown_score_ << std::endl;
+
     template_front_path_ = module_path_ + template_front_path_;
     template_left_path_ = module_path_ + template_left_path_;
     template_right_path_ = module_path_ + template_right_path_;
@@ -117,6 +120,7 @@ void HumanContourMatcher::loadConfig(const std::string& config_path) {
     num_slices_matching_ = 7;
     type_positive_score_ = 0.9;
     type_negative_score_ = 0.4;
+    type_unknown_score_ = 0.05;
 
     shared_methods = SharedMethods();
 }
@@ -207,13 +211,11 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
         result.writeGroup("perception_result");
     }
 
-    output.type_update.setUnknownScore(0.1); // TODO: magic number
-
     result.writeGroup("human_contour_matcher");
 
     result.setValue("label", "human_shape");
 
-    // if classification_error == 0, fitting could not even be completed
+    // only assert something if error is above 0, otherwise matching could not be performed
     if (classification_error > 0){
         result.setValue("stance", classification_stance);
         result.setValue("error", classification_error);
@@ -223,19 +225,27 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
     if(is_human){
         // classified as human
         result.setValue("score", type_positive_score_);
+
+        output.type_update.setScore("crowd", type_positive_score_);
         output.type_update.setScore("human", type_positive_score_);
 
     }else if (!is_human && classification_error > 0){
         // not classified as human but matching was possible
         result.setValue("score", type_negative_score_);
-//        output.type_update.setScore("human", type_negative_score_);
-//        output.type_update.setUnknownScore(0.1 + type_negative_score_); // TODO: magic number
+
+        output.type_update.setScore("crowd", type_negative_score_);
+        output.type_update.setScore("human", type_negative_score_);
 
     }else if (!is_human && classification_error == 0){
         // not classified as human and matching was not possible
         result.setValue("score", 0);
-//        output.type_update.setScore("human", type_negative_score_);
+
+        output.type_update.setScore("crowd", type_negative_score_);
+        output.type_update.setScore("human", type_negative_score_);
     }
+
+
+    output.type_update.setUnknownScore(type_unknown_score_);
 
     result.endGroup();  // close human_contour_matcher group
     result.endGroup();  // close perception_result group

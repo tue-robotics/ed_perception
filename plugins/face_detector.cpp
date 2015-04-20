@@ -69,6 +69,9 @@ void FaceDetector::configure(tue::Configuration config) {
     if (!config.value("type_negative_score", type_negative_score_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'type_negative_score' not found. Using default: " << type_negative_score_ << std::endl;
 
+    if (!config.value("type_unknown_score", type_unknown_score_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'type_unknown_score' not found. Using default: " << type_unknown_score_ << std::endl;
+
     cascade_front_files_path_ = module_path_ + cascade_front_files_path_;
     cascade_profile_files_path_ = module_path_ + cascade_profile_files_path_;
 
@@ -125,6 +128,7 @@ void FaceDetector::loadConfig(const std::string& config_path) {
     debug_folder_ = "/tmp/face_detector/";
     type_positive_score_ = 0.9;
     type_negative_score_ = 0.4;
+    type_unknown_score_ = 0.05;
 
     shared_methods = SharedMethods();
 }
@@ -147,8 +151,13 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
 
     // Get the best measurement from the entity
     ed::MeasurementConstPtr msr = e->lastMeasurement();
-    if (!msr)
+
+    if (!msr){
+        output.type_update.setScore("crowd", type_negative_score_);
+        output.type_update.setScore("human", type_negative_score_);
+        output.type_update.setUnknownScore(type_unknown_score_);
         return;
+    }
 
     std::vector<cv::Rect> faces_front;
     std::vector<cv::Rect> faces_profile;
@@ -201,12 +210,12 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
         result.writeGroup("perception_result");
     }
 
-    output.type_update.setUnknownScore(0.1); // TODO: magic number
-
     result.writeGroup("face_detector");
 
     // Detect faces in the measurment and assert the results
     if(DetectFaces(cropped_image(bouding_box), faces_front, faces_profile)){
+
+        std::cout << "CALLEEDDDDDDDDDDDDDDDDD" << std::endl;
         geo::Vector3 projection;
         geo::Vector3 point_map;
 
@@ -296,13 +305,19 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
             result.endArray();
         }
 
+        // assert type and score
         if (faces_front.size() + faces_profile.size() > 1){
+            // multiple faces detected
             result.setValue("label", "multiple_faces");
+
             output.type_update.setScore("crowd", type_positive_score_);
-            output.type_update.setScore("human", type_positive_score_);
+            output.type_update.setScore("human", type_negative_score_);
         }
         else{
+            // only one face detected
             result.setValue("label", "face");
+
+            output.type_update.setScore("crowd", type_negative_score_ - 0.05);
             output.type_update.setScore("human", type_positive_score_);
         }
 
@@ -311,11 +326,13 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
     }else{
         // no faces detected
         result.setValue("label", "face");
-        result.setValue("score", 0);
-//        output.type_update.setScore("human", type_negative_score_);
-        output.type_update.setUnknownScore(0.1); // TODO: magic number
+        result.setValue("score", type_negative_score_);
+
+        output.type_update.setScore("crowd", type_negative_score_);
+        output.type_update.setScore("human", type_negative_score_);
     }
 
+    output.type_update.setUnknownScore(type_unknown_score_);
 
     result.endGroup();  // close face_detector group
     result.endGroup();  // close perception_result group
@@ -422,49 +439,5 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
     return (!faces_front.empty() || !faces_profile.empty());
 }
 
-
-// ----------------------------------------------------------------------------------------------------
-
-
-void FaceDetector::OptimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const{
-
-    std::vector<std::vector<cv::Point> > hull;
-    std::vector<std::vector<cv::Point> > contours;
-
-    mask_optimized = cv::Mat::zeros(mask_orig.size(), CV_8UC1);
-
-    cv::findContours(mask_orig, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-
-    for (uint i = 0; i < contours.size(); i++){
-        hull.push_back(std::vector<cv::Point>());
-        cv::convexHull(cv::Mat(contours[i]), hull.back(), false);
-
-        cv::drawContours(mask_optimized, hull, -1, cv::Scalar(255), CV_FILLED);
-    }
-}
-
-
-// ----------------------------------------------------------------------------------------------------
-
-
-void FaceDetector::OptimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const{
-
-    mask_orig.copyTo(mask_optimized);
-
-    // blur the contour, also expands it a bit
-    for (uint i = 6; i < 18; i = i + 2){
-        cv::blur(mask_optimized, mask_optimized, cv::Size( i, i ), cv::Point(-1,-1) );
-    }
-
-    cv::threshold(mask_optimized, mask_optimized, 50, 255, CV_THRESH_BINARY);
-}
-
-
-// ----------------------------------------------------------------------------------------------------
-
-
-int FaceDetector::ClipInt(int val, int min, int max) const{
-    return val <= min ? min : val >= max ? max : val;
-}
 
 ED_REGISTER_PERCEPTION_MODULE(FaceDetector)

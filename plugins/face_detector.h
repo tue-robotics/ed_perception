@@ -49,6 +49,7 @@ private:
 
     double type_positive_score_;
     double type_negative_score_;
+    double type_unknown_score_;
 
     SharedMethods shared_methods;
 
@@ -59,16 +60,7 @@ private:
                      std::vector<cv::Rect> &faces_front,
                      std::vector<cv::Rect> &faces_profile) const;
 
-    // clip an integer value
-    int ClipInt(int val, int min, int max) const;
 
-    // create a new mask based on the convex hull of the original mask
-    void OptimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
-
-    // create a new mask based on a blured version of the original mask, smoother and expanded
-    void OptimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const;
-
-    float GetAverageDepth(cv::Mat& depth_img) const;
 
 /*
 * ###########################################

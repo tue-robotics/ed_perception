@@ -24,14 +24,11 @@
 SizeMatcher::SizeMatcher() :
     Module("size_matcher"),
     init_success_(false)
-{
-}
+{}
 
 // ----------------------------------------------------------------------------------------------------
 
-SizeMatcher::~SizeMatcher()
-{
-}
+SizeMatcher::~SizeMatcher(){}
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -53,6 +50,9 @@ void SizeMatcher::configure(tue::Configuration config) {
     if (!config.value("type_negative_score", type_negative_score_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'type_negative_score' not found. Using default: " << type_negative_score_ << std::endl;
 
+    if (!config.value("type_unknown_score", type_unknown_score_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'type_unknown_score' not found. Using default: " << type_unknown_score_ << std::endl;
+
     init_success_ = true;
 
     std::cout << "[" << module_name_ << "] " << "Ready!"<< std::endl;
@@ -70,6 +70,7 @@ void SizeMatcher::loadConfig(const std::string& config_path) {
     medium_size_treshold_ = 0.7;
     type_positive_score_ = 0.9;
     type_negative_score_ = 0.4;
+    type_unknown_score_ = 0.05;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -105,13 +106,34 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
 
     const ed::ConvexHull2D& chull = e->convexHull();
 
+    // if there is no convex hull available, cancel classification
     if (chull.chull.empty())
         return;
 
+    std::map<std::string, double> hypothesis;
+
+    // initialize size class
+    bool size_small = false;
+    bool size_medium = false;
+    bool size_big = false;
+
     double object_height = chull.height();
     double object_width = 0;
+    double object_area = chull.area();
 
-    std::map<std::string, double> hypothesis;
+
+    // set object size class
+    if ((object_width + object_height) < small_size_treshold_){
+        size_small = true;
+    }else if (small_size_treshold_ < (object_width + object_height) && (object_width + object_height) < medium_size_treshold_){
+        size_medium = true;
+    }else if (medium_size_treshold_ < (object_width + object_height)){
+        size_big = true;
+    }else
+        std::cout << "[" << module_name_ << "] " << "Could not set a size threshold!" << std::endl;
+
+
+//std::cout << "Entity size: " << object_height << " - " << object_area << std::endl;
 
     // compare object size to loaded models
     for(std::map<std::string, std::vector<ObjectSize> >::const_iterator it = models_.begin(); it != models_.end(); ++it)
@@ -123,23 +145,24 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
 
         for(std::vector<ObjectSize>::const_iterator it_size = sizes.begin(); it_size != sizes.end(); ++it_size)
         {
+            double score;
             const ObjectSize& model_size = *it_size;
 
-            // Temp
-            double diff_w = 0; //std::abs(model_size.width - object_width);
+            // width and height difference
+            double diff_w = std::abs(model_size.width - object_width);
             double diff_h = std::abs(model_size.height - object_height);
 
-            double max_diff = 0.1; // TODO: magic number
 
-            double score;
-            if (diff_w > max_diff || diff_h > max_diff)
+            if (diff_w > size_diff_threshold_ || diff_h > size_diff_threshold_)
                 score = 0;
             else
             {
-                double w_score = 1.0 - (diff_w / max_diff); // TODO: magic score function
-                double h_score = 1.0 - (diff_h / max_diff); // TODO: magic score function
+                double w_score = 1.0 - (diff_w / size_diff_threshold_); // TODO: magic score function
+                double h_score = 1.0 - (diff_h / size_diff_threshold_); // TODO: magic score function
                 score = (w_score + h_score) / 2;
             }
+
+//std::cout << "Diffs: " << diff_w << ", " << diff_h << " \t Score: " << score << std::endl;
 
             if (score > best_score)
                 object_width = model_size.width;
@@ -160,20 +183,21 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
 
     result.writeGroup("size_matcher");
 
-    output.type_update.setUnknownScore(0.1); // TODO: magic number
-
     result.writeGroup("size");
     result.setValue("width", object_width);
     result.setValue("height", object_height);
     result.endGroup();
 
-    // threshold object size, set label and type score for humans and crowds
-    if ((object_width + object_height) < small_size_treshold_){
+    // Set labels and scores
+    if (size_small){
         result.setValue("label", "small_size");
-        output.type_update.setScore("human", 0);
 
+        // if its small, for sure its not a person
+        output.type_update.setScore("human", 0);
+        output.type_update.setScore("crowd", 0);
+
+        // assert hypothesis
         if (!hypothesis.empty()){
-    //        result.writeArray("hypothesis");
             for (std::map<std::string, double>::const_iterator it = hypothesis.begin(); it != hypothesis.end(); ++it)
             {
     //            result.addArrayItem();
@@ -181,30 +205,26 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     //            result.setValue("score", std::max(it->second, 0.0));
     //            result.endArrayItem();
 
-                output.type_update.setScore(it->first, std::max(it->second, 0.0));
+                output.type_update.setScore(it->first, std::max(it->second, type_negative_score_));
             }
-    //        result.endArray();
         }
 
-    }else if (small_size_treshold_ < (object_width + object_height) && (object_width + object_height) < medium_size_treshold_){
+    }else if (size_medium){
         result.setValue("label", "medium_size");
-        output.type_update.setUnknownScore(0.9); // TODO: magic number
 
-//        output.type_update.setScore("human", type_positive_score_);
+        output.type_update.setScore("human", type_positive_score_);
+        output.type_update.setScore("crowd", type_positive_score_);
 
-    }else if (medium_size_treshold_ < (object_width + object_height)){
+    }else if (size_big){
         result.setValue("label", "large_size");
-        output.type_update.setUnknownScore(0.9); // TODO: magic number
 
-//        output.type_update.setScore("human", type_positive_score_);
+        output.type_update.setScore("human", type_positive_score_);
+        output.type_update.setScore("crowd", type_positive_score_);
     }else
-        std::cout << "[" << module_name_ << "] " << "Could not set a size threshold!" << std::endl;
+        std::cout << "[" << module_name_ << "] " << "Could not get size class!" << std::endl;
 
 
-//    result.setValue("score", 1.0);
-
-
-    // assert hypothesis
+    output.type_update.setUnknownScore(type_unknown_score_);
 
     result.endGroup();  // close size_matcher group
     result.endGroup();  // close perception_result group
