@@ -18,12 +18,19 @@ public:
     enum WorkerState {
         RUNNING,
         DONE,
-        IDLE
+        IDLE,
+        STOPPED
     };
 
     Worker(const std::vector<std::string>& model_list);
 
     virtual ~Worker();
+
+    const char* stateString() const
+    {
+        static const char* state_strs[] = { "running", "done", "idle", "stopped" };
+        return state_strs[state_];
+    }
 
     void start();
 
@@ -37,7 +44,11 @@ public:
 
     bool isIdle() const { return state_ == IDLE; }
 
+    bool isStopped() const { return state_ == STOPPED; }
+
     void setIdle() { state_ = IDLE; }
+
+    void signalStop() { signal_stop_ = true; }
 
     inline void setPerceptionModules(const std::vector<boost::shared_ptr<Module> >& modules)
     {
@@ -56,6 +67,8 @@ public:
     inline const CategoricalDistribution& getTypeDistribution() const { return input_.type_distribution; }
 
     double t_last_processing;
+
+    bool signal_stop_;
 
 protected:
 

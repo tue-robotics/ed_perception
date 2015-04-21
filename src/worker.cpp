@@ -15,7 +15,7 @@ namespace perception
 // ----------------------------------------------------------------------------------------------------
 
 Worker::Worker(const std::vector<std::string>& model_list)
-    : model_list_(model_list), t_last_processing(0), state_(IDLE)
+    : model_list_(model_list), t_last_processing(0), state_(IDLE), signal_stop_(false)
 {
 }
 
@@ -64,6 +64,8 @@ void Worker::run()
 //    if (input_.entity->pose().t.x < 0.94)
 //        return;
 
+    signal_stop_ = false;
+
     // Reset from possible previous time
     output_.data = tue::Configuration();
 
@@ -90,6 +92,12 @@ void Worker::run()
 
         // Update total type distribution
         input_.type_distribution.update(output_.type_update);
+
+        if (signal_stop_)
+        {
+            state_ = STOPPED;
+            return;
+        }
     }
 
     // Set state to DONE
