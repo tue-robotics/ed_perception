@@ -22,6 +22,8 @@ void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized);
 
 cv::Mat maskImage(const cv::Mat& img, const ed::ImageMask& mask, cv::Rect& roi);
 
+void saveDebugImage(const std::string& name, const cv::Mat& img);
+
 }
 
 }

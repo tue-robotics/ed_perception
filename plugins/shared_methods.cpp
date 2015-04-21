@@ -11,6 +11,7 @@
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
+#include <opencv2/highgui/highgui.hpp>
 
 namespace ed
 {
@@ -169,6 +170,48 @@ cv::Mat maskImage(const cv::Mat& img, const ed::ImageMask& mask, cv::Rect& roi)
     roi = cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y);
 
     return masked_img;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void saveDebugImage(const std::string& name, const cv::Mat& img)
+{
+    ed::UUID id = ed::Entity::generateID();
+    std::string filename = "/tmp/" + name + "-" + id.str() + ".jpg";
+
+    if (img.type() == CV_32FC1)
+    {
+        // depth image
+        float d_min = 1e9;
+        float d_max = 0;
+
+        cv::Mat rgb_image(img.rows, img.cols, CV_8UC3, cv::Scalar(100, 0, 0));
+        for(unsigned int i = 0; i < img.rows * img.cols; ++i)
+        {
+            float d = img.at<float>(i);
+            if (d == d && d > 0)
+            {
+                d_min = std::min(d, d_min);
+                d_max = std::max(d, d_max);
+            }
+        }
+
+        for(unsigned int i = 0; i < img.rows * img.cols; ++i)
+        {
+            float d = img.at<float>(i);
+            if (d == d && d > 0)
+            {
+                int c = 255 * (1.0 - (d - d_min) / (d_max - d_min));
+                rgb_image.at<cv::Vec3b>(i) = cv::Vec3b(c, c, c);
+            }
+        }
+
+        cv::imwrite(filename, rgb_image);
+    }
+    else
+    {
+        cv::imwrite(filename, img);
+    }
 }
 
 }
