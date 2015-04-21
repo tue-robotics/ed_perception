@@ -13,8 +13,6 @@
 #include <opencv/cv.h>
 #include "opencv2/highgui/highgui.hpp"
 
-#include "shared_methods.h"
-
 class FaceDetector : public ed::perception::Module
 {
 
@@ -51,8 +49,6 @@ private:
     double type_negative_score_;
     double type_unknown_score_;
 
-    SharedMethods shared_methods;
-
     //------------------------------------
 
     // detect frontal and profile faces on an image, true if a face was detected
@@ -61,6 +57,9 @@ private:
                      std::vector<cv::Rect> &faces_profile) const;
 
 
+
+    void writeFaceDetectionResult(const ed::Measurement& msr, const cv::Rect& rgb_roi, const std::vector<cv::Rect>& rgb_face_rois,
+                                  int& face_counter, tue::Configuration& result) const;
 
 /*
 * ###########################################

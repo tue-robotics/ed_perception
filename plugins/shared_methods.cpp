@@ -11,18 +11,16 @@
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
-// ---------------------------------------------------------------------------------------------------
+#include <opencv2/highgui/highgui.hpp>
 
-SharedMethods::SharedMethods(){
-}
-
-
-SharedMethods::~SharedMethods(){
-}
+namespace ed
+{
+namespace perception
+{
 
 // ---------------------------------------------------------------------------------------------------
 
-void SharedMethods::prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& view_color_img, cv::Mat& view_depth_img, cv::Mat& mask, cv::Rect& bouding_box) const{
+void prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& view_color_img, cv::Mat& view_depth_img, cv::Mat& mask, cv::Rect& bouding_box) {
 
     // Get the best measurement from the entity
     ed::MeasurementConstPtr msr = e->lastMeasurement();
@@ -73,10 +71,9 @@ void SharedMethods::prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& vie
     bouding_box = cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y);
 }
 
-
 // ----------------------------------------------------------------------------------------------------
 
-float SharedMethods::getAverageDepth(cv::Mat& depth_img) const{
+float getAverageDepth(cv::Mat& depth_img) {
 
     float median = 0;
     std::vector<float> depths;
@@ -111,7 +108,7 @@ float SharedMethods::getAverageDepth(cv::Mat& depth_img) const{
 
 // ----------------------------------------------------------------------------------------------------
 
-void SharedMethods::optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const{
+void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) {
 
     std::vector<std::vector<cv::Point> > hull;
     std::vector<std::vector<cv::Point> > contours;
@@ -128,11 +125,9 @@ void SharedMethods::optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_
     }
 }
 
-
 // ----------------------------------------------------------------------------------------------------
 
-
-void SharedMethods::optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const{
+void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) {
 
     mask_orig.copyTo(mask_optimized);
 
@@ -144,10 +139,88 @@ void SharedMethods::optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_
     cv::threshold(mask_optimized, mask_optimized, 50, 255, CV_THRESH_BINARY);
 }
 
+// ----------------------------------------------------------------------------------------------------
+
+int clipInt(int val, int min, int max)
+{
+    return val <= min ? min : val >= max ? max : val;
+}
 
 // ----------------------------------------------------------------------------------------------------
 
+cv::Mat maskImage(const cv::Mat& img, const ed::ImageMask& mask, cv::Rect& roi)
+{
+    // initialize bounding box points
+    uint max_x = 0;
+    uint max_y = 0;
+    uint min_x = img.cols;
+    uint min_y = img.rows;
 
-int SharedMethods::clipInt(int val, int min, int max) const{
-    return val <= min ? min : val >= max ? max : val;
+    // Created masked image
+    cv::Mat masked_img = cv::Mat::zeros(img.rows, img.cols, img.type());
+
+    for(ed::ImageMask::const_iterator it = mask.begin(img.cols); it != mask.end(); ++it)
+    {
+        const cv::Point2i& p_2d = *it;
+
+        masked_img.at<cv::Vec3b>(p_2d) = img.at<cv::Vec3b>(p_2d);
+
+        // update the boundary coordinates
+        if (min_x > p_2d.x) min_x = p_2d.x;
+        if (max_x < p_2d.x) max_x = p_2d.x;
+        if (min_y > p_2d.y) min_y = p_2d.y;
+        if (max_y < p_2d.y) max_y = p_2d.y;
+    }
+
+    roi = cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y);
+
+    return masked_img;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void saveDebugImage(const std::string& name, const cv::Mat& img)
+{
+    ed::UUID id = ed::Entity::generateID();
+    std::string filename = "/tmp/" + name + "-" + id.str() + ".jpg";
+
+    if (img.type() == CV_32FC1)
+    {
+        // depth image
+        float d_min = 1e9;
+        float d_max = 0;
+
+        cv::Mat rgb_image(img.rows, img.cols, CV_8UC3, cv::Scalar(100, 0, 0));
+        for(unsigned int i = 0; i < img.rows * img.cols; ++i)
+        {
+            float d = img.at<float>(i);
+            if (d == d && d > 0)
+            {
+                d_min = std::min(d, d_min);
+                d_max = std::max(d, d_max);
+            }
+        }
+
+        for(unsigned int i = 0; i < img.rows * img.cols; ++i)
+        {
+            float d = img.at<float>(i);
+            if (d == d && d > 0)
+            {
+                int c = 255 * (1.0 - (d - d_min) / (d_max - d_min));
+                rgb_image.at<cv::Vec3b>(i) = cv::Vec3b(c, c, c);
+            }
+        }
+
+        cv::imwrite(filename, rgb_image);
+    }
+    else
+    {
+        cv::imwrite(filename, img);
+    }
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+}
+
 }

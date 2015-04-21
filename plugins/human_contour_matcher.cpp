@@ -13,6 +13,8 @@
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
+#include "shared_methods.h"
+
 #include <boost/filesystem.hpp>
 
 // ----------------------------------------------------------------------------------------------------
@@ -121,8 +123,6 @@ void HumanContourMatcher::loadConfig(const std::string& config_path) {
     type_positive_score_ = 0.9;
     type_negative_score_ = 0.4;
     type_unknown_score_ = 0.05;
-
-    shared_methods = SharedMethods();
 }
 
 
@@ -155,7 +155,7 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
     int min_x, max_x, min_y, max_y;
 
     // create a view
-    rgbd::View view(*msr->image(), msr->image()->getRGBImage().cols);
+//    rgbd::View view(*msr->image(), msr->image()->getRGBImage().cols);
 
     // get color image
     const cv::Mat& color_image = msr->image()->getRGBImage();
@@ -164,23 +164,23 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
     const cv::Mat& depth_image = msr->image()->getDepthImage();
 
     // crop it to match the view
-    cv::Mat cropped_image(color_image(cv::Rect(0,0,view.getWidth(), view.getHeight())));
+//    cv::Mat cropped_image(color_image(cv::Rect(0,0,view.getWidth(), view.getHeight())));
 
     // initialize bounding box points
     max_x = 0;
     max_y = 0;
-    min_x = view.getWidth();
-    min_y = view.getHeight();
+    min_x = depth_image.cols;
+    min_y = depth_image.rows;
 
-    cv::Mat mask = cv::Mat::zeros(view.getHeight(), view.getWidth(), CV_8UC1);
+    cv::Mat depth_mask = cv::Mat::zeros(depth_image.rows, depth_image.cols, CV_8UC1);
     // Iterate over all points in the mask
-    for(ed::ImageMask::const_iterator it = msr->imageMask().begin(view.getWidth()); it != msr->imageMask().end(); ++it)
+    for(ed::ImageMask::const_iterator it = msr->imageMask().begin(depth_image.cols); it != msr->imageMask().end(); ++it)
     {
         // mask's (x, y) coordinate in the depth image
         const cv::Point2i& p_2d = *it;
 
         // paint a mask
-        mask.at<unsigned char>(*it) = 255;
+        depth_mask.at<unsigned char>(*it) = 255;
 
         // update the boundary coordinates
         if (min_x > p_2d.x) min_x = p_2d.x;
@@ -193,14 +193,14 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
 
     // create a copy of the depth image region of interest, masked
     cv::Mat masked_depth_image(depth_image);
-    masked_depth_image.copyTo(masked_depth_image, mask);
+    masked_depth_image.copyTo(masked_depth_image, depth_mask);
     masked_depth_image = masked_depth_image(bouding_box);
 
     // get entity average depth
-    float avg_depth = shared_methods.getAverageDepth(masked_depth_image);
+    float avg_depth = ed::perception::getAverageDepth(masked_depth_image);
 
     // call classifier
-    is_human = human_classifier_.Classify(depth_image, color_image, mask, avg_depth, classification_error, classification_deviation, classification_stance);
+    is_human = human_classifier_.Classify(depth_image, color_image, depth_mask, avg_depth, classification_error, classification_deviation, classification_stance);
 
 
     // ----------------------- Assert results -----------------------

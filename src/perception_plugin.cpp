@@ -116,6 +116,10 @@ void PerceptionPlugin::initialize(ed::InitData& init)
     {
         while(config.nextArrayItem())
         {
+            int enabled = 1;
+            if (config.value("enabled", enabled, tue::OPTIONAL) && enabled == 0)
+                continue;
+
             std::string lib;
             if (!config.value("lib", lib))
                 continue;
@@ -176,12 +180,15 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
     if (perception_modules_.empty())
         return;
 
+    int n = 0;
     for(ed::WorldModel::const_iterator it = data.world.begin(); it != data.world.end(); ++it)
     {
         const ed::EntityConstPtr& e = *it;
 
         if (e->shape() || e->convexHull().chull.empty())
             continue;
+
+        ++n;
 
         const ed::UUID& id = e->id();
 
@@ -264,11 +271,29 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
     {
         const boost::shared_ptr<Worker>& worker = it->second;
 
-        if (worker->isIdle() && !data.world.getEntity(it->first))
-            workers_.erase(it++);
+        if (!data.world.getEntity(it->first))
+        {
+            if (worker->isRunning())
+            {
+                worker->signalStop();
+                ++it;
+            }
+            else
+            {
+                workers_.erase(it++);
+            }
+        }
         else
+        {
+            ed::EntityConstPtr e = data.world.getEntity(it->first);
+            if (e->convexHull().chull.empty())
+                std::cout << "WARNING: Entity " << e->id() << " has empty convex hull!" << std::endl;
+
             ++it;
+        }
     }
+
+//    std::cout << "Num entities: " << n << ", num workers = " << workers_.size() << std::endl;
 }
 
 }

@@ -20,7 +20,7 @@ HumanClassifier::~HumanClassifier()
 
 bool HumanClassifier::Classify(const cv::Mat& depth_img,
                                const cv::Mat& color_img,
-                               const cv::Mat& mask,
+                               const cv::Mat& depth_mask,
                                float& avg_depth,
                                float& template_match_error,
                                float& template_match_deviation,
@@ -38,7 +38,7 @@ bool HumanClassifier::Classify(const cv::Mat& depth_img,
     bool faceDetected = false;
 
     // try the template matching
-    if (TemplateClassification(depth_img, mask, avg_depth, match_pos, match_init_pos, match_error, match_variance, template_match_deviation, template_type, measurement)){
+    if (TemplateClassification(depth_img, depth_mask, avg_depth, match_pos, match_init_pos, match_error, match_variance, template_match_deviation, template_type, measurement)){
         if (template_type == FaceFront){
             template_stance = "front";
         }
