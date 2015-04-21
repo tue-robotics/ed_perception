@@ -19,72 +19,6 @@
 
 // ----------------------------------------------------------------------------------------------------
 
-void writeFaceDetectionResult(const ed::Measurement& msr, const cv::Rect& rgb_roi, const std::vector<cv::Rect>& rgb_face_rois,
-                   int& face_counter, tue::Configuration& result)
-{
-    // get color image
-    const cv::Mat& color_image = msr.image()->getRGBImage();
-
-    // get color image
-    const cv::Mat& depth_image = msr.image()->getDepthImage();
-
-    // Calculate size factor between depth and rgb images
-    double f_depth_rgb = (double)depth_image.cols / color_image.cols;
-
-    // Create depth view
-    rgbd::View depth_view(*msr.image(), depth_image.cols);
-
-    for (uint j = 0; j < rgb_face_rois.size(); j++)
-    {
-        cv::Rect rgb_face_roi = rgb_face_rois[j];
-
-        result.addArrayItem();
-
-        result.setValue("index", face_counter);
-
-        rgb_face_roi.x += rgb_roi.x;
-        rgb_face_roi.y += rgb_roi.y;
-
-        // add 2D location of the face
-        result.setValue("x", rgb_face_roi.x);
-        result.setValue("y", rgb_face_roi.y);
-        result.setValue("width", rgb_face_roi.width);
-        result.setValue("height", rgb_face_roi.height);
-
-        // Compute face roi for depth image
-        cv::Rect depth_face_roi(f_depth_rgb * rgb_face_roi.x, f_depth_rgb * rgb_face_roi.y,
-                                f_depth_rgb * rgb_face_roi.width, f_depth_rgb * rgb_face_roi.height);
-
-        cv::Mat face_area = depth_image(depth_face_roi);
-        float avg_depth = ed::perception::getAverageDepth(face_area);
-
-        if (avg_depth > 0)
-        {
-            // calculate the center point of the face
-            cv::Point2i p_2d(depth_face_roi.x + depth_face_roi.width/2,
-                             depth_face_roi.y + depth_face_roi.height/2);
-
-            geo::Vector3 projection = depth_view.getRasterizer().project2Dto3D(p_2d.x, p_2d.y) * avg_depth;
-            geo::Vector3 point_map = msr.sensorPose() * projection;
-
-            // add 3D location of the face
-            result.setValue("map_x", point_map.x);
-            result.setValue("map_y", point_map.y);
-            result.setValue("map_z", point_map.z);
-
-        }
-        else
-        {
-            std::cout << "[ED FACE DETECTOR] Could not calculate face's average depth. Map coordinates might be incorrect!" << std::endl;
-        }
-
-        result.endArrayItem();
-        face_counter++;
-    }
-}
-
-// ----------------------------------------------------------------------------------------------------
-
 FaceDetector::FaceDetector() :
     ed::perception::Module("face_detector"),
     init_success_(false)
@@ -386,6 +320,76 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
     return (!faces_front.empty() || !faces_profile.empty());
 }
 
+// ----------------------------------------------------------------------------------------------------
+
+void FaceDetector::writeFaceDetectionResult(const ed::Measurement& msr, const cv::Rect& rgb_roi, const std::vector<cv::Rect>& rgb_face_rois,
+                   int& face_counter, tue::Configuration& result) const
+{
+    // get color image
+    const cv::Mat& color_image = msr.image()->getRGBImage();
+
+    // get color image
+    const cv::Mat& depth_image = msr.image()->getDepthImage();
+
+    // Calculate size factor between depth and rgb images
+    double f_depth_rgb = (double)depth_image.cols / color_image.cols;
+
+    // Create depth view
+    rgbd::View depth_view(*msr.image(), depth_image.cols);
+
+    for (uint j = 0; j < rgb_face_rois.size(); j++)
+    {
+        cv::Rect rgb_face_roi = rgb_face_rois[j];
+        rgb_face_roi.x += rgb_roi.x;
+        rgb_face_roi.y += rgb_roi.y;
+
+        if (debug_mode_)
+            ed::perception::saveDebugImage("face_detector-rgb", color_image(rgb_face_roi));
+
+        result.addArrayItem();
+
+        result.setValue("index", face_counter);
+
+        // add 2D location of the face
+        result.setValue("x", rgb_face_roi.x);
+        result.setValue("y", rgb_face_roi.y);
+        result.setValue("width", rgb_face_roi.width);
+        result.setValue("height", rgb_face_roi.height);
+
+        // Compute face roi for depth image
+        cv::Rect depth_face_roi(f_depth_rgb * rgb_face_roi.x, f_depth_rgb * rgb_face_roi.y,
+                                f_depth_rgb * rgb_face_roi.width, f_depth_rgb * rgb_face_roi.height);
+
+        if (debug_mode_)
+            ed::perception::saveDebugImage("face_detector-depth", depth_image(depth_face_roi));
+
+        cv::Mat face_area = depth_image(depth_face_roi);
+        float avg_depth = ed::perception::getAverageDepth(face_area);
+
+        if (avg_depth > 0)
+        {
+            // calculate the center point of the face
+            cv::Point2i p_2d(depth_face_roi.x + depth_face_roi.width/2,
+                             depth_face_roi.y + depth_face_roi.height/2);
+
+            geo::Vector3 projection = depth_view.getRasterizer().project2Dto3D(p_2d.x, p_2d.y) * avg_depth;
+            geo::Vector3 point_map = msr.sensorPose() * projection;
+
+            // add 3D location of the face
+            result.setValue("map_x", point_map.x);
+            result.setValue("map_y", point_map.y);
+            result.setValue("map_z", point_map.z);
+
+        }
+        else
+        {
+            std::cout << "[ED FACE DETECTOR] Could not calculate face's average depth. Map coordinates might be incorrect!" << std::endl;
+        }
+
+        result.endArrayItem();
+        face_counter++;
+    }
+}
 
 // ----------------------------------------------------------------------------------------------------
 

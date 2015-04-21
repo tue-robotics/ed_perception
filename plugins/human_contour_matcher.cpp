@@ -168,7 +168,7 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
     min_x = depth_image.cols;
     min_y = depth_image.rows;
 
-    cv::Mat mask = cv::Mat::zeros(depth_image.rows, depth_image.cols, CV_8UC1);
+    cv::Mat depth_mask = cv::Mat::zeros(depth_image.rows, depth_image.cols, CV_8UC1);
     // Iterate over all points in the mask
     for(ed::ImageMask::const_iterator it = msr->imageMask().begin(depth_image.cols); it != msr->imageMask().end(); ++it)
     {
@@ -176,7 +176,7 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
         const cv::Point2i& p_2d = *it;
 
         // paint a mask
-        mask.at<unsigned char>(*it) = 255;
+        depth_mask.at<unsigned char>(*it) = 255;
 
         // update the boundary coordinates
         if (min_x > p_2d.x) min_x = p_2d.x;
@@ -189,14 +189,14 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
 
     // create a copy of the depth image region of interest, masked
     cv::Mat masked_depth_image(depth_image);
-    masked_depth_image.copyTo(masked_depth_image, mask);
+    masked_depth_image.copyTo(masked_depth_image, depth_mask);
     masked_depth_image = masked_depth_image(bouding_box);
 
     // get entity average depth
     float avg_depth = ed::perception::getAverageDepth(masked_depth_image);
 
     // call classifier
-    is_human = human_classifier_.Classify(depth_image, color_image, mask, avg_depth, classification_error, classification_deviation, classification_stance);
+    is_human = human_classifier_.Classify(depth_image, color_image, depth_mask, avg_depth, classification_error, classification_deviation, classification_stance);
 
 
     // ----------------------- Assert results -----------------------

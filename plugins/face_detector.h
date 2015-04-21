@@ -66,6 +66,9 @@ private:
 
     float GetAverageDepth(cv::Mat& depth_img) const;
 
+    void writeFaceDetectionResult(const ed::Measurement& msr, const cv::Rect& rgb_roi, const std::vector<cv::Rect>& rgb_face_rois,
+                                  int& face_counter, tue::Configuration& result) const;
+
 /*
 * ###########################################
 *  				    PUBLIC
