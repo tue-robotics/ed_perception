@@ -49,6 +49,11 @@ void ODUFinderModule::configure(tue::Configuration config) {
     // creat odu finder instance
     odu_finder_ = new odu_finder::ODUFinder(database_path_, debug_mode_);
 
+    if (odu_finder_->get_n_models_loaded() == 0)
+         std::cout << "[" << module_name_ << "] " << "No models were loaded!" << std::endl;
+    else
+        std::cout << "[" << module_name_ << "] " << "Loaded information for " << odu_finder_->get_n_models_loaded() << " models" << std::endl;
+
     init_success_ = true;
 
     std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;

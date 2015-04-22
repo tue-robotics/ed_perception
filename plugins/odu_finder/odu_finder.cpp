@@ -905,3 +905,7 @@ void ODUFinder::clear_sequence_buffer() {
     sequence_buffer.clear();
 }
 
+int ODUFinder::get_n_models_loaded(){
+    return documents_map.size();
+}
+

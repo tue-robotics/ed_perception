@@ -53,6 +53,12 @@ void SizeMatcher::configure(tue::Configuration config) {
     if (!config.value("type_unknown_score", type_unknown_score_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'type_unknown_score' not found. Using default: " << type_unknown_score_ << std::endl;
 
+
+    if (models_.empty())
+         std::cout << "[" << module_name_ << "] " << "No information from the models size was loaded!" << std::endl;
+    else
+        std::cout << "[" << module_name_ << "] " << "Loaded size information for " << models_.size() << " different models" << std::endl;
+
     init_success_ = true;
 
     std::cout << "[" << module_name_ << "] " << "Ready!"<< std::endl;
@@ -260,9 +266,9 @@ bool SizeMatcher::loadLearnedModel(std::string path, std::string model_name){
     {
         while(conf.nextArrayItem())
         {
-            if (conf.value("height", height, tue::OPTIONAL) && conf.value("width", width, tue::OPTIONAL))  // read height and width
+            if (conf.value("height", height, tue::OPTIONAL) && conf.value("width", width, tue::OPTIONAL) && conf.value("area", area, tue::OPTIONAL))  // read height and width
             {
-                ObjectSize obj_sz(width, height, height*2);    // 0 on the area FOR NOW
+                ObjectSize obj_sz(width, height, area);
                 model_sizes.push_back(obj_sz);
             }
             else

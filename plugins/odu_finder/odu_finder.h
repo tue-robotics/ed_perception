@@ -218,6 +218,7 @@ public:
     */
     void extract_roi (IplImage *image , std::vector<KeypointExt*> camera_keypoints);
 
+    int get_n_models_loaded();
 
 protected:
     /** \brief recursively traces the directory with images
