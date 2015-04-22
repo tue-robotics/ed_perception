@@ -208,5 +208,5 @@ add_executable(create-rgbd-measurement tools/create_rgbd_measurement.cpp)
 target_link_libraries(create-rgbd-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(ed-learning-tool tools/ed_learning_tool.cpp)
-target_link_libraries(ed-learning-tool ed_perception2 odu_finder_db_builder ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(ed-learning-tool ed_perception2 odu_finder_db_builder ed_perception_plugin ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
