@@ -8,10 +8,15 @@
 #include <ed/perception/module.h>
 
 #include <ed/entity.h>
+#include <ed/world_model.h>
+#include <ed/update_request.h>
 
 // Measurement data structures
 #include <ed/measurement.h>
 #include <rgbd/Image.h>
+
+// Include the perception plugin
+#include "../src/perception_plugin.h"
 
 // File crawling
 #include <tue/filesystem/crawler.h>
@@ -64,6 +69,8 @@ void showMeasurement(const ed::Measurement& msr)
 
     cv::imshow("Measurement: depth", masked_depth_image / 8);
     cv::imshow("Measurement: rgb", masked_rgb_image);
+
+    cv::waitKey();
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -97,6 +104,7 @@ void config_to_file(tue::Configuration& config, const std::string &model_name, c
 
 void parse_config(tue::Configuration& config, const std::string &module_name, const std::string &model_name, tue::Configuration& final_config){
 
+
     // --------------- PARSE INFORMATION ---------------
 
     // step into perception_result group
@@ -107,7 +115,7 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
 
     // step into the group being parsed
     if (!config.readGroup(module_name)){
-        std::cout << "[" << module_name_ << "] " << "Could not find the " << module_name << "group" << std::endl;
+        std::cout << "[" << module_name_ << "] " << "Could not find the " << module_name << " group" << std::endl;
         config.endGroup(); // close type_aggregator group in case this one fails
         return;
     }
@@ -115,6 +123,8 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
     float height = 0;
     float width = 0;
     float area = 0;
+    bool read_size = false;
+    bool read_color = false;
     std::string color_name;
     float amount;
     std::map<std::string, float> color_info;
@@ -123,7 +133,10 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
     if(module_name.compare("size_matcher") == 0){       // PARSE SIZE MATCHER
         if (config.readGroup("size")){
             if (config.value("height", height) && config.value("width", width) && config.value("area", area)){
-//                std::cout << "[" << kModuleName << "] " << "Read HxW " << height << " x " << width << std::endl;
+//                std::cout << "[" << module_name_ << "] " << "Read HxW " << height << " x " << width << " x " << area << std::endl;
+                read_size = true;
+            }else{
+                std::cout << "[" << module_name_ << "] " << "'size_matcher' group incorrectly built" << std::endl;
             }
             config.endGroup(); // close size group
         }
@@ -132,9 +145,12 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
             while(config.nextArrayItem()){
                 if (config.value("name", color_name) && config.value("value", amount)){
                     color_info[color_name] = amount;
+                    read_color = true;
                 }
             }
             config.endArray(); // close hypothesis array
+        }else{
+            std::cout << "[" << module_name_ << "] " << "'color_matcher' group incorrectly built" << std::endl;
         }
     }
 
@@ -153,7 +169,7 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
     final_config.setValue("name", model_name);
 
     // save size information
-    if (height > 0 && width > 0){
+    if (read_size){
         if (!final_config.readArray("size", tue::OPTIONAL)){
             final_config.writeArray("size");
         }
@@ -168,7 +184,7 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
     }
 
     // save color information
-    if(!color_info.empty()){
+    if(read_color){
         if (!final_config.readArray("color", tue::OPTIONAL)){
             final_config.writeArray("color");
         }
@@ -190,24 +206,11 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
     final_config.endGroup(); // close model group
 }
 
-// ----------------------------------------------------------------------------------------------------
-/*
-void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized){
 
-    mask_orig.copyTo(mask_optimized);
-
-    // blur the contour, also expands it a bit
-    for (uint i = 6; i < 18; i = i + 2){
-        cv::blur(mask_optimized, mask_optimized, cv::Size( i, i ), cv::Point(-1,-1) );
-    }
-
-    cv::threshold(mask_optimized, mask_optimized, 50, 255, CV_THRESH_BINARY);
-}
-*/
 // ----------------------------------------------------------------------------------------------------
 
 
-void imageToOduFinder(ed::EntityPtr& entity, OduDBBuilder& odu_learner, std::string model_name){
+void imageToOduFinder(ed::EntityConstPtr& entity, OduDBBuilder& odu_learner, std::string model_name){
     // ---------- PREPARE MEASUREMENT ----------
 
     // Get the best measurement from the entity
@@ -278,7 +281,7 @@ bool loadModelList(std::string& model_list_path, std::vector<std::string>& model
 
             conf.endArray();    // close Models group
         }else{
-            std::cout << "[" << "perception_module" << "] " << "Could not find 'models' group" << std::endl;
+            std::cout << "[" << module_name_ << "] " << "Could not find 'models' group" << std::endl;
             return false;
         }
     }else{
@@ -286,24 +289,34 @@ bool loadModelList(std::string& model_list_path, std::vector<std::string>& model
         return false;
     }
 
+    std::cout << "[" << module_name_ << "] " << "Model names in the list: ";
+    for(std::vector<std::string>::const_iterator i = model_list.begin(); i != model_list.end(); ++i)
+        std::cout << *i << ", ";
+    std::cout << std::endl;
+
     return true;
 }
 
+
 // ----------------------------------------------------------------------------------------------------
 
-int main(int argc, char **argv) {
 
+int main(int argc, char **argv)
+{
     std::string measurement_dir;
     std::string model_output_dir;
     std::string db_output_dir;
     std::string model_list_path;
+    std::string config_filename;
 
-    if (argc == 5)
+    if (argc == 6)
     {
         measurement_dir = argv[1];
         model_list_path = argv[2];
         model_output_dir = argv[3];
         db_output_dir = argv[4];
+        config_filename = argv[5];
+
     }else if (argc == 1){
         // if specific paths are not specified, use ROS get path
         std::string ed_models_dir = ros::package::getPath("ed_object_models");
@@ -322,7 +335,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    std::vector<std::string> perception_libs;
     std::vector<std::string> model_list;
     module_name_ = "ed_learning_tool";
 
@@ -331,64 +343,108 @@ int main(int argc, char **argv) {
     else
         std::cout << "[" << module_name_ << "] " << "Could not load model list from " << model_list_path << std::endl;
 
+
     // ---------------- LOAD PERCEPTION LIBRARIES ----------------
 
-    OduDBBuilder odu_learner = OduDBBuilder(db_output_dir + "/odu_debug/");
-    perception_libs.push_back("/home/luisf/ros/hydro/dev/devel/lib/libsize_matcher.so");
-    perception_libs.push_back("/home/luisf/ros/hydro/dev/devel/lib/libcolor_matcher.so");
+    // load this one separately
+    OduDBBuilder odu_learner = OduDBBuilder(db_output_dir + "odu_debug/");
 
-    std::cout << "[" << module_name_ << "] " << "Loading perception libraries" << std::endl;
+    ed::perception::PerceptionPlugin plugin;
 
-    std::vector<boost::shared_ptr<ed::perception::Module> > modules;
+    // Needed to configure the plugin
+    ed::PropertyKeyDB ed_property_key_db;
 
-    std::vector<class_loader::ClassLoader*> perception_loaders(perception_libs.size(), 0);
-    for(unsigned int i = 0; i < perception_libs.size(); ++i)
+    tue::Configuration config;
+    config.loadFromYAMLFile(config_filename);
+
+    if (config.hasError())
     {
-        class_loader::ClassLoader* class_loader = new class_loader::ClassLoader(perception_libs[i]);
-        perception_loaders[i] = class_loader;
+        std::cout << std::endl << "Error during configuration:" << std::endl << std::endl << config.error() << std::endl;
+        return 1;
+    }
 
-        boost::shared_ptr<ed::perception::Module> perception_mod = ed::perception::loadPerceptionModule(class_loader);
-        if (perception_mod)
+    if (config.readArray("plugins", tue::REQUIRED))
+    {
+        while(config.nextArrayItem())
         {
-            modules.push_back(perception_mod);
+            std::string plugin_name, plugin_lib;
+            if (!config.value("name", plugin_name) || !config.value("lib", plugin_lib) || plugin_name != "perception")
+                continue;
+
+            if (config.readGroup("parameters", tue::REQUIRED))
+            {
+                ed::InitData init(ed_property_key_db, config);
+                plugin.initialize(init);
+
+                config.endGroup();
+            }
         }
-        else
-        {
-            std::cout << "[" << module_name_ << "] " << "Unable to load perception module " << perception_libs[i] << std::endl;
-        }
+
+        config.endArray();
+    }
+
+    if (config.hasError())
+    {
+        std::cout << std::endl << "Error during configuration:" << std::endl << std::endl << config.error() << std::endl;
+        return 1;
     }
 
     // ---------------- CRAWL THROUGH MEASUREMENTS ----------------
 
-    std::cout << "[" << module_name_ << "] " << "Starting learning" << std::endl;
-
     tue::filesystem::Crawler crawler(measurement_dir);
 
-    tue::Configuration parsed_conf;
+    std::set<std::string> files_had;
+
     int n_measurements = 0;
-    tue::filesystem::Path model_path;
+    tue::filesystem::Path filename;
+    tue::Configuration parsed_conf;
     std::string model_name;
     std::string last_model = "";
     bool first_model = true;
 
-    while(crawler.nextPath(model_path))
+    while(crawler.nextPath(filename))
     {
-        if (model_path.extension() != ".mask")
+        std::string filename_without_ext = filename.withoutExtension().string();
+        if (files_had.find(filename_without_ext) != files_had.end())
             continue;
 
-        // load measurement onto an dummy entity
-        ed::MeasurementPtr msr(new ed::Measurement);
-        if (!ed::read(model_path.withoutExtension().string(), *msr))
+        files_had.insert(filename_without_ext);
+
+        ed::EntityConstPtr e;
+        ed::WorldModel wm;
+
+        if (tue::filesystem::Path(filename_without_ext + ".json").exists())
         {
-            continue;
+            ed::UpdateRequest update_req;
+            if (!ed::readEntity(filename_without_ext + ".json", update_req))
+                continue;
+
+            wm.update(update_req);
+
+            if (wm.numEntities() == 0)
+                continue;
+
+            e = *wm.begin();
+        }
+        else if (tue::filesystem::Path(filename_without_ext + ".mask").exists())
+        {
+            ed::MeasurementPtr msr(new ed::Measurement);
+            if (!ed::read(filename_without_ext, *msr))
+                continue;
+
+            ed::EntityPtr e_temp(new ed::Entity("test-entity", "", 5));
+            e_temp->addMeasurement(msr);
+
+            e = e_temp;
         }
 
         // get info on model name from path
-        model_name = model_path.withoutExtension().string().substr(0, model_path.withoutExtension().string().find_last_of("/"));    // remove measurement ID
+        model_name = filename_without_ext.substr(0, filename_without_ext.find_last_of("/"));    // remove measurement ID
         model_name = model_name.substr(model_name.find_last_of("/")+1);     // get parent folder name / model name
 
         // skip model if its not on the model list
         if (!(std::find(model_list.begin(), model_list.end(), model_name) != model_list.end() || model_list.empty())){
+            std::cout << "Skipping model measurements '" << model_name << "', not on the list" << std::endl;
             model_name = last_model;
             continue;
         }
@@ -407,55 +463,53 @@ int main(int argc, char **argv) {
             last_model = model_name;
         }
 
-        ed::EntityPtr e(new ed::Entity(model_name + "-entity", "", 5));
-        e->addMeasurement(msr);
+        std::cout << "Processing model: " << model_name << std::endl;
 
-        // ---------------- PROCESS MEASUREMENTS WITH LIBRARIES----------------
+        if (!e)
+            continue;
+
+//        if (e->lastMeasurement())
+//            showMeasurement(*e->lastMeasurement());
 
         ed::perception::WorkerInput input;
         input.entity = e;
 
         ed::perception::WorkerOutput output;
-        tue::Configuration entity_conf;
-        output.data = entity_conf;
+        tue::Configuration result;
+        output.data = result;
 
-        for(std::vector<boost::shared_ptr<ed::perception::Module> >::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
+        // ---------------- PROCESS CURRENT MEASUREMENT ----------------
+
+        const std::vector<boost::shared_ptr<ed::perception::Module> >& modules = plugin.perception_modules();
+
+        for(std::vector<boost::shared_ptr<ed::perception::Module> >::const_iterator it = modules.begin(); it != modules.end(); ++it)
         {
-            (*it_mod)->process(input, output);
-            parse_config(output.data, (*it_mod)->name(), model_name, parsed_conf);
+            const boost::shared_ptr<ed::perception::Module>& module = *it;
+
+            module->process(input, output);
+
+            parse_config(result, module->name(), model_name, parsed_conf);
+
+//            std::cout << "Parsed " << module->name() << ": \n" << parsed_conf << std::endl;
         }
+
+        // print perception result
+//        std::cout << result << std::endl;
 
         // send the object image to the OduFinder database
         imageToOduFinder(e, odu_learner, model_name);
 
         ++n_measurements;
-
-//        showMeasurement(*msr);
-//        cv::waitKey();
     }
 
-    // save last parsed model
     if (n_measurements == 0)
         std::cout << "No measurements found." << std::endl;
     else{
+        // save last parsed model
         config_to_file(parsed_conf, model_name, model_output_dir);
         // compile Odu Finder database
-        odu_learner.buildDatabase(db_output_dir + "/database/");
+        odu_learner.buildDatabase(db_output_dir + "database/");
     }
-
-
-    // ---------------- KILL PERCEPTION MODULES ----------------
-
-
-    // Delete all perception modules
-    for(std::vector<boost::shared_ptr<ed::perception::Module> >::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
-        it_mod->reset();
-
-    // Delete the class loaders (which will unload the libraries)
-    for(unsigned int i = 0; i < perception_loaders.size(); ++i)
-        delete perception_loaders[i];
-
-    std::cout << "[" << module_name_ << "] " << "Learning process complete!" << std::endl;
 
     return 0;
 }
