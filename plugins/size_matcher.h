@@ -13,13 +13,12 @@ struct ObjectSize
 {
     double height;
     double width;
+    double area;
 
     ObjectSize(){}
 
-    ObjectSize(double width_, double height_)
-        : width(width_), height(height_){}
-
-
+    ObjectSize(double width_, double height_, double area_)
+        : width(width_), height(height_), area(area_){}
 };
 
 
@@ -46,6 +45,8 @@ public:
 
 private:
 
+    // VARIABLES
+
     bool init_success_;
 
     double small_size_treshold_;
@@ -58,6 +59,8 @@ private:
     double type_positive_score_;
     double type_negative_score_;
     double type_unknown_score_;
+
+    // FUNCTIONS
 
     bool loadLearnedModel(std::string path, std::string model_name);
 };

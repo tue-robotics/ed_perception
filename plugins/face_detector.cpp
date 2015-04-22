@@ -208,6 +208,7 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
         if (faces_front.size() + faces_profile.size() > 1){
             // multiple faces detected
             result.setValue("label", "multiple_faces");
+            result.setValue("score", type_positive_score_);
 
             output.type_update.setScore("crowd", type_positive_score_);
             output.type_update.setScore("human", type_negative_score_);
@@ -215,8 +216,9 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
         else{
             // only one face detected
             result.setValue("label", "face");
+            result.setValue("score", type_positive_score_);
 
-            output.type_update.setScore("crowd", type_negative_score_ - 0.05);
+            output.type_update.setScore("crowd", type_negative_score_);
             output.type_update.setScore("human", type_positive_score_);
         }
 

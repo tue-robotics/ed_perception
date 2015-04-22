@@ -51,7 +51,7 @@ void readSegments()
 			for (int i=0; i<n_beams; i++) {			
 				// read the first point
 				b = new Beam;
-				fscanf(f_training, " %f %f", &angle, &range );
+                int res = fscanf(f_training, " %f %f", &angle, &range);
 
 				b->range = range;
 				b->angle = angle;
@@ -59,10 +59,10 @@ void readSegments()
 			}
 			
 			// read features,
-			fscanf(f_training, " %d", &nf);
+            int res = fscanf(f_training, " %d", &nf);
 			fv = new float[nf];
 			for (int i=0; i<nf; i++) {			
-				fscanf(f_training, " %f", &fv[i] );
+                int res = fscanf(f_training, " %f", &fv[i] );
 			}
 
 			cerr << "Classifying segment " << c << "...";

@@ -104,10 +104,10 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     if (!init_success_)
         return;
 
-    const ed::ConvexHull2D& chull = e->convexHull();
+    const ed::ConvexHull2D& conv_hull = e->convexHull();
 
     // if there is no convex hull available, cancel classification
-    if (chull.chull.empty())
+    if (conv_hull.chull.empty())
         return;
 
     std::map<std::string, double> hypothesis;
@@ -117,10 +117,9 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     bool size_medium = false;
     bool size_big = false;
 
-    double object_height = chull.height();
+    double object_height = conv_hull.height();
     double object_width = 0;
-    double object_area = chull.area();
-
+    double object_area = conv_hull.area();
 
     // set object size class
     if ((object_width + object_height) < small_size_treshold_){
@@ -133,7 +132,7 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
         std::cout << "[" << module_name_ << "] " << "Could not set a size threshold!" << std::endl;
 
 
-//std::cout << "Entity size: " << object_height << " - " << object_area << std::endl;
+//std::cout << "Entity height/area: " << object_height << " - " << object_area << std::endl;
 
     // compare object size to loaded models
     for(std::map<std::string, std::vector<ObjectSize> >::const_iterator it = models_.begin(); it != models_.end(); ++it)
@@ -143,32 +142,32 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
 
         double best_score = 0;
 
+        double w_score = 0;
+        double h_score = 0;
+        double a_score = 0;
+        double diff_w = 0;
+        double diff_h = 0;
+        double diff_area = 0;
+        double final_score;
+
         for(std::vector<ObjectSize>::const_iterator it_size = sizes.begin(); it_size != sizes.end(); ++it_size)
         {
-            double score;
             const ObjectSize& model_size = *it_size;
 
-            // width and height difference
-            double diff_w = std::abs(model_size.width - object_width);
-            double diff_h = std::abs(model_size.height - object_height);
+            // height and area difference, in percentage
+            diff_h = std::abs(model_size.height - object_height) / std::max(model_size.height, object_height);
+            diff_area = std::abs(model_size.area - object_area) / std::max(model_size.area, object_area);
 
+            // TODO: TURN THIS INTO AN EXPONENTIAL FUNCTION, NOT LINEAR!
+            h_score = 1.0 - diff_h;
+            a_score = 1.0 - diff_area;
+            final_score =  std::min(h_score, a_score);
 
-            if (diff_w > size_diff_threshold_ || diff_h > size_diff_threshold_)
-                score = 0;
-            else
-            {
-                double w_score = 1.0 - (diff_w / size_diff_threshold_); // TODO: magic score function
-                double h_score = 1.0 - (diff_h / size_diff_threshold_); // TODO: magic score function
-                score = (w_score + h_score) / 2;
-            }
-
-//std::cout << "Diffs: " << diff_w << ", " << diff_h << " \t Score: " << score << std::endl;
-
-            if (score > best_score)
-                object_width = model_size.width;
-
-            best_score = std::max(best_score, score);
+            // update best score
+            best_score = std::max(best_score, final_score);
         }
+
+//        std::cout << "Diffs " << label << " (H,A): " << diff_h << ", " << diff_area << " \t Score: " << h_score << " - " << a_score << std::endl;
 
         hypothesis[label] = 0.5 * best_score; // TODO: magic number
     }
@@ -186,6 +185,7 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     result.writeGroup("size");
     result.setValue("width", object_width);
     result.setValue("height", object_height);
+    result.setValue("area", object_area);
     result.endGroup();
 
     // Set labels and scores
@@ -198,31 +198,28 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
 
         // assert hypothesis
         if (!hypothesis.empty()){
-            for (std::map<std::string, double>::const_iterator it = hypothesis.begin(); it != hypothesis.end(); ++it)
-            {
-    //            result.addArrayItem();
-    //            result.setValue("name", it->first);
-    //            result.setValue("score", std::max(it->second, 0.0));
-    //            result.endArrayItem();
-
-                output.type_update.setScore(it->first, std::max(it->second, type_negative_score_));
+            for (std::map<std::string, double>::const_iterator it = hypothesis.begin(); it != hypothesis.end(); ++it){
+//                output.type_update.setScore(it->first, std::max(it->second/2, type_negative_score_));
+                output.type_update.setScore(it->first, it->second);
             }
         }
+
+        output.type_update.setScore("human", type_negative_score_);
+        output.type_update.setScore("crowd", type_negative_score_);
 
     }else if (size_medium){
         result.setValue("label", "medium_size");
 
-        output.type_update.setScore("human", type_positive_score_);
-        output.type_update.setScore("crowd", type_positive_score_);
+//        output.type_update.setScore("human", type_positive_score_);
+//        output.type_update.setScore("crowd", type_positive_score_);
 
     }else if (size_big){
         result.setValue("label", "large_size");
 
-        output.type_update.setScore("human", type_positive_score_);
-        output.type_update.setScore("crowd", type_positive_score_);
+//        output.type_update.setScore("human", type_positive_score_);
+//        output.type_update.setScore("crowd", type_positive_score_);
     }else
         std::cout << "[" << module_name_ << "] " << "Could not get size class!" << std::endl;
-
 
     output.type_update.setUnknownScore(type_unknown_score_);
 
@@ -242,8 +239,9 @@ bool SizeMatcher::loadLearnedModel(std::string path, std::string model_name){
     }
 
     tue::Configuration conf;
-    float width;
-    float height;
+    double width;
+    double height;
+    double area;
     std::vector<ObjectSize> model_sizes;
 
     if (!conf.loadFromYAMLFile(path))
@@ -264,7 +262,7 @@ bool SizeMatcher::loadLearnedModel(std::string path, std::string model_name){
         {
             if (conf.value("height", height, tue::OPTIONAL) && conf.value("width", width, tue::OPTIONAL))  // read height and width
             {
-                ObjectSize obj_sz(width, height);
+                ObjectSize obj_sz(width, height, height*2);    // 0 on the area FOR NOW
                 model_sizes.push_back(obj_sz);
             }
             else

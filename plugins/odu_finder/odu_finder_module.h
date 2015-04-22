@@ -36,11 +36,11 @@ private:
     bool init_success_;
     bool debug_mode_;
 
+    double type_unknown_score_;
+
     std::string database_path_;
     std::string module_path_;
     std::string module_name_;
-
-    void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized, cv::Rect &bounding_box) const;
 
     odu_finder::ODUFinder* odu_finder_;
 

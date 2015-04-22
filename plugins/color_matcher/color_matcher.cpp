@@ -33,7 +33,7 @@ void ColorMatcher::configure(tue::Configuration config) {
     if (!config.value("color_table", color_table_path_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'color_table' not found. Using default: " << color_table_path_ << std::endl;
 
-    color_table_path_ = module_path_ + color_table_path_;
+    color_table_path_ = module_path_ + "/" + color_table_path_;
 
     if (!config.value("debug_mode", debug_mode_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'debug_mode' not found. Using default: " << debug_mode_ << std::endl;
@@ -148,11 +148,6 @@ void ColorMatcher::process(const ed::perception::WorkerInput& input, ed::percept
     if (!hypothesis.empty()){
         for (std::map<std::string, double>::const_iterator it = hypothesis.begin(); it != hypothesis.end(); ++it)
         {
-//            result.addArrayItem();
-//            result.setValue("name", it->first);
-//            result.setValue("score", it->second);
-//            result.endArrayItem();
-
             output.type_update.setScore(it->first, it->second);
         }
     }
@@ -307,20 +302,6 @@ std::string ColorMatcher::getHighestProbColor(std::map<std::string, double>& map
         }
     }
     return max_name;
-}
-
-// ----------------------------------------------------------------------------------------------------
-
-void ColorMatcher::optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) const{
-
-    mask_orig.copyTo(mask_optimized);
-
-    // blur the contour, also expands it a bit
-    for (uint i = 6; i < 18; i = i + 2){
-        cv::blur(mask_optimized, mask_optimized, cv::Size( i, i ), cv::Point(-1,-1) );
-    }
-
-    cv::threshold(mask_optimized, mask_optimized, 50, 255, CV_THRESH_BINARY);
 }
 
 // ----------------------------------------------------------------------------------------------------

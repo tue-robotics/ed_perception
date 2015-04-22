@@ -226,14 +226,14 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
         // classified as human
         result.setValue("score", type_positive_score_);
 
-        output.type_update.setScore("crowd", type_positive_score_);
+//        output.type_update.setScore("crowd", type_positive_score_);
         output.type_update.setScore("human", type_positive_score_);
 
     }else if (!is_human && classification_error > 0){
         // not classified as human but matching was possible
         result.setValue("score", type_negative_score_);
 
-        output.type_update.setScore("crowd", type_negative_score_);
+//        output.type_update.setScore("crowd", type_negative_score_);
         output.type_update.setScore("human", type_negative_score_);
 
     }else if (!is_human && classification_error == 0){

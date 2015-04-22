@@ -234,6 +234,8 @@ void FaceRecognition::process(const ed::perception::WorkerInput& input, ed::perc
     const ed::EntityConstPtr& e = input.entity;
     tue::Configuration& config = output.data;
 
+    output.type_update.setUnknownScore(1);
+
     if (!init_success_)
         return;
 
@@ -445,6 +447,9 @@ void FaceRecognition::process(const ed::perception::WorkerInput& input, ed::perc
 
         config.endArray();
     }
+
+    // set unknown to 1 because plugin only cassifies faces
+    output.type_update.setUnknownScore(1);
 
     config.endGroup();  // close face_recognizer group
     config.endGroup();  // close perception_result group
