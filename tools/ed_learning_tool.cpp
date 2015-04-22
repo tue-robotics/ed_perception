@@ -114,6 +114,7 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
 
     float height = 0;
     float width = 0;
+    float area = 0;
     std::string color_name;
     float amount;
     std::map<std::string, float> color_info;
@@ -121,8 +122,7 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
     // parse information from current config
     if(module_name.compare("size_matcher") == 0){       // PARSE SIZE MATCHER
         if (config.readGroup("size")){
-            if (config.value("height", height) && config.value("width", width)){
-                // height and width saved just by reading
+            if (config.value("height", height) && config.value("width", width) && config.value("area", area)){
 //                std::cout << "[" << kModuleName << "] " << "Read HxW " << height << " x " << width << std::endl;
             }
             config.endGroup(); // close size group
@@ -161,6 +161,7 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
         final_config.addArrayItem();
         final_config.setValue("height", height);
         final_config.setValue("width", width);
+        final_config.setValue("area", area);
         final_config.endArrayItem();
 
         final_config.endArray();
@@ -190,7 +191,7 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
 }
 
 // ----------------------------------------------------------------------------------------------------
-
+/*
 void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized){
 
     mask_orig.copyTo(mask_optimized);
@@ -202,7 +203,7 @@ void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized){
 
     cv::threshold(mask_optimized, mask_optimized, 50, 255, CV_THRESH_BINARY);
 }
-
+*/
 // ----------------------------------------------------------------------------------------------------
 
 
@@ -249,7 +250,7 @@ void imageToOduFinder(ed::EntityPtr& entity, OduDBBuilder& odu_learner, std::str
         if (max_y < p_2d.y) max_y = p_2d.y;
     }
 
-    optimizeContourBlur(mask, mask);
+//    optimizeContourBlur(mask, mask);
 
     // ---------- LEARN MEASUREMENT ----------
 
