@@ -137,7 +137,6 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     }else
         std::cout << "[" << module_name_ << "] " << "Could not set a size threshold!" << std::endl;
 
-
 //std::cout << "Entity height/area: " << object_height << " - " << object_area << std::endl;
 
     // compare object size to loaded models
@@ -147,33 +146,40 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
         const std::vector<ObjectSize>& sizes = it->second;
 
         double best_score = 0;
-
-        double w_score = 0;
-        double h_score = 0;
-        double a_score = 0;
-        double diff_w = 0;
-        double diff_h = 0;
-        double diff_area = 0;
-        double final_score;
-
         for(std::vector<ObjectSize>::const_iterator it_size = sizes.begin(); it_size != sizes.end(); ++it_size)
         {
             const ObjectSize& model_size = *it_size;
 
-            // height and area difference, in percentage (higher is worse)
-            diff_h = std::abs(model_size.height - object_height) / std::max(model_size.height, object_height);
-            diff_area = std::abs(model_size.area - object_area) / std::max(model_size.area, object_area);
+            double h_ratio = object_height / model_size.height;
+            double a_ratio = object_area / model_size.area;
 
-            // TODO: TURN THIS INTO AN EXPONENTIAL FUNCTION, NOT LINEAR!
-            h_score = 1.0 - diff_h;
-            a_score = 1.0 - diff_area;
+            double h_score;
+            if (h_ratio > 1.5)
+                h_score = 0;
+            else
+            {
+                if (h_ratio > 1)
+                    h_ratio = 1 / h_ratio;
+                h_score = h_ratio;
+            }
 
-            // final score is the worst between the two scores
-            final_score =  std::min(h_score, a_score);
+            double a_score;
+            if (a_ratio > 1.5)
+                a_score = 0;
+            else
+            {
+                if (a_ratio > 1)
+                    a_ratio = 1 / a_ratio;
+                a_score = a_ratio;
+            }
+
+            double final_score = h_score * a_score;
 
             // update best score
             best_score = std::max(best_score, final_score);
         }
+
+//        std::cout << "    " << " " << label << ": " << best_score << std::endl;
 
 //        std::cout << "Diffs " << label << " (H,A): " << diff_h << ", " << diff_area << " \t Score: " << h_score << " - " << a_score << std::endl;
 
@@ -196,22 +202,20 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     result.setValue("area", object_area);
     result.endGroup();
 
+    // assert hypothesis
+    if (!hypothesis.empty()){
+        for (std::map<std::string, double>::const_iterator it = hypothesis.begin(); it != hypothesis.end(); ++it){
+//                output.type_update.setScore(it->first, std::max(it->second/2, type_negative_score_));
+            output.type_update.setScore(it->first, it->second);
+        }
+    }
+
     // Set labels and scores
-    if (size_small){
+    if (size_small)
+    {
         result.setValue("label", "small_size");
 
         // if its small, for sure its not a person
-        output.type_update.setScore("human", 0);
-        output.type_update.setScore("crowd", 0);
-
-        // assert hypothesis
-        if (!hypothesis.empty()){
-            for (std::map<std::string, double>::const_iterator it = hypothesis.begin(); it != hypothesis.end(); ++it){
-//                output.type_update.setScore(it->first, std::max(it->second/2, type_negative_score_));
-                output.type_update.setScore(it->first, it->second);
-            }
-        }
-
         output.type_update.setScore("human", type_negative_score_);
         output.type_update.setScore("crowd", type_negative_score_);
 
@@ -223,6 +227,9 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
 
     }else if (size_big){
         result.setValue("label", "large_size");
+
+        output.type_update.setScore("human", 0.5);
+        output.type_update.setScore("crowd", 0.5);
 
 //        output.type_update.setScore("human", type_positive_score_);
 //        output.type_update.setScore("crowd", type_positive_score_);
