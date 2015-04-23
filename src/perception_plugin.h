@@ -42,6 +42,8 @@ private:
 
     std::map<UUID, boost::shared_ptr<Worker> > workers_;
 
+    double type_persistence_;
+
 };
 
 }

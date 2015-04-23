@@ -22,7 +22,7 @@ public:
         STOPPED
     };
 
-    Worker(const std::vector<std::string>& model_list);
+    Worker(const std::vector<std::string>& model_list, double type_persistence);
 
     virtual ~Worker();
 
@@ -74,6 +74,8 @@ protected:
 
     // List of possible object types
     std::vector<std::string> model_list_;
+
+    double type_persistence_;
 
     WorkerState state_;
 

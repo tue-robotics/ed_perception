@@ -125,6 +125,21 @@ void CategoricalDistribution::update(const CategoricalDistribution& other)
 
 // ----------------------------------------------------------------------------------------------------
 
+void CategoricalDistribution::waterDown(double factor)
+{
+    for(std::map<std::string, double>::iterator it = pmf_.begin(); it != pmf_.end(); ++it)
+    {
+        double& p = it->second;
+        p = (factor / 2) + p * (1 - factor);
+    }
+
+    unknown_score_ = (factor / 2) + unknown_score_ * (1 - factor);
+
+    normalize();
+}
+
+// ----------------------------------------------------------------------------------------------------
+
 std::ostream& operator<< (std::ostream& out, const CategoricalDistribution& c)
 {
     out << "[";

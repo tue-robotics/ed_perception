@@ -36,6 +36,8 @@ public:
 
     bool empty() const { return pmf_.empty(); }
 
+    void waterDown(double factor);
+
     friend std::ostream& operator<< (std::ostream& out, const CategoricalDistribution& c);
 
 private:

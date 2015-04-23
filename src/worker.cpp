@@ -14,8 +14,8 @@ namespace perception
 
 // ----------------------------------------------------------------------------------------------------
 
-Worker::Worker(const std::vector<std::string>& model_list)
-    : model_list_(model_list), t_last_processing(0), state_(IDLE), signal_stop_(false)
+Worker::Worker(const std::vector<std::string>& model_list, double type_persistence)
+    : model_list_(model_list), type_persistence_(type_persistence), t_last_processing(0), state_(IDLE), signal_stop_(false)
 {
 }
 
@@ -78,6 +78,10 @@ void Worker::run()
         input_.type_distribution.setUnknownScore(0.01); // TODO: magic number (probability that an object you encounter is unknown (not in the model list))
 
         input_.type_distribution.normalize();
+    }
+    else
+    {
+        input_.type_distribution.waterDown(1 - type_persistence_);
     }
 
     // Do the actual processing

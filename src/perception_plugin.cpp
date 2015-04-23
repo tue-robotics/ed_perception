@@ -102,6 +102,8 @@ void PerceptionPlugin::initialize(ed::InitData& init)
         return;
     }
 
+    config.value("type_persistence", type_persistence_);
+
     std::string object_models_path = ros::package::getPath("ed_object_models");
     std::string model_list_path = object_models_path + "/configs/model_lists/" + model_list_name;
 
@@ -214,7 +216,7 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
             // No worker active for this entity, so create one
 
             // create worker and add measurements
-            boost::shared_ptr<Worker> worker(new Worker(model_list_));
+            boost::shared_ptr<Worker> worker(new Worker(model_list_, type_persistence_));
             worker->setEntity(e);
             worker->setPerceptionModules(perception_modules_);
 
