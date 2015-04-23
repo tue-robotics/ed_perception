@@ -67,7 +67,6 @@ void ODUFinderModule::loadConfig(const std::string& config_path)
     module_path_ = config_path;
     database_path_ = "/database";
 
-
     // default values in case configure(...) is not called!
     type_unknown_score_ = 0.05;
     debug_mode_ = false;
