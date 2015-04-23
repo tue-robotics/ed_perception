@@ -128,8 +128,7 @@ void FaceRecognition::configure(tue::Configuration config) {
 
     if (enable_learning_service_){
         // initialize connection with ROS
-        if (!ros::isInitialized())
-        {
+        if (!ros::isInitialized()){
             ros::M_string remapping_args;
             ros::init(remapping_args, "ed");
         }
@@ -137,7 +136,7 @@ void FaceRecognition::configure(tue::Configuration config) {
         ros::NodeHandle nh("~");
         nh.setCallbackQueue(&cb_queue_);
 
-        // advertise service
+        // publish service
         ros::AdvertiseServiceOptions opt_srv_get_entity_info =
                 ros::AdvertiseServiceOptions::create<ed_perception::LearnPerson>(
                     "face_recognition/learn", boost::bind(&FaceRecognition::srvStartLearning, this, _1, _2),
@@ -145,8 +144,7 @@ void FaceRecognition::configure(tue::Configuration config) {
 
         srv_learn_face = nh.advertiseService(opt_srv_get_entity_info);
 
-        //----------------------
-
+        // publish actionlib server
         as_ = new actionlib::SimpleActionServer<ed_perception::FaceLearningAction> (nh, "face_recognition/learn_face", false);
         as_->registerGoalCallback(boost::bind(&FaceRecognition::learning_as_goal, this));
         as_->registerPreemptCallback(boost::bind(&FaceRecognition::learning_as_preempt, this));
@@ -239,13 +237,14 @@ void FaceRecognition::process(const ed::perception::WorkerInput& input, ed::perc
     if (!init_success_)
         return;
 
+    if (enable_learning_service_){
+        cb_queue_.callAvailable();
+    }
+
     if (!isFaceFound(config.limitScope())){
 //        std::cout << "[" << module_name_ << "] " << "Couldn't find a face, skipping recognition"<< std::endl;
         return;
     }
-
-    if (enable_learning_service_)
-        cb_queue_.callAvailable();
 
     // ---------- Prepare measurement ----------
 
@@ -289,7 +288,9 @@ void FaceRecognition::process(const ed::perception::WorkerInput& input, ed::perc
 
     // ---------- Learning (if active)----------
     if (learning_mode_){
-        int biggest_i = 0;
+        std::cout << "[" << module_name_ << "] " << "In learning mode..." << std::endl;
+
+        int largest_face_idx = 0;
         int biggest_area = 0;
 
         ed::ErrorContext errc("Learning mode started in FaceRecognition");
@@ -301,15 +302,13 @@ void FaceRecognition::process(const ed::perception::WorkerInput& input, ed::perc
         for (uint i=0 ; i<faces_detected.size() ; i++){
             if (faces_detected[i].features.width * faces_detected[i].features.height > biggest_area){
                 biggest_area = faces_detected[i].features.width * faces_detected[i].features.height;
-                biggest_i = i;
+                largest_face_idx = i;
             }
         }
 
         // true when learning is complete
-        if (learnFace(learning_name_, last_label_, faces_detected[biggest_i].face_img, entity_histogram, n_faces_current_, images_, labels_, labels_info_)){
+        if (learnFace(learning_name_, last_label_, faces_detected[largest_face_idx].face_img, entity_histogram, n_faces_current_, images_, labels_, labels_info_)){
             ed_perception::FaceLearningResult learning_result_;
-
-            std::cout << "[" << module_name_ << "] " << "Learning complete!" << std::endl;
 
             // reset number of learned faces
             n_faces_current_ = 0;
@@ -327,6 +326,8 @@ void FaceRecognition::process(const ed::perception::WorkerInput& input, ed::perc
                 learning_result_.result_info = "Learning complete";
                 as_->setSucceeded(learning_result_);
             }
+
+            std::cout << "[" << module_name_ << "] " << "Learning complete!" << std::endl;
 
         }else{
             // update number of faces learned
@@ -697,6 +698,8 @@ bool FaceRecognition::srvStartLearning(const ed_perception::LearnPerson::Request
 
     if (!learning_mode_){
 
+        std::cout << "[" << module_name_ << "] " << "Learning service, received new request." << std::endl;
+
         learning_name_ = ros_req.person_name;
         n_faces_current_ = 0;
 
@@ -842,14 +845,19 @@ bool FaceRecognition::isFaceFound(tue::Configuration config) const{
     double score;
     std::string group_label = "face";
 
-    if (!config.readGroup("perception_result", tue::OPTIONAL))
+    if (!config.readGroup("perception_result", tue::OPTIONAL)){
+//        std::cout << "Could not find perception_result group" << std::endl;
         return false;
+    }
 
-    if (!config.readGroup("face_detector", tue::OPTIONAL))
+    if (!config.readGroup("face_detector", tue::OPTIONAL)){
+//        std::cout << "could not find face_detector group" << std::endl;
         return false;
+    }
 
     if (config.value("score", score, tue::OPTIONAL) && config.value("label", group_label, tue::OPTIONAL)){
-        return score == 1;
+//        std::cout << "Face detector score: " << score << std::endl;
+        return score > 0;
     }
 }
 
