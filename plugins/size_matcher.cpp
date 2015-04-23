@@ -160,13 +160,15 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
         {
             const ObjectSize& model_size = *it_size;
 
-            // height and area difference, in percentage
+            // height and area difference, in percentage (higher is worse)
             diff_h = std::abs(model_size.height - object_height) / std::max(model_size.height, object_height);
             diff_area = std::abs(model_size.area - object_area) / std::max(model_size.area, object_area);
 
             // TODO: TURN THIS INTO AN EXPONENTIAL FUNCTION, NOT LINEAR!
             h_score = 1.0 - diff_h;
             a_score = 1.0 - diff_area;
+
+            // final score is the worst between the two scores
             final_score =  std::min(h_score, a_score);
 
             // update best score
