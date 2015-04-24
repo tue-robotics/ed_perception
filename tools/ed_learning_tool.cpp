@@ -45,6 +45,8 @@
 #include <string>
 #include <iostream>
 
+#include "../plugins/shared_methods.h"
+
 #include <boost/filesystem.hpp>
 
 #include <ros/package.h>
@@ -89,7 +91,7 @@ void config_to_file(tue::Configuration& config, const std::string &model_name, c
            std::cout << "boost::filesystem failed with error: " << e.code().message() << std::endl;
     }
 
-    std::cout << "[" << module_name_ << "] " << "Saving model for '" << model_name << "' at " << file_dir << std::endl;
+    std::cout << "\n[" << module_name_ << "] " << "Saving model for '" << model_name << "' at " << file_dir << "\n" << std::endl;
 
     std::ofstream out(file_dir.c_str(), std::ofstream::out);
     if (out.is_open()){
@@ -115,7 +117,7 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
 
     // step into the group being parsed
     if (!config.readGroup(module_name)){
-        std::cout << "[" << module_name_ << "] " << "Could not find the " << module_name << " group" << std::endl;
+//        std::cout << "[" << module_name_ << "] " << "Could not find the " << module_name << " group" << std::endl;
         config.endGroup(); // close type_aggregator group in case this one fails
         return;
     }
@@ -211,6 +213,7 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
 
 
 void imageToOduFinder(ed::EntityConstPtr& entity, OduDBBuilder& odu_learner, std::string model_name){
+  /*
     // ---------- PREPARE MEASUREMENT ----------
 
     // Get the best measurement from the entity
@@ -254,15 +257,38 @@ void imageToOduFinder(ed::EntityConstPtr& entity, OduDBBuilder& odu_learner, std
     }
 
 //    optimizeContourBlur(mask, mask);
+*/
 
-    // ---------- LEARN MEASUREMENT ----------
+
+    // ----------------------- PREPARE IMAGE -----------------------
+    // Get the best measurement from the entity
+    ed::MeasurementConstPtr msr = entity->lastMeasurement();
+    if (!msr)
+        return;
+
+    // get color image
+    const cv::Mat& color_image = msr->image()->getRGBImage();
+
+    // Created masked image
+    cv::Rect rgb_roi;
+    cv::Mat masked_color_image = ed::perception::maskImage(color_image, msr->imageMask(), rgb_roi);
+
+    // Create cropped masked color image
+    cv::Mat cropped_image = color_image(rgb_roi);
+
+    // convert to grayscale and increase contrast
+    cv::Mat croped_mono_image;
+    cv::cvtColor(cropped_image, croped_mono_image, CV_BGR2GRAY);
+    cv::equalizeHist(croped_mono_image, croped_mono_image);
+
+    // ---------- LEARN MEASUREMENT ---------- 
 
     // crop, convert to grayscale and increase contrast of the image
-    cv::Mat roi(cropped_image(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
-    cv::cvtColor(roi, roi, CV_BGR2GRAY);
-    cv::equalizeHist(roi , roi);
+//    cv::Mat roi(cropped_image(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
+//    cv::cvtColor(roi, roi, CV_BGR2GRAY);
+//    cv::equalizeHist(roi , roi);
 
-    odu_learner.learnImage(model_name + "-" + ed::Entity::generateID().str(), roi);
+    odu_learner.learnImage(model_name + "-" + ed::Entity::generateID().str(), croped_mono_image);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -359,7 +385,7 @@ int main(int argc, char **argv)
 
     if (config.hasError())
     {
-        std::cout << std::endl << "Error during configuration:" << std::endl << std::endl << config.error() << std::endl;
+        std::cout << "[" << module_name_ << "] " << std::endl << "Error during configuration:" << std::endl << std::endl << config.error() << std::endl;
         return 1;
     }
 
@@ -444,7 +470,7 @@ int main(int argc, char **argv)
 
         // skip model if its not on the model list
         if (!(std::find(model_list.begin(), model_list.end(), model_name) != model_list.end() || model_list.empty())){
-            std::cout << "Skipping model measurements '" << model_name << "', not on the list" << std::endl;
+            std::cout << "[" << module_name_ << "] " << "Skipping model measurements '" << model_name << "', not on the list" << std::endl;
             model_name = last_model;
             continue;
         }
@@ -463,11 +489,10 @@ int main(int argc, char **argv)
             last_model = model_name;
         }
 
-        std::cout << "Processing model: " << model_name << std::endl;
-
         if (!e)
             continue;
 
+        std::cout << "[" << module_name_ << "] " << "Processing measurement for '" << model_name << "' in " << filename_without_ext << std::endl;
 //        if (e->lastMeasurement())
 //            showMeasurement(*e->lastMeasurement());
 
@@ -503,7 +528,7 @@ int main(int argc, char **argv)
     }
 
     if (n_measurements == 0)
-        std::cout << "No measurements found." << std::endl;
+        std::cout << "[" << module_name_ << "] " << "No measurements found." << std::endl;
     else{
         // save last parsed model
         config_to_file(parsed_conf, model_name, model_output_dir);
