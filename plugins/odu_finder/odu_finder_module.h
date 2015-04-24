@@ -35,6 +35,7 @@ public:
 private:
     bool init_success_;
     bool debug_mode_;
+    std::string debug_folder_;
 
     double type_unknown_score_;
 

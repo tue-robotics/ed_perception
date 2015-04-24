@@ -5,6 +5,7 @@
 */
 
 #include "odu_finder_module.h"
+#include "odu_finder.h"
 
 #include "ed/measurement.h"
 #include <ed/entity.h>
@@ -13,9 +14,8 @@
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
-#include "odu_finder.h"
-
 #include "../shared_methods.h"
+
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -44,7 +44,15 @@ void ODUFinderModule::configure(tue::Configuration config) {
     if (!config.value("type_unknown_score", type_unknown_score_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'type_unknown_score' not found. Using default: " << type_unknown_score_ << std::endl;
 
+    if (!config.value("debug_folder", debug_folder_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_folder' not found. Using default: " << debug_folder_ << std::endl;
+
     database_path_ = module_path_ + database_path_;
+
+    if (debug_mode_){
+        std::cout << "[" << module_name_ << "] " << "Debug mode enabled. Debug folder: " << debug_folder_ << std::endl;
+        ed::perception::cleanDebugFolder(debug_folder_);
+    }
 
     // creat odu finder instance
     odu_finder_ = new odu_finder::ODUFinder(database_path_, debug_mode_);
@@ -101,16 +109,16 @@ void ODUFinderModule::process(const ed::perception::WorkerInput& input, ed::perc
     cv::Mat masked_color_image = ed::perception::maskImage(color_image, msr->imageMask(), rgb_roi);
 
     // Create cropped masked color image
-    cv::Mat cropped_image = masked_color_image(rgb_roi);
+    cv::Mat cropped_image = color_image(rgb_roi);
 
     // convert to grayscale and increase contrast
-    cv::Mat masked_mono_image;
-    cv::cvtColor(cropped_image, masked_mono_image, CV_BGR2GRAY);
-    cv::equalizeHist(masked_mono_image, masked_mono_image);
+    cv::Mat croped_mono_image;
+    cv::cvtColor(cropped_image, croped_mono_image, CV_BGR2GRAY);
+    cv::equalizeHist(croped_mono_image, croped_mono_image);
 
     // ----------------------- PROCESS IMAGE -----------------------
 
-    IplImage img(masked_mono_image);
+    IplImage img(croped_mono_image);
     std::map<std::string, float> results;
 
     {
@@ -141,6 +149,10 @@ void ODUFinderModule::process(const ed::perception::WorkerInput& input, ed::perc
 
     result.endGroup();  // close odu_finder group
     result.endGroup();  // close perception_result group
+
+    if (debug_mode_){
+        cv::imwrite(debug_folder_ + ed::Entity::generateID().str() + "_odu_finder_module.png", croped_mono_image);
+    }
 }
 
 ED_REGISTER_PERCEPTION_MODULE(ODUFinderModule)
