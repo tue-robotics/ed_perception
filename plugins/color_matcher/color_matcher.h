@@ -60,8 +60,6 @@ private:
     // Object colors
     std::map<std::string, std::vector<std::map<std::string, double> > > models_colors_;
 
-    void cleanDebugFolder(const std::string& folder) const;
-
     bool loadLearning(std::string path, std::string model_name);
 
     void getHypothesis(const std::map<std::string, double>& curr_hist, std::map<std::string, double>& hypothesis) const;

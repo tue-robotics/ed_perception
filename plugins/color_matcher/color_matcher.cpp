@@ -12,6 +12,8 @@
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
+#include "../shared_methods.h"
+
 
 ColorMatcher::ColorMatcher() :
     ed::perception::Module("color_matcher"),
@@ -45,7 +47,7 @@ void ColorMatcher::configure(tue::Configuration config) {
         std::cout << "[" << module_name_ << "] " << "Parameter 'type_unknown_score' not found. Using default: " << type_unknown_score_ << std::endl;
 
     if (debug_mode_)
-        cleanDebugFolder(debug_folder_);
+        ed::perception::cleanDebugFolder(debug_folder_);
 
     std::cout << "[" << module_name_ << "] " << "Loading color names..." << std::endl;
 
@@ -304,16 +306,6 @@ std::string ColorMatcher::getHighestProbColor(std::map<std::string, double>& map
     return max_name;
 }
 
-// ----------------------------------------------------------------------------------------------------
-
-void ColorMatcher::cleanDebugFolder(const std::string& folder) const{
-    if (system(std::string("mkdir " + folder).c_str()) != 0){
-        //printf("\nUnable to create output folder. Already created?\n");
-    }
-    if (system(std::string("rm " + folder + "*.png").c_str()) != 0){
-        //printf("\nUnable to clean output folder \n");
-    }
-}
 
 // ----------------------------------------------------------------------------------------------------
 
