@@ -29,6 +29,8 @@ cv::Mat maskImage(const cv::Mat& img, const ed::ImageMask& mask, cv::Rect& roi);
 
 void saveDebugImage(const std::string& name, const cv::Mat& img);
 
+void cleanDebugFolder(std::string folder);
+
 }
 
 }

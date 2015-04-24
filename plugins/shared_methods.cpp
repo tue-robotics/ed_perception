@@ -13,6 +13,8 @@
 
 #include <opencv2/highgui/highgui.hpp>
 
+#include <boost/filesystem.hpp>
+
 namespace ed
 {
 namespace perception
@@ -73,6 +75,7 @@ void prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& view_color_img, cv
 
 // ----------------------------------------------------------------------------------------------------
 
+
 float getAverageDepth(cv::Mat& depth_img) {
 
     float median = 0;
@@ -102,11 +105,12 @@ float getAverageDepth(cv::Mat& depth_img) {
         median = depths[depths.size() / 2];
     }
 
-
     return median;
 }
 
+
 // ----------------------------------------------------------------------------------------------------
+
 
 void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) {
 
@@ -139,14 +143,18 @@ void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized) {
     cv::threshold(mask_optimized, mask_optimized, 50, 255, CV_THRESH_BINARY);
 }
 
+
 // ----------------------------------------------------------------------------------------------------
+
 
 int clipInt(int val, int min, int max)
 {
     return val <= min ? min : val >= max ? max : val;
 }
 
+
 // ----------------------------------------------------------------------------------------------------
+
 
 cv::Mat maskImage(const cv::Mat& img, const ed::ImageMask& mask, cv::Rect& roi)
 {
@@ -177,7 +185,9 @@ cv::Mat maskImage(const cv::Mat& img, const ed::ImageMask& mask, cv::Rect& roi)
     return masked_img;
 }
 
+
 // ----------------------------------------------------------------------------------------------------
+
 
 void saveDebugImage(const std::string& name, const cv::Mat& img)
 {
@@ -219,8 +229,24 @@ void saveDebugImage(const std::string& name, const cv::Mat& img)
     }
 }
 
+
 // ----------------------------------------------------------------------------------------------------
 
+
+void cleanDebugFolder(std::string folder){
+    // clean the debug folder if debugging is active
+    try {
+        boost::filesystem::path dir(folder);
+        boost::filesystem::remove_all(dir);
+        boost::filesystem::create_directories(dir);
+    } catch(const boost::filesystem::filesystem_error& e){
+       if(e.code() == boost::system::errc::permission_denied)
+           std::cout << "[" << "cleanDebugFolder" << "] " << "boost::filesystem permission denied" << std::endl;
+       else
+           std::cout << "[" << "cleanDebugFolder" << "] " << "boost::filesystem failed with error: " << e.code().message() << std::endl;
+    }
 }
 
+// ----------------------------------------------------------------------------------------------------
+}
 }
