@@ -288,8 +288,8 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
         else
         {
             ed::EntityConstPtr e = data.world.getEntity(it->first);
-            if (e->convexHull().chull.empty())
-                std::cout << "WARNING: Entity " << e->id() << " has empty convex hull!" << std::endl;
+            // if (e->convexHull().chull.empty())
+            //    std::cout << "WARNING: Entity " << e->id() << " has empty convex hull!" << std::endl;
 
             ++it;
         }
