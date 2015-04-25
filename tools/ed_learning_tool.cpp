@@ -283,15 +283,12 @@ void imageToOduFinder(ed::EntityConstPtr& entity, OduDBBuilder& odu_learner, std
 
     // ---------- LEARN MEASUREMENT ---------- 
 
-    // crop, convert to grayscale and increase contrast of the image
-//    cv::Mat roi(cropped_image(cv::Rect(min_x, min_y, max_x - min_x, max_y - min_y)));
-//    cv::cvtColor(roi, roi, CV_BGR2GRAY);
-//    cv::equalizeHist(roi , roi);
-
     odu_learner.learnImage(model_name + "-" + ed::Entity::generateID().str(), croped_mono_image);
 }
 
+
 // ----------------------------------------------------------------------------------------------------
+
 
 bool loadModelList(std::string& model_list_path, std::vector<std::string>& model_list){
     tue::Configuration conf;
