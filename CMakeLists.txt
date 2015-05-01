@@ -72,7 +72,7 @@ add_library(ed_perception2
 add_library(ed_perception_plugin
     src/perception_plugin.cpp
 )
-target_link_libraries(ed_perception_plugin ${catkin_LIBRARIES} ed_perception2)
+target_link_libraries(ed_perception_plugin entity_live_viewer ${catkin_LIBRARIES} ed_perception2)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -209,4 +209,10 @@ target_link_libraries(create-rgbd-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRA
 
 add_executable(ed-learning-tool tools/ed_learning_tool.cpp)
 target_link_libraries(ed-learning-tool ed_perception2 odu_finder_db_builder ed_perception_plugin shared_methods ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
+add_library(entity_live_viewer
+    tools/entity_live_viewer.cpp
+    tools/entity_live_viewer.h
+)
+target_link_libraries(entity_live_viewer shared_methods ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
