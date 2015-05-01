@@ -80,6 +80,8 @@ void PerceptionPlugin::initialize(ed::InitData& init)
 
     std::string model_list_name = "";
 
+    enable_live_viewer_ = true;
+
     // Get the plugin paths
     std::string ed_plugin_paths;
     if (getEnvironmentVariable("ED_PLUGIN_PATH", ed_plugin_paths))
@@ -172,6 +174,9 @@ void PerceptionPlugin::initialize(ed::InitData& init)
 
         config.endArray();
     }
+
+    if (enable_live_viewer_)
+        entity_viewer_ = new EntityLiveViewer();
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -264,9 +269,15 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
                 worker->setIdle();
 
                 worker->t_last_processing = worker->timestamp();
+
+                if (enable_live_viewer_)
+                    entity_viewer_->addEntity(e);
             }
         }
     }
+
+    if (enable_live_viewer_)
+        entity_viewer_->updateViewer();
     
     // Filter idle workers of deleted entities
     for(std::map<UUID, boost::shared_ptr<Worker> >::iterator it = workers_.begin(); it != workers_.end();)
