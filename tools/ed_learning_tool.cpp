@@ -213,54 +213,9 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
 
 
 void imageToOduFinder(ed::EntityConstPtr& entity, OduDBBuilder& odu_learner, std::string model_name){
-  /*
+
     // ---------- PREPARE MEASUREMENT ----------
 
-    // Get the best measurement from the entity
-    ed::MeasurementConstPtr msr = entity->lastMeasurement();
-    if (!msr)
-        return;
-
-    uint min_x, max_x, min_y, max_y;
-
-    // create a view
-    rgbd::View view(*msr->image(), msr->image()->getRGBImage().cols);
-
-    // get color image
-    const cv::Mat& color_image = msr->image()->getRGBImage();
-
-    // crop it to match the view
-    cv::Mat cropped_image(color_image(cv::Rect(0,0,view.getWidth(), view.getHeight())));
-
-    // initialize bounding box points
-    max_x = 0;
-    max_y = 0;
-    min_x = view.getWidth();
-    min_y = view.getHeight();
-
-    // initialize mask
-    cv::Mat mask = cv::Mat::zeros(view.getHeight(), view.getWidth(), CV_8UC1);
-    // Iterate over all points in the mask
-    for(ed::ImageMask::const_iterator it = msr->imageMask().begin(view.getWidth()); it != msr->imageMask().end(); ++it)
-    {
-        // mask's (x, y) coordinate in the depth image
-        const cv::Point2i& p_2d = *it;
-
-        // paint a mask
-        mask.at<unsigned char>(*it) = 255;
-
-        // update the boundary coordinates
-        if (min_x > p_2d.x) min_x = p_2d.x;
-        if (max_x < p_2d.x) max_x = p_2d.x;
-        if (min_y > p_2d.y) min_y = p_2d.y;
-        if (max_y < p_2d.y) max_y = p_2d.y;
-    }
-
-//    optimizeContourBlur(mask, mask);
-*/
-
-
-    // ----------------------- PREPARE IMAGE -----------------------
     // Get the best measurement from the entity
     ed::MeasurementConstPtr msr = entity->lastMeasurement();
     if (!msr)
@@ -339,24 +294,26 @@ int main(int argc, char **argv)
         model_output_dir = argv[3];
         db_output_dir = argv[4];
         config_filename = argv[5];
-
-    }else if (argc == 1){
-        // if specific paths are not specified, use ROS get path
-        std::string ed_models_dir = ros::package::getPath("ed_object_models");
-
-        measurement_dir = ed_models_dir + "/models";
-        model_list_path = ed_models_dir + "/configs/model_lists/all_models.yml";
-        model_output_dir = ed_models_dir + "/models";
-        db_output_dir = ed_models_dir + "/configs/odu_finder";
     }else{
         std::cout << "Usage for:\n\n   ed-learning-tool MEASUREMENTS_DIRECTORY MODEL_LIST MODEL_LEARNING_DIRECTORY ODU_DB_DIRECTORY \n\n" << std::endl;
-        std::cout << "\tMEASUREMENT_DIRECTORY - directory with the measurements separated in sub-folders. Sub-folder name will be used as model name" << std::endl;
+        std::cout << "\tMEASUREMENT_DIR - directory with the measurements separated in sub-folders. Sub-folder name will be used as the model name" << std::endl;
         std::cout << "\tMODEL_LIST - List of models to be learned, from the available in the measurements directory (YML file)" << std::endl;
-        std::cout << "\tMODEL_LEARNING_DIRECTORY - directory where the model learning files will be stored" << std::endl;
-        std::cout << "\tODU_DB_DIRECTORY - directory where the ODU Finder database will be stored" << std::endl;
+        std::cout << "\tMODEL_LEARNING_DIR - directory where the model learning files will be stored" << std::endl;
+        std::cout << "\tODU_DB_DIR - directory where the ODU Finder database will be stored" << std::endl;
+        std::cout << "\tPARAMETER_FILE - file containing parameters and perception plugins to load" << std::endl;
         std::cout << "\n" << std::endl;
         return 1;
     }
+//    else if (argc == 1){
+//        // if specific paths are not specified, use ROS get path
+//        std::string ed_models_dir = ros::package::getPath("ed_object_models");
+
+//        measurement_dir = ed_models_dir + "/models";
+//        model_list_path = ed_models_dir + "/configs/model_lists/all_models.yml";
+//        model_output_dir = ed_models_dir + "/models";
+//        db_output_dir = ed_models_dir + "/configs/odu_finder";
+//    }
+
 
     std::vector<std::string> model_list;
     module_name_ = "ed_learning_tool";
