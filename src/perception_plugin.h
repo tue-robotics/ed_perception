@@ -6,6 +6,9 @@
 #include "ed/perception/module.h"
 #include "ed/perception/worker.h"
 
+// Entity live viewer
+#include "../tools/entity_live_viewer.h"
+
 namespace ed
 {
 
@@ -43,6 +46,9 @@ private:
     std::map<UUID, boost::shared_ptr<Worker> > workers_;
 
     double type_persistence_;
+
+    EntityLiveViewer* entity_viewer_;
+    bool enable_live_viewer_;
 
 };
 
