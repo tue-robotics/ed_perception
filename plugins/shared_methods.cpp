@@ -11,8 +11,6 @@
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
-#include <opencv2/highgui/highgui.hpp>
-
 #include <boost/filesystem.hpp>
 
 namespace ed
@@ -245,6 +243,38 @@ void cleanDebugFolder(std::string folder){
        else
            std::cout << "[" << "cleanDebugFolder" << "] " << "boost::filesystem failed with error: " << e.code().message() << std::endl;
     }
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+cv::Mat resizeSameRatio(const cv::Mat& img, int target_width = 500){
+    int width = img.cols;
+    int height = img.rows;
+
+    cv::Rect roi;
+    cv::Mat square = cv::Mat(target_width, target_width, img.type() );
+
+    square.setTo(cv::Scalar(255,255,255));
+
+    int max_dim = ( width >= height ) ? width : height;
+    float scale = ( ( float ) target_width ) / max_dim;
+
+    if ( width >= height ){
+        roi.width = target_width;
+        roi.x = 0;
+        roi.height = height * scale;
+        roi.y = ( target_width - roi.height ) / 2;
+    } else {
+        roi.y = 0;
+        roi.height = target_width;
+        roi.width = width * scale;
+        roi.x = ( target_width - roi.width ) / 2;
+    }
+
+    cv::resize( img, square( roi ), roi.size() );
+
+    return square;
 }
 
 // ----------------------------------------------------------------------------------------------------

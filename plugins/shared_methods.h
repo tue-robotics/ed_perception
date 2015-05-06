@@ -1,7 +1,7 @@
 #ifndef SHARED_METHODS_H_
 #define SHARED_METHODS_H_
 
-#include <opencv/cv.h>
+#include <opencv2/highgui/highgui.hpp>
 
 // ED includes
 #include "ed/measurement.h"
@@ -31,8 +31,9 @@ void saveDebugImage(const std::string& name, const cv::Mat& img);
 
 void cleanDebugFolder(std::string folder);
 
-}
+cv::Mat resizeSameRatio(const cv::Mat& img, int target_width);
 
+}
 }
 
 #endif
