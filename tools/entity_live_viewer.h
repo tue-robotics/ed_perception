@@ -20,12 +20,13 @@ public:
     std::string id;
     cv::Mat color_img;
     cv::Mat depth_img;
+    cv::Mat masked_roi;
     cv::Mat mask;
     cv::Rect roi;
-    tue::Configuration config;
+    tue::config::DataConstPointer data;
 
     EntityInfo(const ed::EntityConstPtr& e)
-        : id(e->id().str()){}//, config(e->data()){}
+        : id(e->id().str()), data(e->data()){}
 };
 
 class EntityLiveViewer{
@@ -44,6 +45,13 @@ class EntityLiveViewer{
         std::string debug_dir_;
         std::vector<EntityInfo> entity_list_;
 
+        int key_pressed_;
+
+        int window_margin_;
+        int preview_size_;
+
+        void processKeyPressed(int key);
+        void myDrawMultiLineText(std::string InputParagraph, cv::Point Origin);
 };
 
 #endif
