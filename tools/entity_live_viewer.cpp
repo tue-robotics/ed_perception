@@ -6,12 +6,12 @@
 
 #include "entity_live_viewer.h"
 
-
 //#include <ed/perception/aggregator.h>
 #include <ed/error_context.h>
 
-// Measurement data structures
+// ED data structures
 #include <ed/measurement.h>
+#include <ed/io/filesystem/write.h>
 #include <rgbd/Image.h>
 
 // C++ IO
@@ -21,17 +21,27 @@
 
 #include <tue/config/reader.h>
 
+#include <boost/filesystem.hpp>
+
 // ----------------------------------------------------------------------------------------------------
 
 
 EntityLiveViewer::EntityLiveViewer(){
-    std::cout << "Created viewer" << std::endl;
 
-    window_margin_ = 30;
+    window_margin_ = 20;
     preview_size_ = 400;
-
+    max_age_ = 10;
+    focused_idx_ = 0;
+    viewer_freeze_ = false;
+    module_name_ = "[Entity Live Viewer] ";
     cv::namedWindow("Entity Live Viewer", cv::WINDOW_AUTOSIZE);
 
+    std::cout << module_name_ << "Ready!" << std::endl;
+    std::cout << module_name_ << "How to use: " << std::endl;
+    std::cout << module_name_ << "\t1 - 9 : Choose entity from the list " << std::endl;
+    std::cout << module_name_ << "\tSPACE : Freeze the viewer" << std::endl;
+    std::cout << module_name_ << "\tS : Store measurement" << std::endl;
+    std::cout << module_name_ << "\tN : Change name used for the measurement" << std::endl;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -40,54 +50,60 @@ EntityLiveViewer::EntityLiveViewer(){
 void EntityLiveViewer::updateViewer(){
     ed::ErrorContext errc("EntityLiveViewer -> updateViewer()");
 
-    cv::Mat output_img = cv::Mat::zeros(768, 1024, CV_8UC3);
+    cv::Mat output_img = cv::Mat::zeros(768, 800 + 3*window_margin_, CV_8UC3);
 
     cv::Point entity_list_org(10, 30);
 
     // set ROIs
     cv::Mat entity_preview_roi = output_img(cv::Rect(window_margin_, window_margin_, preview_size_, preview_size_));
     cv::Mat entity_list_roi = output_img(cv::Rect(window_margin_, entity_preview_roi.rows + window_margin_, 480, output_img.rows - entity_preview_roi.rows - window_margin_));
-    cv::Mat entity_info_roi = output_img(cv::Rect(512 + window_margin_, window_margin_, 480, 700));
+    cv::Mat entity_info_roi = output_img(cv::Rect(preview_size_ + 2*window_margin_, window_margin_, 400, 700));
 
     // paint background white
     entity_preview_roi.setTo(cv::Scalar(255,255,255));
+    entity_info_roi.setTo(cv::Scalar(30,30,30));
 
-    // ------------------------------------------------------
+
+    // ------------------ ENTITY IMAGE ----------------------
 
     // Draw entity masked image
-    if (!entity_list_.empty()){
+    if (!entity_list_.empty() && focused_idx_ < entity_list_.size()){
         cv::Mat resized_img = cv::Mat::zeros(preview_size_, preview_size_, CV_8UC3);
-        resized_img = ed::perception::resizeSameRatio(entity_list_[0].masked_roi, preview_size_);
+        resized_img = ed::perception::resizeSameRatio(entity_list_[focused_idx_].masked_roi, preview_size_);
         resized_img.copyTo(entity_preview_roi);
     }
 
-    // ------------------------------------------------------
 
-    // Draw entity info
+    // ------------------ ENTITY INFO -----------------------
 
-    if (!entity_list_.empty()){
-//        cv::putText(entity_list_roi, entity_list_[0].data, cv::Point(10,10), 1, 1.1, cv::Scalar(255,255, 255), 1, CV_AA);
+    if (!entity_list_.empty() && focused_idx_ < entity_list_.size()){
 //        tue::config::Reader r(e_info.data);
+        std::stringstream data;
+        data << entity_list_[focused_idx_].data;
 
-//        std::cout << entity_list_[0].data << std::endl;
+        putTextMultipleLines(data.str(), "\n", cv::Point(10,10), entity_info_roi);
     }
 
-    // ------------------------------------------------------
-    std::cout << "List size: " << entity_list_.size() << std::endl;
-    std::cout << "Entity List:" << std::endl;
+
+    // -------------------ENTITY LIST ------------------------
 
     int vert_offset = 40;
     int counter = 1;
 
     // Draw entity list
-    cv::putText(entity_list_roi, "Entity List:", entity_list_org, 1, 1.1, cv::Scalar(255,255, 255), 1, CV_AA);
+    std::stringstream title;
+    title << "Entity List (" << entity_list_.size() << "):";
+    cv::putText(entity_list_roi, title.str(), entity_list_org, 1, 1.1, cv::Scalar(255,255, 255), 1, CV_AA);
+
     for(std::vector<EntityInfo>::const_iterator entity_it = entity_list_.begin(); entity_it != entity_list_.end(); ++entity_it){
-
-        std::cout << "Entity ID: " << entity_it->id << std::endl;
-
         std::stringstream ss;
-        ss << counter << ": " << (std::string)(entity_it->id).substr(0, 4);
+        ss << "   " << counter << ": " << (std::string)(entity_it->id).substr(0, 4) << " (" <<  entity_it->last_updated << ")";
 
+        // show selected entity
+        if (counter-1 == focused_idx_)
+            ss << "  <--";
+
+        // draw text
         cv::putText(entity_list_roi, ss.str(), entity_list_org + cv::Point(0, vert_offset), 1, 1.1, cv::Scalar(255,255,255), 1, CV_AA);
         vert_offset += 20;
         counter++;
@@ -95,11 +111,24 @@ void EntityLiveViewer::updateViewer(){
 
     // ------------------------------------------------------
 
-    entity_list_.clear();
+    if (!viewer_freeze_){
+        // update age of the entities in the list
+        std::vector<EntityInfo>::iterator it = entity_list_.begin();
+        while(it != entity_list_.end()) {
+            if(it->last_updated > max_age_){
+                it = entity_list_.erase(it);
+            }else{
+                it->last_updated++;
+                ++it;
+            }
+        }
+    }
 
+    // show viewer
     cv::imshow("Entity Live Viewer", output_img);
-    key_pressed_ = cv::waitKey(10);
 
+    // process key presses
+    key_pressed_ = cv::waitKey(10);
     processKeyPressed(key_pressed_);
 }
 
@@ -109,48 +138,132 @@ void EntityLiveViewer::updateViewer(){
 void EntityLiveViewer::addEntity(const ed::EntityConstPtr& entity){
     ed::ErrorContext errc("EntityLiveViewer -> addEntity()");
 
-    cv::Rect rgb_roi;
+    if (viewer_freeze_) return;
 
-    EntityInfo e_info (entity);
-
-    // Get the best measurement from the entity
+    // Get the last measurement from the entity
     ed::MeasurementConstPtr msr = entity->lastMeasurement();
 
-    if (!msr)
-        return;
+    if (!msr) return;
+
+    cv::Rect rgbd_roi;
+    EntityInfo e_info (entity);
 
     // get color image
     const cv::Mat& color_image = msr->image()->getRGBImage();
 
     // get depth image
-//    const cv::Mat& depth_image = msr->image()->getDepthImage();
+    //    const cv::Mat& depth_image = msr->image()->getDepthImage();
 
     // mask color image with the entity segmentation
-    cv::Mat entity_masked = ed::perception::maskImage(color_image, msr->imageMask(), rgb_roi);
+    cv::Mat entity_masked = ed::perception::maskImage(color_image, msr->imageMask(), rgbd_roi);
 
     //copy the masked image to EntityInfo
-    entity_masked(rgb_roi).copyTo(e_info.masked_roi);
+    entity_masked(rgbd_roi).copyTo(e_info.masked_roi);
 
-//    tue::config::Reader r(e_info.data);
+    // update the current entity info or create a new one
+    bool exists = false;
+    for(std::vector<EntityInfo>::iterator entity_it = entity_list_.begin(); entity_it != entity_list_.end(); ++entity_it){
+        if (entity_it->id.compare(e_info.id) == 0){
+            entity_it->last_updated = 0;
+            e_info.color_img.copyTo(entity_it->color_img);
+            e_info.depth_img.copyTo(entity_it->depth_img);
+            e_info.masked_roi.copyTo(entity_it->masked_roi);
+            entity_it->roi = rgbd_roi;
+            entity_it->data = e_info.data;
+            exists = true;
+        }
+    }
 
-    entity_list_.push_back(e_info);
+    if (!exists){
+        entity_list_.push_back(e_info);
+    }
 }
 
 
 // ----------------------------------------------------------------------------------------------------
 
 
-void EntityLiveViewer::processKeyPressed(int key){
+void EntityLiveViewer::processKeyPressed(char key){
+    ed::ErrorContext errc("EntityLiveViewer -> processKeyPressed()");
+
     // return if no key was pressed
     if(key == -1) return;
 
-    std::cout << "key pressed = " << key << std::endl;
+    std::cout << module_name_  << "Key pressed = " << key << std::endl;
+
+    switch (key){
+        case '1':focused_idx_ = 0;
+        break;
+        case '2':focused_idx_ = 1;
+        break;
+        case '3':focused_idx_ = 2;
+        break;
+        case '4':focused_idx_ = 3;
+        break;
+        case '5':focused_idx_ = 4;
+        break;
+        case '6':focused_idx_ = 5;
+        break;
+        case '7':focused_idx_ = 6;
+        break;
+        case '8':focused_idx_ = 7;
+        break;
+        case '9':focused_idx_ = 8;
+        break;
+
+        case '+':focused_idx_++;
+        break;
+        case '-':focused_idx_--;
+        break;
+
+        case ' ':viewer_freeze_ == true ? viewer_freeze_ = false : viewer_freeze_ = true;
+        break;
+    }
+
 }
+
 
 // ----------------------------------------------------------------------------------------------------
 
-void EntityLiveViewer::myDrawMultiLineText(std::string InputParagraph, cv::Point Origin){
-//    std::vector<std::string> LinesOfText = myParse(InputParagraph,"\n");
-//    for (int i=0;i<LinesOfText.size(); ++i)
-//        DrawText(CurrentLine[i], Origin.x, Origin.y + i*16);
+
+void EntityLiveViewer::putTextMultipleLines(std::string text, std::string delimiter, cv::Point origin, cv::Mat& image_out){
+    ed::ErrorContext errc("EntityLiveViewer -> putTextMultipleLines()");
+
+    int pos = 0;
+    std::string token;
+    cv::Point line_spacing(0, 15);
+    int counter = 1;
+
+    // split the string by the delimiter
+    while ((pos = text.find(delimiter)) != std::string::npos) {
+        token = text.substr(0, pos);
+        text.erase(0, pos + delimiter.length());
+
+        cv::putText(image_out, token, origin + line_spacing*counter, 1, 1.0, cv::Scalar(255,255, 255), 1, CV_AA);
+//        std::cout << token << std::endl;
+        counter++;
+    }
+
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+void EntityLiveViewer::storeMeasurement(const ed::EntityConstPtr& entity, const std::string& type){
+    ed::ErrorContext errc("EntityLiveViewer -> storeMeasurement()");
+
+    if (entity){
+        char const* home = getenv("HOME");
+        if (home)
+        {
+            boost::filesystem::path dir(std::string(home) + "/.ed/measurements/" + type);
+            boost::filesystem::create_directories(dir);
+
+            std::string filename = dir.string() + "/" + ed::Entity::generateID().str();
+            ed::write(filename, *entity);
+
+            std::cout << "Writing entity info to '" << filename << "'." << std::endl;
+        }
+    } else
+        std::cout << "Entity does not exist!" << std::endl;
 }

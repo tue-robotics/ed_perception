@@ -16,7 +16,7 @@
 class EntityInfo{
 
 public:
-    ed::EntityConstPtr e;
+    ed::EntityConstPtr entity_pointer;
     std::string id;
     cv::Mat color_img;
     cv::Mat depth_img;
@@ -24,10 +24,19 @@ public:
     cv::Mat mask;
     cv::Rect roi;
     tue::config::DataConstPointer data;
+    int last_updated;
+
+//    bool updated;
 
     EntityInfo(const ed::EntityConstPtr& e)
-        : id(e->id().str()), data(e->data()){}
+        : entity_pointer(e),
+          id(e->id().str()),
+          data(e->data()),
+          last_updated(0){}
 };
+
+
+// ---------------------------------------------------
 
 class EntityLiveViewer{
     public:
@@ -44,14 +53,16 @@ class EntityLiveViewer{
         std::string module_name_;
         std::string debug_dir_;
         std::vector<EntityInfo> entity_list_;
-
-        int key_pressed_;
-
+        int max_age_;
+        int focused_idx_;
+        char key_pressed_;
         int window_margin_;
         int preview_size_;
+        bool viewer_freeze_;
 
-        void processKeyPressed(int key);
-        void myDrawMultiLineText(std::string InputParagraph, cv::Point Origin);
+        void processKeyPressed(char key);
+        void putTextMultipleLines(std::string text, std::string delimiter, cv::Point origin, cv::Mat& image_out);
+        void storeMeasurement(const ed::EntityConstPtr &entity, const std::string& type);
 };
 
 #endif
