@@ -80,7 +80,7 @@ void PerceptionPlugin::initialize(ed::InitData& init)
 
     std::string model_list_name = "";
 
-    enable_live_viewer_ = true;
+    enable_live_viewer_ = false;
 
     // Get the plugin paths
     std::string ed_plugin_paths;
