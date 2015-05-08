@@ -80,8 +80,6 @@ void PerceptionPlugin::initialize(ed::InitData& init)
 
     std::string model_list_name = "";
 
-    enable_live_viewer_ = false;
-
     // Get the plugin paths
     std::string ed_plugin_paths;
     if (getEnvironmentVariable("ED_PLUGIN_PATH", ed_plugin_paths))
@@ -104,6 +102,7 @@ void PerceptionPlugin::initialize(ed::InitData& init)
         return;
     }
 
+    config.value("live_viewer", enable_live_viewer_);
     config.value("type_persistence", type_persistence_);
 
     std::string object_models_path = ros::package::getPath("ed_object_models");
@@ -270,12 +269,14 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
 
                 worker->t_last_processing = worker->timestamp();
 
+                // add entity to the viewer
                 if (enable_live_viewer_)
                     entity_viewer_->addEntity(e);
             }
         }
     }
 
+    // update/redraw the viewer with the latest entities added
     if (enable_live_viewer_)
         entity_viewer_->updateViewer();
     
