@@ -16,7 +16,7 @@
 class EntityInfo{
 
 public:
-    ed::EntityConstPtr entity_pointer;
+    ed::EntityConstPtr entity_pt;
     std::string id;
     cv::Mat color_img;
     cv::Mat depth_img;
@@ -29,7 +29,7 @@ public:
 //    bool updated;
 
     EntityInfo(const ed::EntityConstPtr& e)
-        : entity_pointer(e),
+        : entity_pt(e),
           id(e->id().str()),
           data(e->data()),
           last_updated(0){}
@@ -59,6 +59,8 @@ class EntityLiveViewer{
         int window_margin_;
         int preview_size_;
         bool viewer_freeze_;
+        std::string model_name_;
+        int saved_measurements_;
 
         void processKeyPressed(char key);
         void putTextMultipleLines(std::string text, std::string delimiter, cv::Point origin, cv::Mat& image_out);

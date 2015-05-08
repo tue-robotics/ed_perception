@@ -35,6 +35,8 @@ EntityLiveViewer::EntityLiveViewer(){
     viewer_freeze_ = false;
     module_name_ = "[Entity Live Viewer] ";
     cv::namedWindow("Entity Live Viewer", cv::WINDOW_AUTOSIZE);
+    model_name_ = "default";
+    saved_measurements_ = 0;
 
     std::cout << module_name_ << "Ready!" << std::endl;
     std::cout << module_name_ << "How to use: " << std::endl;
@@ -52,16 +54,17 @@ void EntityLiveViewer::updateViewer(){
 
     cv::Mat output_img = cv::Mat::zeros(768, 800 + 3*window_margin_, CV_8UC3);
 
-    cv::Point entity_list_org(10, 30);
 
     // set ROIs
     cv::Mat entity_preview_roi = output_img(cv::Rect(window_margin_, window_margin_, preview_size_, preview_size_));
-    cv::Mat entity_list_roi = output_img(cv::Rect(window_margin_, entity_preview_roi.rows + window_margin_, 480, output_img.rows - entity_preview_roi.rows - window_margin_));
+    cv::Mat entity_list_roi = output_img(cv::Rect(window_margin_, entity_preview_roi.rows + 2*window_margin_,
+                                                  entity_preview_roi.cols, output_img.rows - entity_preview_roi.rows - 3*window_margin_));
     cv::Mat entity_info_roi = output_img(cv::Rect(preview_size_ + 2*window_margin_, window_margin_, 400, 700));
 
     // paint background white
     entity_preview_roi.setTo(cv::Scalar(255,255,255));
     entity_info_roi.setTo(cv::Scalar(30,30,30));
+    entity_list_roi.setTo(cv::Scalar(30,30,30));
 
 
     // ------------------ ENTITY IMAGE ----------------------
@@ -89,15 +92,26 @@ void EntityLiveViewer::updateViewer(){
 
     int vert_offset = 40;
     int counter = 1;
+    cv::Point model_name_org(10, 30);
+    cv::Point entity_list_org(10, 60);
+
+    // Draw model name
+    std::stringstream model_name_info;
+    model_name_info << "Model name: " << model_name_;
+    cv::putText(entity_list_roi, model_name_info.str(), model_name_org, 1, 1.0, cv::Scalar(255,255, 255), 1, CV_AA);
+    model_name_info.str("");
+    model_name_info << "Saved counter: " << saved_measurements_;
+    cv::putText(entity_list_roi, model_name_info.str(), model_name_org + cv::Point(230, 0), 1, 1.0, cv::Scalar(255,255, 255), 1, CV_AA);
+
+    // Draw entity list title
+    std::stringstream list_title;
+    list_title << "Entity List (" << entity_list_.size() << "):";
+    cv::putText(entity_list_roi, list_title.str(), entity_list_org, 1, 1.1, cv::Scalar(255,255, 255), 1, CV_AA);
 
     // Draw entity list
-    std::stringstream title;
-    title << "Entity List (" << entity_list_.size() << "):";
-    cv::putText(entity_list_roi, title.str(), entity_list_org, 1, 1.1, cv::Scalar(255,255, 255), 1, CV_AA);
-
     for(std::vector<EntityInfo>::const_iterator entity_it = entity_list_.begin(); entity_it != entity_list_.end(); ++entity_it){
         std::stringstream ss;
-        ss << "   " << counter << ": " << (std::string)(entity_it->id).substr(0, 4) << " (" <<  entity_it->last_updated << ")";
+        ss << "   " << counter << ": " << (std::string)(entity_it->id).substr(0, 4) ;//<< " (" <<  entity_it->last_updated << ")";
 
         // show selected entity
         if (counter-1 == focused_idx_)
@@ -192,32 +206,51 @@ void EntityLiveViewer::processKeyPressed(char key){
     std::cout << module_name_  << "Key pressed = " << key << std::endl;
 
     switch (key){
-        case '1':focused_idx_ = 0;
+        // choose entity from the list
+        case '1':if (entity_list_.size() >= 1) focused_idx_ = 0;
         break;
-        case '2':focused_idx_ = 1;
+        case '2':if (entity_list_.size() >= 2) focused_idx_ = 1;
         break;
-        case '3':focused_idx_ = 2;
+        case '3':if (entity_list_.size() >= 3) focused_idx_ = 2;
         break;
-        case '4':focused_idx_ = 3;
+        case '4':if (entity_list_.size() >= 4) focused_idx_ = 3;
         break;
-        case '5':focused_idx_ = 4;
+        case '5':if (entity_list_.size() >= 5) focused_idx_ = 4;
         break;
-        case '6':focused_idx_ = 5;
+        case '6':if (entity_list_.size() >= 6) focused_idx_ = 5;
         break;
-        case '7':focused_idx_ = 6;
+        case '7':if (entity_list_.size() >= 7) focused_idx_ = 6;
         break;
-        case '8':focused_idx_ = 7;
+        case '8':if (entity_list_.size() >= 8) focused_idx_ = 7;
         break;
-        case '9':focused_idx_ = 8;
+        case '9':if (entity_list_.size() >= 9) focused_idx_ = 8;
         break;
 
+        // next and previous entity
         case '+':focused_idx_++;
         break;
         case '-':focused_idx_--;
         break;
 
-        case ' ':viewer_freeze_ == true ? viewer_freeze_ = false : viewer_freeze_ = true;
+        // toggle freeze viewer
+        case ' ':   viewer_freeze_ = !viewer_freeze_;
+                    std::cout << module_name_ << "Viewer paused: " << viewer_freeze_ << std::endl;
         break;
+
+        // store measurement
+        case 's':
+            if (focused_idx_ <= entity_list_.size()){
+                storeMeasurement(entity_list_[focused_idx_].entity_pt, model_name_);
+            }else
+                std::cout << module_name_ << "Select an entity from the list" << key << std::endl;
+        break;
+
+        // change model name
+        case 'n': std::cout << module_name_ << "Model name: ";
+                  std::cin >> model_name_;
+                  saved_measurements_ = 0;
+        break;
+
     }
 
 }
@@ -249,21 +282,22 @@ void EntityLiveViewer::putTextMultipleLines(std::string text, std::string delimi
 
 // ----------------------------------------------------------------------------------------------------
 
-void EntityLiveViewer::storeMeasurement(const ed::EntityConstPtr& entity, const std::string& type){
+void EntityLiveViewer::storeMeasurement(const ed::EntityConstPtr& entity, const std::string& model_name){
     ed::ErrorContext errc("EntityLiveViewer -> storeMeasurement()");
 
     if (entity){
         char const* home = getenv("HOME");
         if (home)
         {
-            boost::filesystem::path dir(std::string(home) + "/.ed/measurements/" + type);
+            boost::filesystem::path dir(std::string(home) + "/.ed/measurements/" + model_name);
             boost::filesystem::create_directories(dir);
 
             std::string filename = dir.string() + "/" + ed::Entity::generateID().str();
             ed::write(filename, *entity);
 
-            std::cout << "Writing entity info to '" << filename << "'." << std::endl;
+            std::cout << module_name_ << "Writing entity info to '" << filename << "'." << std::endl;
+            saved_measurements_++;
         }
     } else
-        std::cout << "Entity does not exist!" << std::endl;
+        std::cout << module_name_ << "Entity does not exist!" << std::endl;
 }
