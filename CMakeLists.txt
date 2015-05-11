@@ -23,6 +23,9 @@ find_package(catkin REQUIRED COMPONENTS
 #find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 
+# Qt GUI
+find_package(Qt4 COMPONENTS QtCore QtGui QtApplication)
+include(${QT_USE_FILE})
 
 ###################################
 ## catkin specific configuration ##
@@ -210,9 +213,19 @@ target_link_libraries(create-rgbd-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRA
 add_executable(ed-learning-tool tools/ed_learning_tool.cpp)
 target_link_libraries(ed-learning-tool ed_perception2 odu_finder_db_builder ed_perception_plugin shared_methods ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
+add_library(entity_live_viewer_gui
+    tools/entity_live_viewer/viewer_ui.cpp
+    tools/entity_live_viewer/viewer_ui.h
+    tools/entity_live_viewer/ui_entity_live_viewer_form.h
+)
+target_link_libraries(entity_live_viewer_gui ${catkin_LIBRARIES} ${QT_LIBRARIES})
+
+add_executable(test-ui tools/entity_live_viewer/test_ui.cpp)
+target_link_libraries(test-ui entity_live_viewer_gui ${catkin_LIBRARIES} ${QT_LIBRARIES})
+
 add_library(entity_live_viewer
     tools/entity_live_viewer.cpp
     tools/entity_live_viewer.h
 )
-target_link_libraries(entity_live_viewer shared_methods ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(entity_live_viewer shared_methods entity_live_viewer_gui ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
