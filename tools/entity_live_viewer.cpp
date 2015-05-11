@@ -5,28 +5,24 @@
 */
 
 #include "entity_live_viewer.h"
+#include "../plugins/shared_methods.h"
 
-//#include <ed/perception/aggregator.h>
-#include <ed/error_context.h>
 
 // ED data structures
+#include <ed/error_context.h>
 #include <ed/measurement.h>
 #include <ed/io/filesystem/write.h>
 #include <rgbd/Image.h>
+#include <tue/config/reader.h>
 
 // C++ IO
 #include <iostream>
-
-#include "../plugins/shared_methods.h"
-
-#include <tue/config/reader.h>
-
 #include <boost/filesystem.hpp>
 
 // ----------------------------------------------------------------------------------------------------
 
 
-EntityLiveViewer::EntityLiveViewer(){
+EntityLiveViewer::EntityLiveViewer() : viewer_ui_(){//, app_(){
 
     window_margin_ = 20;
     preview_size_ = 400;
@@ -34,7 +30,7 @@ EntityLiveViewer::EntityLiveViewer(){
     focused_idx_ = 0;
     viewer_freeze_ = false;
     module_name_ = "[Entity Live Viewer] ";
-    cv::namedWindow("Entity Live Viewer", cv::WINDOW_AUTOSIZE);
+//    cv::namedWindow("Entity Live Viewer", cv::WINDOW_AUTOSIZE);
     model_name_ = "default";
     saved_measurements_ = 0;
 
@@ -44,6 +40,19 @@ EntityLiveViewer::EntityLiveViewer(){
     std::cout << module_name_ << "\tSPACE : Freeze the viewer" << std::endl;
     std::cout << module_name_ << "\tS : Store measurement" << std::endl;
     std::cout << module_name_ << "\tN : Change name used for the measurement" << std::endl;
+
+    // mock parameters
+    char *argv[] = {"program name", "arg1", "arg2", NULL};
+    int argc = sizeof(argv) / sizeof(char*) - 1;
+
+//    QApplication app_local(argc, argv);
+//    viewer_ui_->show();
+//    viewer_ui_->setlabeltext("bla");
+//    app_local.exec();
+
+    //    app_->exec();
+
+    std::cout << module_name_  << "Viewer ready" << std::endl;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -53,7 +62,6 @@ void EntityLiveViewer::updateViewer(){
     ed::ErrorContext errc("EntityLiveViewer -> updateViewer()");
 
     cv::Mat output_img = cv::Mat::zeros(768, 800 + 3*window_margin_, CV_8UC3);
-
 
     // set ROIs
     cv::Mat entity_preview_roi = output_img(cv::Rect(window_margin_, window_margin_, preview_size_, preview_size_));
@@ -126,7 +134,7 @@ void EntityLiveViewer::updateViewer(){
     // ------------------------------------------------------
 
     if (!viewer_freeze_){
-        // update age of the entities in the list
+        // update age of the entities in the list, and remove old ones
         std::vector<EntityInfo>::iterator it = entity_list_.begin();
         while(it != entity_list_.end()) {
             if(it->last_updated > max_age_){
@@ -139,10 +147,11 @@ void EntityLiveViewer::updateViewer(){
     }
 
     // show viewer
-    cv::imshow("Entity Live Viewer", output_img);
+//    cv::imshow("Entity Live Viewer", output_img);
 
     // process key presses
-    key_pressed_ = cv::waitKey(10);
+    char key_pressed_ = -1;
+//    key_pressed_ = cv::waitKey(10);
     processKeyPressed(key_pressed_);
 }
 
@@ -252,7 +261,6 @@ void EntityLiveViewer::processKeyPressed(char key){
         break;
 
     }
-
 }
 
 

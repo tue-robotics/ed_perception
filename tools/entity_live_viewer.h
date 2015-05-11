@@ -11,7 +11,12 @@
 #include <ed/update_request.h>
 #include <ed/perception/module.h>
 
+#include "entity_live_viewer/viewer_ui.h"
+
+
+
 // ----------------------------------------------------------------------------------------------------
+
 
 class EntityInfo{
 
@@ -26,7 +31,7 @@ public:
     tue::config::DataConstPointer data;
     int last_updated;
 
-//    bool updated;
+
 
     EntityInfo(const ed::EntityConstPtr& e)
         : entity_pt(e),
@@ -37,6 +42,7 @@ public:
 
 
 // ---------------------------------------------------
+
 
 class EntityLiveViewer{
     public:
@@ -55,12 +61,14 @@ class EntityLiveViewer{
         std::vector<EntityInfo> entity_list_;
         int max_age_;
         int focused_idx_;
-        char key_pressed_;
         int window_margin_;
         int preview_size_;
         bool viewer_freeze_;
         std::string model_name_;
         int saved_measurements_;
+
+        ViewerUI* viewer_ui_;
+        QApplication* app_;
 
         void processKeyPressed(char key);
         void putTextMultipleLines(std::string text, std::string delimiter, cv::Point origin, cv::Mat& image_out);
