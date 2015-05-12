@@ -75,7 +75,7 @@ add_library(ed_perception2
 add_library(ed_perception_plugin
     src/perception_plugin.cpp
 )
-target_link_libraries(ed_perception_plugin entity_live_viewer ${catkin_LIBRARIES} ed_perception2)
+target_link_libraries(ed_perception_plugin entity_live_viewer_server ${catkin_LIBRARIES} ed_perception2)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -219,13 +219,12 @@ add_library(entity_live_viewer_gui
     tools/entity_live_viewer/ui_entity_live_viewer_form.h
 )
 target_link_libraries(entity_live_viewer_gui ${catkin_LIBRARIES} ${QT_LIBRARIES})
-
 add_executable(test-ui tools/entity_live_viewer/test_ui.cpp)
 target_link_libraries(test-ui entity_live_viewer_gui ${catkin_LIBRARIES} ${QT_LIBRARIES})
 
-add_library(entity_live_viewer
-    tools/entity_live_viewer.cpp
-    tools/entity_live_viewer.h
+add_library(entity_live_viewer_server
+    tools/entity_live_viewer/entity_live_viewer_server.cpp
+    tools/entity_live_viewer/entity_live_viewer_server.h
 )
-target_link_libraries(entity_live_viewer shared_methods entity_live_viewer_gui ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(entity_live_viewer_server shared_methods entity_live_viewer_gui ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
