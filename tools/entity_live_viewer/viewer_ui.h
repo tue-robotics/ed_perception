@@ -16,7 +16,7 @@ class ViewerUI : public QMainWindow{
 
     public:
         ViewerUI(QMainWindow *parent = 0);
-        virtual ~ViewerUI();
+        ~ViewerUI();
 
         void setlabeltext(std::string text);
 
