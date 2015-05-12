@@ -175,7 +175,7 @@ void PerceptionPlugin::initialize(ed::InitData& init)
     }
 
     if (enable_live_viewer_)
-        entity_viewer_ = new EntityLiveViewer();
+        entity_viewer_ = new EntityLiveViewerServer();
 }
 
 // ----------------------------------------------------------------------------------------------------
