@@ -4,8 +4,8 @@
 * Date: May 2015
 */
 
-#include "entity_live_viewer.h"
-#include "../plugins/shared_methods.h"
+#include "entity_live_viewer_server.h"
+#include "../../plugins/shared_methods.h"
 
 
 // ED data structures
@@ -22,7 +22,7 @@
 // ----------------------------------------------------------------------------------------------------
 
 
-EntityLiveViewer::EntityLiveViewer() : viewer_ui_(){//, app_(){
+EntityLiveViewerServer::EntityLiveViewerServer(){
 
     window_margin_ = 20;
     preview_size_ = 400;
@@ -30,9 +30,10 @@ EntityLiveViewer::EntityLiveViewer() : viewer_ui_(){//, app_(){
     focused_idx_ = 0;
     viewer_freeze_ = false;
     module_name_ = "[Entity Live Viewer] ";
-//    cv::namedWindow("Entity Live Viewer", cv::WINDOW_AUTOSIZE);
     model_name_ = "default";
     saved_measurements_ = 0;
+    font_face_ = cv::FONT_HERSHEY_SIMPLEX;
+    font_scale_ = 0.5;
 
     std::cout << module_name_ << "Ready!" << std::endl;
     std::cout << module_name_ << "How to use: " << std::endl;
@@ -41,33 +42,33 @@ EntityLiveViewer::EntityLiveViewer() : viewer_ui_(){//, app_(){
     std::cout << module_name_ << "\tS : Store measurement" << std::endl;
     std::cout << module_name_ << "\tN : Change name used for the measurement" << std::endl;
 
+    cv::namedWindow("Entity Live Viewer", cv::WINDOW_AUTOSIZE);
+
     // mock parameters
-    char *argv[] = {"program name", "arg1", "arg2", NULL};
-    int argc = sizeof(argv) / sizeof(char*) - 1;
+//    char *argv[] = {"program name", "arg1", "arg2", NULL};
+//    int argc = sizeof(argv) / sizeof(char*) - 1;
 
 //    QApplication app_local(argc, argv);
 //    viewer_ui_->show();
 //    viewer_ui_->setlabeltext("bla");
 //    app_local.exec();
-
-    //    app_->exec();
-
-    std::cout << module_name_  << "Viewer ready" << std::endl;
+//    std::cout << module_name_  << "Viewer ready" << std::endl;
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 
-void EntityLiveViewer::updateViewer(){
+void EntityLiveViewerServer::updateViewer(){
     ed::ErrorContext errc("EntityLiveViewer -> updateViewer()");
 
-    cv::Mat output_img = cv::Mat::zeros(768, 800 + 3*window_margin_, CV_8UC3);
+    cv::Mat output_img = cv::Mat::zeros(700, 800, CV_8UC3);
 
     // set ROIs
-    cv::Mat entity_preview_roi = output_img(cv::Rect(window_margin_, window_margin_, preview_size_, preview_size_));
-    cv::Mat entity_list_roi = output_img(cv::Rect(window_margin_, entity_preview_roi.rows + 2*window_margin_,
-                                                  entity_preview_roi.cols, output_img.rows - entity_preview_roi.rows - 3*window_margin_));
-    cv::Mat entity_info_roi = output_img(cv::Rect(preview_size_ + 2*window_margin_, window_margin_, 400, 700));
+    cv::Mat entity_preview_roi = output_img(cv::Rect(0, 0, preview_size_, preview_size_));
+    cv::Mat entity_list_roi = output_img(cv::Rect(0, entity_preview_roi.rows + window_margin_,
+                                                  entity_preview_roi.cols + window_margin_, output_img.rows - entity_preview_roi.rows - window_margin_));
+    cv::Mat entity_info_roi = output_img(cv::Rect(preview_size_ + window_margin_, 0,
+                                                  output_img.cols - entity_preview_roi.cols - window_margin_, output_img.rows));
 
     // paint background white
     entity_preview_roi.setTo(cv::Scalar(255,255,255));
@@ -88,7 +89,6 @@ void EntityLiveViewer::updateViewer(){
     // ------------------ ENTITY INFO -----------------------
 
     if (!entity_list_.empty() && focused_idx_ < entity_list_.size()){
-//        tue::config::Reader r(e_info.data);
         std::stringstream data;
         data << entity_list_[focused_idx_].data;
 
@@ -106,27 +106,27 @@ void EntityLiveViewer::updateViewer(){
     // Draw model name
     std::stringstream model_name_info;
     model_name_info << "Model name: " << model_name_;
-    cv::putText(entity_list_roi, model_name_info.str(), model_name_org, 1, 1.0, cv::Scalar(255,255, 255), 1, CV_AA);
+    cv::putText(entity_list_roi, model_name_info.str(), model_name_org, font_face_, font_scale_, cv::Scalar(255,200, 200), 1, CV_AA);
     model_name_info.str("");
     model_name_info << "Saved counter: " << saved_measurements_;
-    cv::putText(entity_list_roi, model_name_info.str(), model_name_org + cv::Point(230, 0), 1, 1.0, cv::Scalar(255,255, 255), 1, CV_AA);
+    cv::putText(entity_list_roi, model_name_info.str(), model_name_org + cv::Point(230, 0), font_face_, font_scale_, cv::Scalar(255,200, 200), 1, CV_AA);
 
     // Draw entity list title
     std::stringstream list_title;
     list_title << "Entity List (" << entity_list_.size() << "):";
-    cv::putText(entity_list_roi, list_title.str(), entity_list_org, 1, 1.1, cv::Scalar(255,255, 255), 1, CV_AA);
+    cv::putText(entity_list_roi, list_title.str(), entity_list_org, font_face_, font_scale_+0.1, cv::Scalar(255,255, 255), 1, CV_AA);
 
     // Draw entity list
     for(std::vector<EntityInfo>::const_iterator entity_it = entity_list_.begin(); entity_it != entity_list_.end(); ++entity_it){
         std::stringstream ss;
-        ss << "   " << counter << ": " << (std::string)(entity_it->id).substr(0, 4) ;//<< " (" <<  entity_it->last_updated << ")";
+        ss << "   " << counter << ": " << (std::string)(entity_it->id).substr(0, 4);
 
         // show selected entity
         if (counter-1 == focused_idx_)
             ss << "  <--";
 
         // draw text
-        cv::putText(entity_list_roi, ss.str(), entity_list_org + cv::Point(0, vert_offset), 1, 1.1, cv::Scalar(255,255,255), 1, CV_AA);
+        cv::putText(entity_list_roi, ss.str(), entity_list_org + cv::Point(0, vert_offset), font_face_, font_scale_, cv::Scalar(255,255,255), 1, CV_AA);
         vert_offset += 20;
         counter++;
     }
@@ -147,18 +147,18 @@ void EntityLiveViewer::updateViewer(){
     }
 
     // show viewer
-//    cv::imshow("Entity Live Viewer", output_img);
+    cv::imshow("Entity Live Viewer", output_img);
 
     // process key presses
     char key_pressed_ = -1;
-//    key_pressed_ = cv::waitKey(10);
+    key_pressed_ = cv::waitKey(10);
     processKeyPressed(key_pressed_);
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 
-void EntityLiveViewer::addEntity(const ed::EntityConstPtr& entity){
+void EntityLiveViewerServer::addEntity(const ed::EntityConstPtr& entity){
     ed::ErrorContext errc("EntityLiveViewer -> addEntity()");
 
     if (viewer_freeze_) return;
@@ -206,7 +206,7 @@ void EntityLiveViewer::addEntity(const ed::EntityConstPtr& entity){
 // ----------------------------------------------------------------------------------------------------
 
 
-void EntityLiveViewer::processKeyPressed(char key){
+void EntityLiveViewerServer::processKeyPressed(char key){
     ed::ErrorContext errc("EntityLiveViewer -> processKeyPressed()");
 
     // return if no key was pressed
@@ -267,7 +267,7 @@ void EntityLiveViewer::processKeyPressed(char key){
 // ----------------------------------------------------------------------------------------------------
 
 
-void EntityLiveViewer::putTextMultipleLines(std::string text, std::string delimiter, cv::Point origin, cv::Mat& image_out){
+void EntityLiveViewerServer::putTextMultipleLines(std::string text, std::string delimiter, cv::Point origin, cv::Mat& image_out){
     ed::ErrorContext errc("EntityLiveViewer -> putTextMultipleLines()");
 
     int pos = 0;
@@ -280,7 +280,7 @@ void EntityLiveViewer::putTextMultipleLines(std::string text, std::string delimi
         token = text.substr(0, pos);
         text.erase(0, pos + delimiter.length());
 
-        cv::putText(image_out, token, origin + line_spacing*counter, 1, 1.0, cv::Scalar(255,255, 255), 1, CV_AA);
+        cv::putText(image_out, token, origin + line_spacing*counter, font_face_, font_scale_-0.1, cv::Scalar(255,255, 255), 1, CV_AA);
 //        std::cout << token << std::endl;
         counter++;
     }
@@ -290,7 +290,7 @@ void EntityLiveViewer::putTextMultipleLines(std::string text, std::string delimi
 
 // ----------------------------------------------------------------------------------------------------
 
-void EntityLiveViewer::storeMeasurement(const ed::EntityConstPtr& entity, const std::string& model_name){
+void EntityLiveViewerServer::storeMeasurement(const ed::EntityConstPtr& entity, const std::string& model_name){
     ed::ErrorContext errc("EntityLiveViewer -> storeMeasurement()");
 
     if (entity){
