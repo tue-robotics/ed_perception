@@ -24,8 +24,8 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(OpenCV REQUIRED)
 
 # Qt GUI
-find_package(Qt4 COMPONENTS QtCore QtGui QtApplication)
-include(${QT_USE_FILE})
+#find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
+#include(${QT_USE_FILE})
 
 ###################################
 ## catkin specific configuration ##
@@ -75,7 +75,7 @@ add_library(ed_perception2
 add_library(ed_perception_plugin
     src/perception_plugin.cpp
 )
-target_link_libraries(ed_perception_plugin entity_live_viewer_server ${catkin_LIBRARIES} ed_perception2)
+target_link_libraries(ed_perception_plugin ${catkin_LIBRARIES} ed_perception2)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -210,21 +210,78 @@ target_link_libraries(test-perception2 ed_perception2 ed_perception_plugin ${cat
 add_executable(create-rgbd-measurement tools/create_rgbd_measurement.cpp)
 target_link_libraries(create-rgbd-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
+# -------------- ED LEARNING TOOL --------------
 add_executable(ed-learning-tool tools/ed_learning_tool.cpp)
 target_link_libraries(ed-learning-tool ed_perception2 odu_finder_db_builder ed_perception_plugin shared_methods ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
-add_library(entity_live_viewer_gui
-    tools/entity_live_viewer/viewer_ui.cpp
-    tools/entity_live_viewer/viewer_ui.h
-    tools/entity_live_viewer/ui_entity_live_viewer_form.h
-)
-target_link_libraries(entity_live_viewer_gui ${catkin_LIBRARIES} ${QT_LIBRARIES})
-add_executable(test-ui tools/entity_live_viewer/test_ui.cpp)
-target_link_libraries(test-ui entity_live_viewer_gui ${catkin_LIBRARIES} ${QT_LIBRARIES})
 
-add_library(entity_live_viewer_server
-    tools/entity_live_viewer/entity_live_viewer_server.cpp
-    tools/entity_live_viewer/entity_live_viewer_server.h
+# -------------- ENTITY VIEWER OPEN CV --------------
+add_executable(entity_live_viewer_cv
+    tools/entity_live_viewer/entity_live_viewer_cv.cpp
 )
-target_link_libraries(entity_live_viewer_server shared_methods entity_live_viewer_gui ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(entity_live_viewer_cv entity_viewer_common shared_methods ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
+# -------------- ENTITY VIEWER COMMON --------------
+
+add_library(entity_viewer_common
+    tools/entity_live_viewer/entity_viewer_common.cpp
+    tools/entity_live_viewer/entity_viewer_common.h
+)
+target_link_libraries(entity_viewer_common ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
+
+
+# -------------- ENTITY VIEWER PROBE --------------
+add_library(entity_viewer_probe
+    tools/entity_live_viewer/entity_viewer_probe.cpp
+    tools/entity_live_viewer/entity_viewer_probe.h
+)
+target_link_libraries(entity_viewer_probe shared_methods entity_viewer_common ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
+
+# -------------- ENTITY VIEWER GUI --------------
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # #
+#
+#                         GUI
+#
+# # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+# Qt Package
+find_package(Qt4 COMPONENTS QtCore QtGui QtApplication)
+include(${QT_USE_FILE})
+
+# Create Moc files
+QT4_WRAP_CPP(QT4ENTITYVIEWERGUI tools/entity_live_viewer/viewer_ui.h)
+
+ADD_DEFINITIONS(-DQT_NO_KEYWORDS)
+#ADD_DEFINITIONS(${QT_DEFINITIONS})
+
+#add_library(entity_viewer_gui
+#    tools/entity_live_viewer/viewer_ui.cpp
+#    tools/entity_live_viewer/viewer_ui.h
+#)
+#target_link_libraries(entity_viewer_gui
+#    tools/entity_live_viewer/ui_entity_live_viewer_form.h
+#    ${QT4ENTITYVIEWERGUI}
+#    ${catkin_LIBRARIES}
+#    ${OpenCV_LIBRARIES}
+#    ${QT_LIBRARIES}
+#)
+
+
+# -------------- ENTITY VIEWER CLIENT GUI --------------
+
+#message("${QT_LIBRARIES} BLAAAAAAAAAA")
+
+#add_executable(test_ui tools/entity_live_viewer/test_ui.cpp)
+
+#target_link_libraries(test_ui
+#    entity_viewer_gui
+#    entity_viewer_common
+#    ${catkin_LIBRARIES}
+#    tools/entity_live_viewer/viewer_ui.h
+#    tools/entity_live_viewer/viewer_ui.cpp
+#    ${QT4ENTITYVIEWERGUI}
+#    ${QT_LIBRARIES}
+#)
