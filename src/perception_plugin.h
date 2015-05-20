@@ -7,7 +7,7 @@
 #include "ed/perception/worker.h"
 
 // Entity live viewer
-#include "../tools/entity_live_viewer/entity_live_viewer_server.h"
+#include "../tools/entity_live_viewer/entity_live_viewer_cv.h"
 
 namespace ed
 {
@@ -47,7 +47,7 @@ private:
 
     double type_persistence_;
 
-    EntityLiveViewerServer* entity_viewer_;
+    EntityLiveViewerCV* entity_viewer_;
     bool enable_live_viewer_;
 
 };

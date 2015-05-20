@@ -102,7 +102,6 @@ void PerceptionPlugin::initialize(ed::InitData& init)
         return;
     }
 
-    config.value("live_viewer", enable_live_viewer_);
     config.value("type_persistence", type_persistence_);
 
     std::string object_models_path = ros::package::getPath("ed_object_models");
@@ -170,12 +169,8 @@ void PerceptionPlugin::initialize(ed::InitData& init)
             }
 
         }
-
         config.endArray();
     }
-
-    if (enable_live_viewer_)
-        entity_viewer_ = new EntityLiveViewerServer();
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -268,18 +263,10 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
                 worker->setIdle();
 
                 worker->t_last_processing = worker->timestamp();
-
-                // add entity to the viewer
-                if (enable_live_viewer_)
-                    entity_viewer_->addEntity(e);
             }
         }
     }
 
-    // update/redraw the viewer with the latest entities added
-    if (enable_live_viewer_)
-        entity_viewer_->updateViewer();
-    
     // Filter idle workers of deleted entities
     for(std::map<UUID, boost::shared_ptr<Worker> >::iterator it = workers_.begin(); it != workers_.end();)
     {
