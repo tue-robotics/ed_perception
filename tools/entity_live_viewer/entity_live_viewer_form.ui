@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>720</width>
+    <width>729</width>
     <height>771</height>
    </rect>
   </property>
@@ -79,7 +79,7 @@
          </property>
          <column>
           <property name="text">
-           <string notr="true">1</string>
+           <string notr="true">Data</string>
           </property>
          </column>
         </widget>
@@ -106,6 +106,16 @@
          </property>
          <property name="text">
           <string>Model Name</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLineEdit" name="modelNameInput">
+         <property name="minimumSize">
+          <size>
+           <width>183</width>
+           <height>27</height>
+          </size>
          </property>
         </widget>
        </item>
@@ -142,22 +152,9 @@
         </widget>
        </item>
        <item row="3" column="0" colspan="2">
-        <widget class="QListWidget" name="entityList">
-         <property name="minimumSize">
-          <size>
-           <width>301</width>
-           <height>171</height>
-          </size>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLineEdit" name="modelNameInput">
-         <property name="minimumSize">
-          <size>
-           <width>183</width>
-           <height>27</height>
-          </size>
+        <widget class="QTableWidget" name="entityTable">
+         <property name="columnCount">
+          <number>0</number>
          </property>
         </widget>
        </item>
@@ -171,7 +168,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>720</width>
+     <width>729</width>
      <height>25</height>
     </rect>
    </property>
