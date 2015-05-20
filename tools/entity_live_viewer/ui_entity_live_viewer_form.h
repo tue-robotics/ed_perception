@@ -1,13 +1,13 @@
 /********************************************************************************
-** Form generated from reading UI file 'entity_live_viewer_formA28334.ui'
+** Form generated from reading UI file 'entity_live_viewer_formll7323.ui'
 **
 ** Created by: Qt User Interface Compiler version 4.8.6
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
 
-#ifndef ENTITY_LIVE_VIEWER_FORMA28334_H
-#define ENTITY_LIVE_VIEWER_FORMA28334_H
+#ifndef ENTITY_LIVE_VIEWER_FORMLL7323_H
+#define ENTITY_LIVE_VIEWER_FORMLL7323_H
 
 #include <QtCore/QVariant>
 #include <QtGui/QAction>
@@ -18,12 +18,12 @@
 #include <QtGui/QHeaderView>
 #include <QtGui/QLabel>
 #include <QtGui/QLineEdit>
-#include <QtGui/QListWidget>
 #include <QtGui/QMainWindow>
 #include <QtGui/QMenu>
 #include <QtGui/QMenuBar>
 #include <QtGui/QPushButton>
 #include <QtGui/QStatusBar>
+#include <QtGui/QTableWidget>
 #include <QtGui/QTreeWidget>
 #include <QtGui/QVBoxLayout>
 #include <QtGui/QWidget>
@@ -46,10 +46,10 @@ public:
     QWidget *widget_2;
     QGridLayout *gridLayout_2;
     QLabel *label_3;
+    QLineEdit *modelNameInput;
     QPushButton *saveButton;
     QLabel *label_4;
-    QListWidget *entityList;
-    QLineEdit *modelNameInput;
+    QTableWidget *entityTable;
     QMenuBar *menubar;
     QMenu *menuFile;
     QMenu *menuViewer;
@@ -59,7 +59,7 @@ public:
     {
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName(QString::fromUtf8("MainWindow"));
-        MainWindow->resize(720, 771);
+        MainWindow->resize(729, 771);
         MainWindow->setMinimumSize(QSize(640, 480));
         centralwidget = new QWidget(MainWindow);
         centralwidget->setObjectName(QString::fromUtf8("centralwidget"));
@@ -97,7 +97,7 @@ public:
 
         dataTree = new QTreeWidget(widget);
         QTreeWidgetItem *__qtreewidgetitem = new QTreeWidgetItem();
-        __qtreewidgetitem->setText(0, QString::fromUtf8("1"));
+        __qtreewidgetitem->setText(0, QString::fromUtf8("Data"));
         dataTree->setHeaderItem(__qtreewidgetitem);
         dataTree->setObjectName(QString::fromUtf8("dataTree"));
         dataTree->setMinimumSize(QSize(291, 531));
@@ -118,6 +118,12 @@ public:
 
         gridLayout_2->addWidget(label_3, 0, 0, 1, 1);
 
+        modelNameInput = new QLineEdit(widget_2);
+        modelNameInput->setObjectName(QString::fromUtf8("modelNameInput"));
+        modelNameInput->setMinimumSize(QSize(183, 27));
+
+        gridLayout_2->addWidget(modelNameInput, 1, 0, 1, 1);
+
         saveButton = new QPushButton(widget_2);
         saveButton->setObjectName(QString::fromUtf8("saveButton"));
         saveButton->setMinimumSize(QSize(141, 27));
@@ -131,17 +137,11 @@ public:
 
         gridLayout_2->addWidget(label_4, 2, 0, 1, 1);
 
-        entityList = new QListWidget(widget_2);
-        entityList->setObjectName(QString::fromUtf8("entityList"));
-        entityList->setMinimumSize(QSize(301, 171));
+        entityTable = new QTableWidget(widget_2);
+        entityTable->setObjectName(QString::fromUtf8("entityTable"));
+        entityTable->setColumnCount(0);
 
-        gridLayout_2->addWidget(entityList, 3, 0, 1, 2);
-
-        modelNameInput = new QLineEdit(widget_2);
-        modelNameInput->setObjectName(QString::fromUtf8("modelNameInput"));
-        modelNameInput->setMinimumSize(QSize(183, 27));
-
-        gridLayout_2->addWidget(modelNameInput, 1, 0, 1, 1);
+        gridLayout_2->addWidget(entityTable, 3, 0, 1, 2);
 
 
         gridLayout->addWidget(widget_2, 1, 0, 1, 1);
@@ -149,7 +149,7 @@ public:
         MainWindow->setCentralWidget(centralwidget);
         menubar = new QMenuBar(MainWindow);
         menubar->setObjectName(QString::fromUtf8("menubar"));
-        menubar->setGeometry(QRect(0, 0, 720, 25));
+        menubar->setGeometry(QRect(0, 0, 729, 25));
         menuFile = new QMenu(menubar);
         menuFile->setObjectName(QString::fromUtf8("menuFile"));
         menuViewer = new QMenu(menubar);
@@ -187,4 +187,4 @@ namespace Ui {
 
 QT_END_NAMESPACE
 
-#endif // ENTITY_LIVE_VIEWER_FORMA28334_H
+#endif // ENTITY_LIVE_VIEWER_FORMLL7323_H

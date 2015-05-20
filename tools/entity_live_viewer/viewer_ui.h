@@ -1,29 +1,29 @@
 #ifndef ENTITY_LIVE_VIEWER_GUI_H
 #define ENTITY_LIVE_VIEWER_GUI_H
 
-#include "ui_entity_live_viewer_form.h"
+// Entity Viewer Common
+#include "entity_viewer_common.h"
 
+// QT
 #include <QMainWindow>
-#include <QWidget>
 
-
-//namespace Ui {
-//    class ViewerUI;
-//}
+namespace Ui {
+class MainWindow;
+}
 
 class ViewerUI : public QMainWindow{
-//    Q_OBJECT
+    Q_OBJECT
 
     public:
-        ViewerUI(QMainWindow *parent = 0);
+        explicit ViewerUI(QWidget *parent = 0);
         ~ViewerUI();
 
         void setlabeltext(std::string text);
+        void updateModelList(std::vector<viewer_common::EntityInfo> entity_list);
 
     private:
         Ui::MainWindow* ui_;
+
 };
 
-#endif 
-
-
+#endif
