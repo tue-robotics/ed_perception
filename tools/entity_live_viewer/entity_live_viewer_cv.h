@@ -52,6 +52,7 @@ class EntityLiveViewerCV{
     public:
 
        EntityLiveViewerCV();
+       ~EntityLiveViewerCV();
 
        // FUNCTIONS
        int mainLoop();
@@ -81,11 +82,11 @@ class EntityLiveViewerCV{
         void addEntity(const ed::EntityConstPtr& entity);
         void updateViewer(std::vector<viewer_common::EntityInfo> &entity_list);
         void processKeyPressed(char key, std::vector<viewer_common::EntityInfo>& list);
-        void putTextMultipleLines(std::string text, std::string delimiter, cv::Point origin, cv::Mat& image_out);
-        void storeMeasurement(const ed::EntityConstPtr &entity, const std::string& type);
+        void putTextMultipleLines(const std::string& text, const std::string& delimiter, cv::Point origin, cv::Mat& image_out);
+        int requestStoreMeasurement(const std::string& entity_id, const std::string& model_name);
 
         int requestEntityList(std::vector<viewer_common::EntityInfo> &list);
-        int requestEntityROI(std::string id, cv::Mat& roi);
+        int requestEntityROI(const std::string &id, cv::Mat& roi);
 };
 
 #endif

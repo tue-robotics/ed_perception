@@ -29,7 +29,6 @@
 
 
 EntityLiveViewerCV::EntityLiveViewerCV(){
-
     window_margin_ = 20;
     preview_size_ = 400;
     max_age_ = 6;
@@ -54,6 +53,10 @@ EntityLiveViewerCV::EntityLiveViewerCV(){
     std::cout << module_name_ << "\tN : Change name used for the measurement" << std::endl;
 
     cv::namedWindow("Entity Live Viewer", cv::WINDOW_AUTOSIZE);
+}
+
+EntityLiveViewerCV::~EntityLiveViewerCV(){
+    cv::destroyWindow("Entity Live Viewer");
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -201,8 +204,7 @@ void EntityLiveViewerCV::processKeyPressed(char key, std::vector<viewer_common::
 
         // store measurement
         case 's':   if (focused_idx_ <= entity_list.size()){
-//                        storeMeasurement(list[focused_idx_].entity_pt, model_name_);
-                        std::cout << module_name_ << "Storing disabled for now" << key << std::endl;
+                        requestStoreMeasurement(entity_list[focused_idx_].id, model_name_);
                     }else
                         std::cout << module_name_ << "Select an entity from the list" << key << std::endl;
         break;
@@ -229,7 +231,7 @@ void EntityLiveViewerCV::processKeyPressed(char key, std::vector<viewer_common::
 // ----------------------------------------------------------------------------------------------------
 
 
-void EntityLiveViewerCV::putTextMultipleLines(std::string text, std::string delimiter, cv::Point origin, cv::Mat& image_out){
+void EntityLiveViewerCV::putTextMultipleLines(const std::string& text, const std::string& delimiter, cv::Point origin, cv::Mat& image_out){
     ed::ErrorContext errc("EntityLiveViewer -> putTextMultipleLines()");
 
     int pos = 0;
@@ -237,10 +239,12 @@ void EntityLiveViewerCV::putTextMultipleLines(std::string text, std::string deli
     cv::Point line_spacing(0, 15);
     int counter = 1;
 
+    std::string text_bckp = text;
+
     // split the string by the delimiter
-    while ((pos = text.find(delimiter)) != std::string::npos) {
-        token = text.substr(0, pos);
-        text.erase(0, pos + delimiter.length());
+    while ((pos = text_bckp.find(delimiter)) != std::string::npos) {
+        token = text_bckp.substr(0, pos);
+        text_bckp.erase(0, pos + delimiter.length());
 
         cv::putText(image_out, token, origin + line_spacing*counter, font_face_, font_scale_-0.1, cv::Scalar(255,255, 255), 1, CV_AA);
 //        std::cout << token << std::endl;
@@ -252,31 +256,39 @@ void EntityLiveViewerCV::putTextMultipleLines(std::string text, std::string deli
 // ----------------------------------------------------------------------------------------------------
 
 
-void EntityLiveViewerCV::storeMeasurement(const ed::EntityConstPtr& entity, const std::string& model_name){
+int EntityLiveViewerCV::requestStoreMeasurement(const std::string& entity_id, const std::string& model_name){
     ed::ErrorContext errc("EntityLiveViewer -> storeMeasurement()");
 
-    if (entity){
-        char const* home = getenv("HOME");
-        if (home)
-        {
-            boost::filesystem::path dir(std::string(home) + "/.ed/measurements/" + model_name);
-            boost::filesystem::create_directories(dir);
+    tue::serialization::Archive req;
+    tue::serialization::Archive res;
 
-            std::string filename = dir.string() + "/" + ed::Entity::generateID().str();
-            ed::write(filename, *entity);
+    req << (int)viewer_common::STORE_MEASUREMENT;
+    req << entity_id;
+    req << model_name;
 
-            std::cout << module_name_ << "Writing entity info to '" << filename << "'." << std::endl;
-            saved_measurements_++;
-        }
-    } else
-        std::cout << module_name_ << "Entity does not exist!" << std::endl;
+    // send request to client
+    if (client_.process(req, res)){
+
+        int result;
+        res >> result;
+
+        if (result == 0){
+            std::cout << module_name_ << "Measurement saved with model name '" << model_name << "'" << std::endl;
+        }else
+            std::cout << module_name_ << "Problem saving measurement!" << std::endl;
+
+        return 0;
+    } else {
+        std::cout << module_name_ << "Probe request failed!" << std::endl;
+        return 1;
+    }
 }
 
 
 // ----------------------------------------------------------------------------------------------------
 
 
-int EntityLiveViewerCV::requestEntityROI(std::string id, cv::Mat& roi){
+int EntityLiveViewerCV::requestEntityROI(const std::string& id, cv::Mat& roi){
 
     tue::serialization::Archive req;
     tue::serialization::Archive res;
@@ -287,19 +299,24 @@ int EntityLiveViewerCV::requestEntityROI(std::string id, cv::Mat& roi){
     // send request to client
     if (client_.process(req, res)){
 
-        int cols, rows;
+        int cols,rows;
         res >> rows;
         res >> cols;
 
-        roi = cv::Mat::zeros(rows, cols, CV_8UC3);
+        // TEMPORARY ugly bug fix, sometimes the size is wrong for some reason
+        if (rows * cols <= (1280*1024)){
 
-        int size = cols * rows * 3;
-        for(int i = 0; i < size; ++i)
-            res >> roi.data[i];
+            roi = cv::Mat::zeros(rows, cols, CV_8UC3);
 
-        if (roi.empty()){
-            std::cout << module_name_ << "Received empty Mat!" << std::endl;
-        }
+            int size = cols * rows * 3;
+            for(int i = 0; i < size; ++i)
+                res >> roi.data[i];
+
+            if (roi.empty()){
+                std::cout << module_name_ << "Received empty Mat!" << std::endl;
+            }
+        }else
+            std::cout << module_name_ << "Entity image size incorrect!" << std::endl;
 
         return 0;
     } else {
