@@ -19,7 +19,6 @@
 
 namespace viewer_common
 {
-
     class EntityInfo{
         public:
             std::string id;
@@ -50,7 +49,8 @@ namespace viewer_common
 
     enum RequestType{
         GET_ENTITY_LIST = 0,
-        GET_ENTITY_ROI = 1
+        GET_ENTITY_ROI = 1,
+        STORE_MEASUREMENT = 2
     };
 
 }
