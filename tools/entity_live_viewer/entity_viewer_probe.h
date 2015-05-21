@@ -40,13 +40,14 @@ private:
 
     std::string module_name_;
     std::vector<viewer_common::EntityInfo> entity_list_;
+    int preview_size_;
+    std::string save_dir_;
+    ed::EntityConstPtr last_entity_;
 	
-    void parseReq(  const ed::WorldModel& world,
-                    tue::serialization::InputArchive& req,
-                    tue::serialization::OutputArchive& res);
-
+    void parseReq(const ed::WorldModel& world, tue::serialization::InputArchive& req, tue::serialization::OutputArchive& res);
     void getEntityList(tue::serialization::OutputArchive& res, const ed::WorldModel &world);
-    void getEntityImage(tue::serialization::OutputArchive& res, std::string entity_id, const ed::WorldModel &world);
+    void getEntityImage(tue::serialization::OutputArchive& res, const std::string& entity_id, const ed::WorldModel &world);
+    void storeMeasurement(tue::serialization::OutputArchive& res, const std::string& entity_id, const std::string& model_name, const ed::WorldModel& world);
 
 };
 

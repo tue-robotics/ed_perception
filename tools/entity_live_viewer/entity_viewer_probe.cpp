@@ -6,18 +6,28 @@
 
 #include "entity_viewer_probe.h"
 
+#include "../plugins/shared_methods.h"
+
 // ED
 #include <ed/world_model.h>
 #include <ed/entity.h>
+#include <ed/error_context.h>
+#include <ed/io/filesystem/write.h>
 #include <rgbd/Image.h>
 #include <rgbd/serialization.h>
 
-#include "../plugins/shared_methods.h"
+#include <boost/filesystem.hpp>
+
 
 // ----------------------------------------------------------------------------------------------------
 
 EntityViewerProbe::EntityViewerProbe(){
     module_name_ = "[Entity Live Viewer] ";
+    preview_size_ = 400;
+
+    char const* home = getenv("HOME");
+
+    save_dir_ = std::string(home) + "/entity_viewer/";
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -41,6 +51,8 @@ void EntityViewerProbe::process(const ed::WorldModel& world,
              tue::serialization::InputArchive& req,
              tue::serialization::OutputArchive& res){   
 
+    ed::ErrorContext errc("EntityViewerProbe -> process()");
+
     parseReq(world, req, res);
 }
 
@@ -48,12 +60,12 @@ void EntityViewerProbe::process(const ed::WorldModel& world,
 // ----------------------------------------------------------------------------------------------------
 
 
-void EntityViewerProbe::parseReq(   const ed::WorldModel& world,
-                                    tue::serialization::InputArchive& req,
-                                    tue::serialization::OutputArchive& res){
+void EntityViewerProbe::parseReq(const ed::WorldModel& world, tue::serialization::InputArchive& req, tue::serialization::OutputArchive& res){
+    ed::ErrorContext errc("EntityViewerProbe -> parseReq()");
 
     int type;
     std::string id;
+    std::string model_name;
     req >> type;
 
     switch (type) {
@@ -66,6 +78,12 @@ void EntityViewerProbe::parseReq(   const ed::WorldModel& world,
             getEntityImage(res, id, world);
             break;
 
+        case viewer_common::STORE_MEASUREMENT:
+            req >> id;
+            req >> model_name;
+            storeMeasurement(res, id, model_name, world);
+            break;
+
         default:
             std::cout << module_name_ << "Unrecognized request!" << std::endl;
             break;
@@ -76,16 +94,20 @@ void EntityViewerProbe::parseReq(   const ed::WorldModel& world,
 // ----------------------------------------------------------------------------------------------------
 
 
-void EntityViewerProbe::getEntityImage(tue::serialization::OutputArchive& res, std::string entity_id, const ed::WorldModel& world){
+void EntityViewerProbe::getEntityImage(tue::serialization::OutputArchive& res, const std::string &entity_id, const ed::WorldModel& world){
+    ed::ErrorContext errc("EntityViewerProbe -> getEntityList()");
 
-    for(ed::WorldModel::const_iterator it = world.begin(); it != world.end(); ++it)
-    {
+    for(ed::WorldModel::const_iterator it = world.begin(); it != world.end(); ++it){
         const ed::EntityConstPtr& e = *it;
 
         // filter entities
         if (!e->shape() && !e->convexHull().chull.empty()){
-
-            if (entity_id.compare(e->id().str()) == 0){
+            // comare IDs
+            if (entity_id == e->id().str()){
+                
+                // save last entity requested
+                last_entity_ = *it;
+                        
                 // ---------- Prepare measurement ----------
 
                 // Get the best measurement from the entity
@@ -105,14 +127,17 @@ void EntityViewerProbe::getEntityImage(tue::serialization::OutputArchive& res, s
                 cv::Rect rgb_roi;
                 cv::Mat color_image_masked = ed::perception::maskImage(color_image, msr->imageMask(), rgb_roi);
 
-                // build response
-                e->lastMeasurement();
-                res << (int)color_image_masked.rows;
-                res << (int)color_image_masked.cols;
+                // copy just the region of interest from the color image
+                cv::Mat roi_masked;
+                color_image_masked(rgb_roi).copyTo(roi_masked);
 
-                int size = color_image_masked.cols * color_image_masked.rows * 3;
+                // build response
+                res << (int)roi_masked.rows;
+                res << (int)roi_masked.cols;
+
+                int size = roi_masked.cols * roi_masked.rows * 3;
                 for(int i = 0; i < size; ++i)
-                    res << color_image_masked.data[i];
+                    res << roi_masked.data[i];
             }
         }
     }
@@ -123,12 +148,12 @@ void EntityViewerProbe::getEntityImage(tue::serialization::OutputArchive& res, s
 
 
 void EntityViewerProbe::getEntityList(tue::serialization::OutputArchive& res, const ed::WorldModel& world){
+    ed::ErrorContext errc("EntityViewerProbe -> getEntityList()");
 
     std::vector<viewer_common::EntityInfo> entity_list;
 
     // create model list
-    for(ed::WorldModel::const_iterator it = world.begin(); it != world.end(); ++it)
-    {
+    for(ed::WorldModel::const_iterator it = world.begin(); it != world.end(); ++it){
         const ed::EntityConstPtr& e = *it;
 
         // filter entities
@@ -148,5 +173,56 @@ void EntityViewerProbe::getEntityList(tue::serialization::OutputArchive& res, co
     }
 }
 
+
+// ----------------------------------------------------------------------------------------------------
+
+
+void EntityViewerProbe::storeMeasurement(tue::serialization::OutputArchive& res,
+                                         const std::string &entity_id,
+                                         const std::string &model_name,
+                                         const ed::WorldModel& world){
+
+    ed::ErrorContext errc("EntityViewerProbe -> storeMeasurement()");
+
+
+    boost::filesystem::path dir(save_dir_ + model_name + "/");
+    boost::filesystem::create_directories(dir);
+
+    std::string filename = dir.string() + ed::Entity::generateID().str();
+    ed::write(filename, *last_entity_);
+
+    std::cout << module_name_ << "Writing measurement to '" << filename << "'." << std::endl;
+
+    // generate response, no error
+    res << 0;
+
+    /*
+    for(ed::WorldModel::const_iterator it = world.begin(); it != world.end(); ++it){
+        const ed::EntityConstPtr& e = *it;
+
+        // filter entities
+        if (!e->shape() && !e->convexHull().chull.empty()){
+
+            // find the correct entity
+            if (entity_id.compare(e->id().str()) == 0){
+                boost::filesystem::path dir(save_dir_ + model_name + "/");
+                boost::filesystem::create_directories(dir);
+
+                std::string filename = dir.string() + ed::Entity::generateID().str();
+                ed::write(filename, *e);
+
+                std::cout << module_name_ << "Writing measurement to '" << filename << "'." << std::endl;
+
+                // generate response, no error
+                res << 0;
+            }
+        }
+    }
+
+    // generate response, error
+    res << 1;
+
+    */
+}
 
 ED_REGISTER_PLUGIN(EntityViewerProbe)
