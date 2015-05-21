@@ -12,26 +12,26 @@ namespace ed
 namespace perception
 {
 
-void prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& cropped_image, cv::Mat& depth_image, cv::Mat& mask, cv::Rect& bouding_box);
+    void prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& cropped_image, cv::Mat& depth_image, cv::Mat& mask, cv::Rect& bouding_box);
 
-float getAverageDepth(cv::Mat& depth_img);
+    float getAverageDepth(cv::Mat& depth_img);
 
-// create a new mask based on the convex hull of the original mask
-void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized);
+    // create a new mask based on the convex hull of the original mask
+    void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized);
 
-// create a new mask based on a blured version of the original mask, smoother and expanded
-void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized);
+    // create a new mask based on a blured version of the original mask, smoother and expanded
+    void optimizeContourBlur(const cv::Mat& mask_orig, cv::Mat& mask_optimized);
 
-// clip an integer value
-int clipInt(int val, int min, int max);
+    // clip an integer value
+    int clipInt(int val, int min, int max);
 
-cv::Mat maskImage(const cv::Mat& img, const ed::ImageMask& mask, cv::Rect& roi);
+    cv::Mat maskImage(const cv::Mat& img, const ed::ImageMask& mask, cv::Rect& roi);
 
-void saveDebugImage(const std::string& name, const cv::Mat& img);
+    void saveDebugImage(const std::string& name, const cv::Mat& img);
 
-void cleanDebugFolder(std::string folder);
+    void cleanDebugFolder(std::string folder);
 
-cv::Mat resizeSameRatio(const cv::Mat& img, int target_width);
+    cv::Mat resizeSameRatio(const cv::Mat& img, int target_width);
 
 }
 }
