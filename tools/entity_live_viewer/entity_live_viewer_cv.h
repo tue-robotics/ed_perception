@@ -86,7 +86,7 @@ class EntityLiveViewerCV{
         int requestStoreMeasurement(const std::string& entity_id, const std::string& model_name);
 
         int requestEntityList(std::vector<viewer_common::EntityInfo> &list);
-        int requestEntityROI(const std::string &id, cv::Mat& roi);
+        int requestEntityROI(const std::string &entity_id, cv::Mat& roi);
 };
 
 #endif

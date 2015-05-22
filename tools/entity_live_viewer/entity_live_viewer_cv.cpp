@@ -288,13 +288,13 @@ int EntityLiveViewerCV::requestStoreMeasurement(const std::string& entity_id, co
 // ----------------------------------------------------------------------------------------------------
 
 
-int EntityLiveViewerCV::requestEntityROI(const std::string& id, cv::Mat& roi){
+int EntityLiveViewerCV::requestEntityROI(const std::string& entity_id, cv::Mat& roi){
 
     tue::serialization::Archive req;
     tue::serialization::Archive res;
 
     req << (int)viewer_common::GET_ENTITY_ROI;
-    req << id;
+    req << entity_id;
 
     // send request to client
     if (client_.process(req, res)){
@@ -395,8 +395,11 @@ int EntityLiveViewerCV::mainLoop(){
                 }
             }
 
-            // update the entity image
-            requestEntityROI(entity_list[focused_idx_].id, entity_list[focused_idx_].masked_roi);
+            if (!entity_list.empty()){
+//                std::cout << "focus: " << focused_idx_ << ", id: " << entity_list[focused_idx_].id << std::endl;
+                // update the entity image
+                requestEntityROI(entity_list[focused_idx_].id, entity_list[focused_idx_].masked_roi);
+            }
         }
 
         // process key presses
