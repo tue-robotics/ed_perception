@@ -120,7 +120,7 @@ void EntityViewerProbe::getEntityImage(tue::serialization::OutputArchive& res, c
                 // get color image
                 const cv::Mat& color_image = msr->image()->getRGBImage();
 
-                if (color_image.rows * color_image.cols > (1280*1024) || color_image.rows * color_image.cols > 0){
+                if (color_image.rows * color_image.cols > (1280*1024) || color_image.rows * color_image.cols == 0){
                     std::cout << "Bad image size: " << color_image.cols << "x" << color_image.rows << std::endl;
                 }
 
@@ -160,8 +160,6 @@ void EntityViewerProbe::getEntityList(tue::serialization::OutputArchive& res, co
     for(ed::WorldModel::const_iterator it = world.begin(); it != world.end(); ++it){
         const ed::EntityConstPtr& e = *it;
 
-        std::cout << "ids: " << e->id() << std::endl;
-
         // filter entities
         if (!e->shape() && !e->convexHull().points.empty()){
             std::stringstream data;
@@ -170,8 +168,6 @@ void EntityViewerProbe::getEntityList(tue::serialization::OutputArchive& res, co
             entity_list.push_back(viewer_common::EntityInfo(e->id().str(), e->type(), data.str()));
         }
     }
-
-//    std::cout << "list size: " << entity_list.size() << std::endl;
 
     // generate response
     res << (int)entity_list.size();

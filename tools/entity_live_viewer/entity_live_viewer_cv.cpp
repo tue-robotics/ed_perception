@@ -94,17 +94,12 @@ void EntityLiveViewerCV::updateViewer(std::vector<viewer_common::EntityInfo>& en
 
     // ------------------ ENTITY INFO -----------------------
 
+    cv::Point model_name_org(10, 30);
+    cv::Point entity_list_org(10, 60);
+
     if (!entity_list.empty() && focused_idx_ < entity_list.size()){
         putTextMultipleLines(entity_list[focused_idx_].data_str, "\n", cv::Point(10,10), entity_info_roi);
     }
-
-
-    // -------------------ENTITY LIST ------------------------
-
-    int vert_offset = 40;
-    int counter = 1;
-    cv::Point model_name_org(10, 30);
-    cv::Point entity_list_org(10, 60);
 
     // Draw model name
     std::stringstream model_name_info;
@@ -113,6 +108,12 @@ void EntityLiveViewerCV::updateViewer(std::vector<viewer_common::EntityInfo>& en
     model_name_info.str("");
     model_name_info << "Saved counter: " << saved_measurements_;
     cv::putText(entity_listroi, model_name_info.str(), model_name_org + cv::Point(230, 0), font_face_, font_scale_, cv::Scalar(255,200, 200), 1, CV_AA);
+
+    // -------------------ENTITY LIST ------------------------
+
+    int vert_offset = 40;
+    int counter = 1;
+
 
     // Draw entity list title
     std::stringstream list_title;
@@ -274,6 +275,7 @@ int EntityLiveViewerCV::requestStoreMeasurement(const std::string& entity_id, co
 
         if (result == 0){
             std::cout << module_name_ << "Measurement saved with model name '" << model_name << "'" << std::endl;
+            saved_measurements_++;
         }else
             std::cout << module_name_ << "Problem saving measurement!" << std::endl;
 
@@ -316,7 +318,7 @@ int EntityLiveViewerCV::requestEntityROI(const std::string& entity_id, cv::Mat& 
                 std::cout << module_name_ << "Received empty Mat!" << std::endl;
             }
         }else
-            std::cout << module_name_ << "Entity image size incorrect!" << std::endl;
+            std::cout << module_name_ << "Entity image size incorrect! (" << rows << "x" << cols << ")" << std::endl;
 
         return 0;
     } else {
