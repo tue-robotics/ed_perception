@@ -101,7 +101,7 @@ void EntityViewerProbe::getEntityImage(tue::serialization::OutputArchive& res, c
         const ed::EntityConstPtr& e = *it;
 
         // filter entities
-        if (!e->shape() && !e->convexHull().chull.empty()){
+        if (!e->shape() && !e->convexHull().points.empty()){
             // comare IDs
             if (entity_id == e->id().str()){
                 
@@ -119,6 +119,10 @@ void EntityViewerProbe::getEntityImage(tue::serialization::OutputArchive& res, c
 
                 // get color image
                 const cv::Mat& color_image = msr->image()->getRGBImage();
+
+                if (color_image.rows * color_image.cols > (1280*1024) || color_image.rows * color_image.cols > 0){
+                    std::cout << "Bad image size: " << color_image.cols << "x" << color_image.rows << std::endl;
+                }
 
                 // get depth image
 //                const cv::Mat& depth_image = msr->image()->getDepthImage();
@@ -159,7 +163,7 @@ void EntityViewerProbe::getEntityList(tue::serialization::OutputArchive& res, co
         std::cout << "ids: " << e->id() << std::endl;
 
         // filter entities
-        if (!e->shape() && !e->convexHull().chull.empty()){
+        if (!e->shape() && !e->convexHull().points.empty()){
             std::stringstream data;
             data << e->data();
 

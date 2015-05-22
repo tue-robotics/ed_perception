@@ -186,7 +186,7 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
     {
         const ed::EntityConstPtr& e = *it;
 
-        if (e->shape() || e->convexHull().chull.empty())
+        if (e->shape() || e->convexHull().points.empty())
             continue;
 
         ++n;
