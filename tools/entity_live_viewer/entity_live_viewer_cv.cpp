@@ -192,7 +192,7 @@ void EntityLiveViewerCV::processKeyPressed(char key, std::vector<viewer_common::
         break;
 
         // next and previous entity
-        case 84:   if (focused_idx_ < entity_list.size()) focused_idx_++;
+        case 84:   if (focused_idx_ < entity_list.size()-1) focused_idx_++;
         break;
         case 82:   if (focused_idx_ > 0) focused_idx_--;
         break;
@@ -304,7 +304,7 @@ int EntityLiveViewerCV::requestEntityROI(const std::string& id, cv::Mat& roi){
         res >> cols;
 
         // TEMPORARY ugly bug fix, sometimes the size is wrong for some reason
-        if (rows * cols <= (1280*1024)){
+        if (rows * cols <= (1280*1024) && rows * cols > 0){
 
             roi = cv::Mat::zeros(rows, cols, CV_8UC3);
 
