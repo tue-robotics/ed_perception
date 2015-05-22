@@ -101,7 +101,7 @@ void EntityViewerProbe::getEntityImage(tue::serialization::OutputArchive& res, c
         const ed::EntityConstPtr& e = *it;
 
         // filter entities
-        if (!e->shape() && !e->convexHull().chull.empty()){
+        if (!e->shape() && !e->convexHull().points.empty()){
             // comare IDs
             if (entity_id == e->id().str()){
                 
@@ -161,7 +161,7 @@ void EntityViewerProbe::getEntityList(tue::serialization::OutputArchive& res, co
         const ed::EntityConstPtr& e = *it;
 
         // filter entities
-        if (!e->shape() && !e->convexHull().chull.empty()){
+        if (!e->shape() && !e->convexHull().points.empty()){
             std::stringstream data;
             data << e->data();
 

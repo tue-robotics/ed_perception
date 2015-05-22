@@ -110,10 +110,10 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     if (!init_success_)
         return;
 
-    const ed::ConvexHull2D& conv_hull = e->convexHull();
+    const ed::ConvexHull& conv_hull = e->convexHull();
 
     // if there is no convex hull available, cancel classification
-    if (conv_hull.chull.empty())
+    if (conv_hull.points.empty())
         return;
 
     std::map<std::string, double> hypothesis;
@@ -125,7 +125,7 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
 
     double object_height = conv_hull.height();
     double object_width = 0;
-    double object_area = conv_hull.area();
+    double object_area = conv_hull.area;
 
     // set object size class
     if ((object_width + object_height) < small_size_treshold_){
