@@ -899,28 +899,32 @@ void FaceRecognition::trainRecognizers(std::vector<cv::Mat>& images, std::vector
         return;
     }
 
+    trained_Eigen_ = false;
+    trained_LBPH_ = false;
+    trained_Fisher_ = false;
+
     std::cout << "[" << module_name_ << "] " << "Training with " << images.size() << " images for " << labels_info_.size() << " different people." << std::endl;
 
     // train Eingen Faces
     if (using_Eigen_){
         models[EIGEN]->train(images, labels);
-        trained_Eigen_ = true;
         std::cout << "[" << module_name_ << "] " << "Eigen Faces trained!" << std::endl;
+        trained_Eigen_ = true;
     }
 
     // train LBP
     if (using_LBPH_){
-        trained_LBPH_ = true;
         models[LBPH]->train(images, labels);
         std::cout << "[" << module_name_ << "] " << "LBPH Faces trained!" << std::endl;
+        trained_LBPH_ = true;
     }
 
+    // train Fisher Faces
     if(using_Fisher_){
-        // train Fisher Faces
         if(labels_info_.size() > 1){
-            trained_Fisher_ = true;
             models[FISHER]->train(images, labels);
             std::cout << "[" << module_name_ << "] " << "Fisher Faces trained!" << std::endl;
+            trained_Fisher_ = true;
         }else
             std::cout << "[" << module_name_ << "] " << "Could not train Fisher Faces, needs more than 1 class!" << std::endl;
     }

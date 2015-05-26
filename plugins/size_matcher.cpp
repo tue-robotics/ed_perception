@@ -173,7 +173,13 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
                 a_score = a_ratio;
             }
 
-            double final_score = h_score * a_score;
+            double final_score;
+
+            // temporary bug fix when area = 0
+            if (a_score == 0)
+                final_score = h_score;
+            else
+                final_score = h_score * a_score;
 
             // update best score
             best_score = std::max(best_score, final_score);
@@ -217,7 +223,7 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
 
         // if its small, for sure its not a person
         output.type_update.setScore("human", type_negative_score_);
-        output.type_update.setScore("crowd", type_negative_score_);
+//        output.type_update.setScore("crowd", type_negative_score_);
 
     }else if (size_medium){
         result.setValue("label", "medium_size");
@@ -228,8 +234,8 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     }else if (size_big){
         result.setValue("label", "large_size");
 
-        output.type_update.setScore("human", 0.5);
-        output.type_update.setScore("crowd", 0.5);
+        output.type_update.setScore("human", type_positive_score_);
+//        output.type_update.setScore("crowd", 0.5);
 
 //        output.type_update.setScore("human", type_positive_score_);
 //        output.type_update.setScore("crowd", type_positive_score_);

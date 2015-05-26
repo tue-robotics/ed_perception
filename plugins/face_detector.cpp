@@ -154,7 +154,7 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
     ed::MeasurementConstPtr msr = e->lastMeasurement();
 
     if (!msr){
-        output.type_update.setScore("crowd", type_negative_score_);
+//        output.type_update.setScore("crowd", type_negative_score_);
         output.type_update.setScore("human", type_negative_score_);
         output.type_update.setUnknownScore(type_unknown_score_);
         return;
@@ -210,7 +210,7 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
             result.setValue("label", "multiple_faces");
             result.setValue("score", type_positive_score_);
 
-            output.type_update.setScore("crowd", type_positive_score_);
+//            output.type_update.setScore("crowd", type_positive_score_);
             output.type_update.setScore("human", type_negative_score_);
         }
         else{
@@ -218,7 +218,7 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
             result.setValue("label", "face");
             result.setValue("score", type_positive_score_);
 
-            output.type_update.setScore("crowd", type_negative_score_);
+//            output.type_update.setScore("crowd", type_negative_score_);
             output.type_update.setScore("human", type_positive_score_);
         }
 
@@ -229,7 +229,7 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
         result.setValue("label", "face");
         result.setValue("score", type_negative_score_);
 
-        output.type_update.setScore("crowd", type_negative_score_);
+//        output.type_update.setScore("crowd", type_negative_score_);
         output.type_update.setScore("human", type_negative_score_);
     }
 
