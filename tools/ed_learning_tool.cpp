@@ -134,7 +134,7 @@ void parse_config(tue::Configuration& config, const std::string &module_name, co
     // parse information from current config
     if(module_name.compare("size_matcher") == 0){       // PARSE SIZE MATCHER
         if (config.readGroup("size")){
-            if (config.value("height", height) && config.value("width", width) && config.value("area", area)){
+            if (config.value("height", height) && config.value("area", area)){
 //                std::cout << "[" << module_name_ << "] " << "Read HxW " << height << " x " << width << " x " << area << std::endl;
                 read_size = true;
             }else{

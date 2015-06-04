@@ -124,15 +124,18 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     bool size_big = false;
 
     double object_height = conv_hull.height();
-    double object_width = 0;
     double object_area = conv_hull.area;
 
+    if (object_area <= 0)
+        std::cout << "[" << module_name_ << "] " << "Bad area value for the entity (area = " << object_area << ")" << std::endl;
+
+
     // set object size class
-    if ((object_width + object_height) < small_size_treshold_){
+    if (object_area < small_size_treshold_){
         size_small = true;
-    }else if (small_size_treshold_ < (object_width + object_height) && (object_width + object_height) < medium_size_treshold_){
+    }else if (small_size_treshold_ < object_area && object_area < medium_size_treshold_){
         size_medium = true;
-    }else if (medium_size_treshold_ < (object_width + object_height)){
+    }else if (medium_size_treshold_ < object_area){
         size_big = true;
     }else
         std::cout << "[" << module_name_ << "] " << "Could not set a size threshold!" << std::endl;
@@ -160,6 +163,7 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
             {
                 if (h_ratio > 1)
                     h_ratio = 1 / h_ratio;
+
                 h_score = h_ratio;
             }
 
@@ -170,6 +174,7 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
             {
                 if (a_ratio > 1)
                     a_ratio = 1 / a_ratio;
+
                 a_score = a_ratio;
             }
 
@@ -203,7 +208,6 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     result.writeGroup("size_matcher");
 
     result.writeGroup("size");
-    result.setValue("width", object_width);
     result.setValue("height", object_height);
     result.setValue("area", object_area);
     result.endGroup();
@@ -260,7 +264,6 @@ bool SizeMatcher::loadLearnedModel(std::string path, std::string model_name){
     }
 
     tue::Configuration conf;
-    double width;
     double height;
     double area;
     std::vector<ObjectSize> model_sizes;
@@ -281,13 +284,13 @@ bool SizeMatcher::loadLearnedModel(std::string path, std::string model_name){
     {
         while(conf.nextArrayItem())
         {
-            if (conf.value("height", height, tue::OPTIONAL) && conf.value("width", width, tue::OPTIONAL) && conf.value("area", area, tue::OPTIONAL))  // read height and width
+            if (conf.value("height", height, tue::OPTIONAL) && conf.value("area", area, tue::OPTIONAL))  // read height and area
             {
-                ObjectSize obj_sz(width, height, area);
+                ObjectSize obj_sz(0, height, area);
                 model_sizes.push_back(obj_sz);
             }
             else
-                std::cout << "[" << module_name_ << "] " << "Could not find 'height' and 'width' values" << std::endl;
+                std::cout << "[" << module_name_ << "] " << "Could not find 'height' and 'area' values" << std::endl;
         }
 
         if (!model_sizes.empty())  // save sizes to map
