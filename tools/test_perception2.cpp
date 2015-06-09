@@ -186,7 +186,6 @@ int main(int argc, char **argv)
 
             output.type_update.normalize();
 
-
             std::cout << module->name() << ":\n\t" << output.type_update << "\n" << std::endl;
 
             // Update total type distribution

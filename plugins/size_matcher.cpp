@@ -38,7 +38,7 @@ void SizeMatcher::configure(tue::Configuration config) {
     if (!config.value("size_diff_threshold", size_diff_threshold_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'size_diff_threshold' not found. Using default: " << size_diff_threshold_ << std::endl;
 
-    if (!config.value("small_size_treshold", size_diff_threshold_, tue::OPTIONAL))
+    if (!config.value("small_size_treshold", small_size_treshold_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'small_size_treshold' not found. Using default: " << small_size_treshold_ << std::endl;
 
     if (!config.value("medium_size_treshold", medium_size_treshold_, tue::OPTIONAL))
@@ -129,7 +129,6 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     if (object_area <= 0)
         std::cout << "[" << module_name_ << "] " << "Bad area value for the entity (area = " << object_area << ")" << std::endl;
 
-
     // set object size class
     if (object_area < small_size_treshold_){
         size_small = true;
@@ -139,8 +138,6 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
         size_big = true;
     }else
         std::cout << "[" << module_name_ << "] " << "Could not set a size threshold!" << std::endl;
-
-//std::cout << "Entity height/area: " << object_height << " - " << object_area << std::endl;
 
     // compare object size to loaded models
     for(std::map<std::string, std::vector<ObjectSize> >::const_iterator it = models_.begin(); it != models_.end(); ++it)
@@ -189,10 +186,6 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
             // update best score
             best_score = std::max(best_score, final_score);
         }
-
-//        std::cout << "    " << " " << label << ": " << best_score << std::endl;
-
-//        std::cout << "Diffs " << label << " (H,A): " << diff_h << ", " << diff_area << " \t Score: " << h_score << " - " << a_score << std::endl;
 
         hypothesis[label] = 0.5 * best_score; // TODO: magic number
     }
