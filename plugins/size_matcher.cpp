@@ -238,7 +238,7 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     }else if (size_big){
         result.setValue("label", "large_size");
 
-        output.type_update.setScore("human", type_positive_score_);
+        // output.type_update.setScore("human", type_positive_score_);
 //        output.type_update.setScore("crowd", 0.5);
 
 //        output.type_update.setScore("human", type_positive_score_);
