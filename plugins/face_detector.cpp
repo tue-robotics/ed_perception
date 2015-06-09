@@ -188,7 +188,7 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
     // Detect faces in the measurment and assert the results
     if(DetectFaces(color_image_masked(rgb_roi), faces_front, faces_profile))
     {
-        // if front faces were detected
+        // write face information to config if a frontal face was found
         if (faces_front.size() > 0)
         {
             result.writeArray("faces_front");
@@ -196,7 +196,7 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
             result.endArray();
         }
 
-        // if profile faces were detected
+        // write face information to config if a profile face was found
         if (faces_profile.size() > 0)
         {
             result.writeArray("faces_profile");
@@ -210,15 +210,13 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
             result.setValue("label", "multiple_faces");
             result.setValue("score", type_positive_score_);
 
-//            output.type_update.setScore("crowd", type_positive_score_);
-            output.type_update.setScore("human", type_negative_score_);
+            output.type_update.setScore("human", type_positive_score_);
         }
         else{
             // only one face detected
             result.setValue("label", "face");
             result.setValue("score", type_positive_score_);
 
-//            output.type_update.setScore("crowd", type_negative_score_);
             output.type_update.setScore("human", type_positive_score_);
         }
 
@@ -229,7 +227,6 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
         result.setValue("label", "face");
         result.setValue("score", type_negative_score_);
 
-//        output.type_update.setScore("crowd", type_negative_score_);
         output.type_update.setScore("human", type_negative_score_);
     }
 
