@@ -87,6 +87,7 @@ class EntityLiveViewerCV{
 
         int requestEntityList(std::vector<viewer_common::EntityInfo> &list);
         int requestEntityROI(const std::string &entity_id, cv::Mat& roi);
+        int requestEntityData(const std::string& entity_id, std::string &data);
 };
 
 #endif

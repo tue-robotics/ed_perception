@@ -65,7 +65,7 @@ EntityLiveViewerCV::~EntityLiveViewerCV(){
 void EntityLiveViewerCV::updateViewer(std::vector<viewer_common::EntityInfo>& entity_list){
     ed::ErrorContext errc("EntityLiveViewer -> updateViewer()");
 
-    cv::Mat output_img = cv::Mat::zeros(700, 800, CV_8UC3);
+    cv::Mat output_img = cv::Mat::zeros(900, 800, CV_8UC3);
 
     // set ROIs
     cv::Mat entity_preview_roi = output_img(cv::Rect(0, 0, preview_size_, preview_size_));
@@ -126,8 +126,12 @@ void EntityLiveViewerCV::updateViewer(std::vector<viewer_common::EntityInfo>& en
         std::stringstream ss;
         ss << "   " << counter << ": " << (std::string)(entity_it->id).substr(0, 4);
 
+        // show type if it is known
+//        if (!entity_it->type.empty())
+             ss << "    [" << entity_it->type << "]";
+
         // warning to show the entity was not updated
-        if (entity_it->last_updated > 2)
+        if (entity_it->last_updated > 1)
             ss << " (!)";
 
         // show selected entity
@@ -204,10 +208,10 @@ void EntityLiveViewerCV::processKeyPressed(char key, std::vector<viewer_common::
         break;
 
         // store measurement
-        case 's':   if (focused_idx_ <= entity_list.size()){
+        case 's':   if (focused_idx_ <= entity_list.size() || entity_list[focused_idx_].last_updated == 0){
                         requestStoreMeasurement(entity_list[focused_idx_].id, model_name_);
                     }else
-                        std::cout << module_name_ << "Select an entity from the list" << key << std::endl;
+                        std::cout << module_name_ << "Entity selected is no longer available. Select another." << key << std::endl;
         break;
 
         // change model name
@@ -306,7 +310,7 @@ int EntityLiveViewerCV::requestEntityROI(const std::string& entity_id, cv::Mat& 
         res >> cols;
 
         // TEMPORARY ugly bug fix, sometimes the size is wrong for some reason
-        if (rows * cols <= (1280*1024) && rows * cols > 0){
+        if (rows * cols > 0){
 
             roi = cv::Mat::zeros(rows, cols, CV_8UC3);
 
@@ -317,6 +321,8 @@ int EntityLiveViewerCV::requestEntityROI(const std::string& entity_id, cv::Mat& 
             if (roi.empty()){
                 std::cout << module_name_ << "Received empty Mat!" << std::endl;
             }
+        }else if (rows * cols == 0){
+            std::cout << module_name_ << "Probe could not find entity ID!" << std::endl;
         }else
             std::cout << module_name_ << "Entity image size incorrect! (" << rows << "x" << cols << ")" << std::endl;
 
@@ -326,6 +332,29 @@ int EntityLiveViewerCV::requestEntityROI(const std::string& entity_id, cv::Mat& 
         return 1;
     }
 
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+
+int EntityLiveViewerCV::requestEntityData(const std::string& entity_id, std::string& data){
+
+    tue::serialization::Archive req;
+    tue::serialization::Archive res;
+
+    req << (int)viewer_common::GET_ENTITY_DATA;
+    req << entity_id;
+
+    // send request to client
+    if (client_.process(req, res)){
+        res >> data;
+//        std::cout << module_name_ << "got data with length " << data.size() << std::endl;
+        return 0;
+    } else {
+        std::cout << module_name_ << "Probe request failed!" << std::endl;
+        return 1;
+    }
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -346,14 +375,14 @@ int EntityLiveViewerCV::requestEntityList(std::vector<viewer_common::EntityInfo>
 
         for(int i=0 ; i<num_entities; i++){
             std::string id;
-            std::string model_name;
+            std::string type;
             std::string data;
 
             res >> id;
-            res >> model_name;
+            res >> type;
             res >> data;
 
-            list.push_back(viewer_common::EntityInfo(id, model_name, data));
+            list.push_back(viewer_common::EntityInfo(id, type, data));
         }
 
 //        std::cout << "got " << num_entities << " entities in the response" << std::endl;
@@ -362,7 +391,6 @@ int EntityLiveViewerCV::requestEntityList(std::vector<viewer_common::EntityInfo>
         std::cout << module_name_ << "Probe request failed!" << std::endl;
         return 1;
     }
-
 }
 
 
@@ -393,13 +421,14 @@ int EntityLiveViewerCV::mainLoop(){
                 }
 
                 if (!exists){
-                    entity_list.push_back(viewer_common::EntityInfo(new_entity_it->id, new_entity_it->model_name, new_entity_it->data_str));
+                    entity_list.push_back(viewer_common::EntityInfo(new_entity_it->id, new_entity_it->type, new_entity_it->data_str));
                 }
             }
 
-            if (!entity_list.empty()){
+            if (!entity_list.empty() && entity_list[focused_idx_].last_updated == 0){
 //                std::cout << "focus: " << focused_idx_ << ", id: " << entity_list[focused_idx_].id << std::endl;
                 // update the entity image
+                requestEntityData(entity_list[focused_idx_].id, entity_list[focused_idx_].data_str);
                 requestEntityROI(entity_list[focused_idx_].id, entity_list[focused_idx_].masked_roi);
             }
         }

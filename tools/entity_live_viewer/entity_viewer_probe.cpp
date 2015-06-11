@@ -78,6 +78,11 @@ void EntityViewerProbe::parseReq(const ed::WorldModel& world, tue::serialization
             getEntityImage(res, id, world);
             break;
 
+        case viewer_common::GET_ENTITY_DATA:
+            req >> id;
+            getEntityData(res, id, world);
+            break;
+
         case viewer_common::STORE_MEASUREMENT:
             req >> id;
             req >> model_name;
@@ -96,6 +101,8 @@ void EntityViewerProbe::parseReq(const ed::WorldModel& world, tue::serialization
 
 void EntityViewerProbe::getEntityImage(tue::serialization::OutputArchive& res, const std::string &entity_id, const ed::WorldModel& world){
     ed::ErrorContext errc("EntityViewerProbe -> getEntityList()");
+
+    bool id_found = false;
 
     for(ed::WorldModel::const_iterator it = world.begin(); it != world.end(); ++it){
         const ed::EntityConstPtr& e = *it;
@@ -121,7 +128,7 @@ void EntityViewerProbe::getEntityImage(tue::serialization::OutputArchive& res, c
                 const cv::Mat& color_image = msr->image()->getRGBImage();
 
                 if (color_image.rows * color_image.cols > (1280*1024) || color_image.rows * color_image.cols == 0){
-                    std::cout << "Bad image size: " << color_image.cols << "x" << color_image.rows << std::endl;
+                    std::cout << module_name_ << "Bad image size: " << color_image.cols << "x" << color_image.rows << std::endl;
                 }
 
                 // get depth image
@@ -139,12 +146,49 @@ void EntityViewerProbe::getEntityImage(tue::serialization::OutputArchive& res, c
                 res << (int)roi_masked.rows;
                 res << (int)roi_masked.cols;
 
+//                std::cout << "size: " << roi_masked.rows << " x " << roi_masked.cols << std::endl;
+
                 int size = roi_masked.cols * roi_masked.rows * 3;
                 for(int i = 0; i < size; ++i)
                     res << roi_masked.data[i];
+
+                id_found = true;
+                break;
             }
         }
     }
+
+    if (!id_found){
+        res << 0;
+        res << 0;
+
+        std::cout << module_name_ << "Entity not found! (ID: " << entity_id << ")" << std::endl;
+    }
+}
+
+
+// ----------------------------------------------------------------------------------------------------
+
+
+void EntityViewerProbe::getEntityData(tue::serialization::OutputArchive& res, const std::string &entity_id, const ed::WorldModel& world){
+    ed::ErrorContext errc("EntityViewerProbe -> getEntityList()");
+
+    std::stringstream data;
+
+    for(ed::WorldModel::const_iterator it = world.begin(); it != world.end(); ++it){
+        const ed::EntityConstPtr& e = *it;
+        // filter entities
+        if (!e->shape() && !e->convexHull().points.empty()){
+            // comare IDs
+            if (entity_id == e->id().str()){
+                data << e->data();
+            }
+        }
+    }
+
+//    std::cout << module_name_ << "Sending data with size " << data.str().size() << std::endl;
+
+    res << (std::string)data.str();
 }
 
 
@@ -173,7 +217,7 @@ void EntityViewerProbe::getEntityList(tue::serialization::OutputArchive& res, co
     res << (int)entity_list.size();
 
     for (std::vector<viewer_common::EntityInfo>::const_iterator it = entity_list.begin() ; it != entity_list.end(); ++it){
-        res << (std::string)it->id << (std::string)it->model_name << (std::string)it->data_str;
+        res << (std::string)it->id << (std::string)it->type << (std::string)it->data_str;
     }
 }
 

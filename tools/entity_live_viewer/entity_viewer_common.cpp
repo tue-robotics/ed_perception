@@ -4,5 +4,7 @@
 * Date: May 2015
 */
 
+// Entity Viewer Common
+#include "entity_viewer_common.h"
 
 

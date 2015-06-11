@@ -47,6 +47,7 @@ private:
     void parseReq(const ed::WorldModel& world, tue::serialization::InputArchive& req, tue::serialization::OutputArchive& res);
     void getEntityList(tue::serialization::OutputArchive& res, const ed::WorldModel &world);
     void getEntityImage(tue::serialization::OutputArchive& res, const std::string& entity_id, const ed::WorldModel &world);
+    void getEntityData(tue::serialization::OutputArchive& res, const std::string &entity_id, const ed::WorldModel& world);
     void storeMeasurement(tue::serialization::OutputArchive& res, const std::string& entity_id, const std::string& model_name, const ed::WorldModel& world);
 
 };
