@@ -6,6 +6,11 @@
 #include "ed/perception/module.h"
 #include "ed/perception/worker.h"
 
+// Service
+#include <ed_perception/Classify.h>
+#include <ros/service_server.h>
+#include <ros/callback_queue.h>
+
 // Entity live viewer
 #include "../tools/entity_live_viewer/entity_live_viewer_cv.h"
 
@@ -49,6 +54,21 @@ private:
 
     EntityLiveViewerCV* entity_viewer_;
     bool enable_live_viewer_;
+
+
+    // SERVICE
+
+    bool continuous_;
+
+    const ed::WorldModel* world_;
+
+    ed::UpdateRequest* update_req_;
+
+    ros::CallbackQueue cb_queue_;
+
+    ros::ServiceServer srv_classify_;
+
+    bool srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res);
 
 };
 

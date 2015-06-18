@@ -10,6 +10,7 @@
 #include <tue/filesystem/path.h>
 
 #include <ros/package.h>
+#include <ros/node_handle.h>
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -62,7 +63,7 @@ namespace perception
 
 // ----------------------------------------------------------------------------------------------------
 
-PerceptionPlugin::PerceptionPlugin()
+PerceptionPlugin::PerceptionPlugin() : continuous_(false)
 {
 }
 
@@ -103,6 +104,11 @@ void PerceptionPlugin::initialize(ed::InitData& init)
     }
 
     config.value("type_persistence", type_persistence_);
+
+    // Get parameter that determines if perception should be run continuously or not
+    int int_continuous = 0;
+    config.value("continuous", int_continuous);
+    continuous_ = int_continuous;
 
     std::string object_models_path = ros::package::getPath("ed_object_models");
     std::string model_list_path = object_models_path + "/configs/model_lists/" + model_list_name;
@@ -171,12 +177,25 @@ void PerceptionPlugin::initialize(ed::InitData& init)
         }
         config.endArray();
     }
+
+    // Initialize service
+    ros::NodeHandle nh("~");
+    nh.setCallbackQueue(&cb_queue_);
+    srv_classify_ = nh.advertiseService("classify", &PerceptionPlugin::srvClassify, this);
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& req)
 {
+    world_ = &data.world;
+    update_req_ = &req;
+
+    cb_queue_.callAvailable();
+
+    if (!continuous_)
+        return;
+
     // Don't update if there are no perception modules
     if (perception_modules_.empty())
         return;
@@ -297,8 +316,66 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
 //    std::cout << "Num entities: " << n << ", num workers = " << workers_.size() << std::endl;
 }
 
+// ----------------------------------------------------------------------------------------------------
+
+bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res)
+{
+    std::cout << "GOING" << std::endl;
+
+    res.types.resize(req.ids.size(), "");
+    for(unsigned int i_entity = 0; i_entity < req.ids.size(); ++i_entity)
+    {
+        ed::EntityConstPtr e = world_->getEntity(req.ids[i_entity]);
+        if (!e || e->shape() || e->convexHull().points.empty())
+            continue;
+
+        WorkerInput input_;
+        input_.entity = e;
+
+        // Add all possible model types to the type distribution
+        for(std::vector<std::string>::const_iterator it = model_list_.begin(); it != model_list_.end(); ++it)
+            input_.type_distribution.setScore(*it, 1);
+
+        WorkerOutput output_;
+
+        for(std::vector<boost::shared_ptr<Module> >::const_iterator it = perception_modules_.begin(); it != perception_modules_.end(); ++it)
+        {
+            // Clear type distribution update
+            output_.type_update = CategoricalDistribution();
+
+            std::string context_msg = "Perception module '" + (*it)->name() + "', entity '" + input_.entity->id().str() + "'";
+            ed::ErrorContext errc(context_msg.c_str());
+            (*it)->process(input_, output_);
+
+            // Update total type distribution
+            input_.type_distribution.update(output_.type_update);
+        }
+
+        const CategoricalDistribution& type_dist = input_.type_distribution;
+
+        std::cout << type_dist << std::endl;
+
+        std::string expected_type;
+        double best_score;
+        type_dist.getMaximum(expected_type, best_score);
+
+        double min_prob = std::max(type_dist.getUnknownScore(), 0.8 * best_score);
+        for(std::vector<std::string>::const_iterator it_type = req.types.begin(); it_type != req.types.end(); ++it_type)
+        {
+            double prob;
+            if (type_dist.getScore(*it_type, prob) && prob > min_prob)
+            {
+                res.types[i_entity] = *it_type;
+                min_prob = prob;
+            }
+        }
+    }
+
+    return true;
 }
 
-}
+} // end namespace perception
+
+} // end namespace ed
 
 ED_REGISTER_PLUGIN(ed::perception::PerceptionPlugin)

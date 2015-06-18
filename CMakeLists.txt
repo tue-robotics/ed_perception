@@ -34,6 +34,7 @@ find_package(OpenCV REQUIRED)
 add_service_files(
    FILES
    LearnPerson.srv
+   Classify.srv
 )
 
 add_action_files(
@@ -69,6 +70,7 @@ add_library(ed_perception2
     src/module.cpp
     src/worker.cpp
 )
+add_dependencies(ed_perception2 ${PROJECT_NAME}_generate_messages_cpp)
 
 # ------------------------------------------------------------------------------------------------
 
@@ -76,7 +78,6 @@ add_library(ed_perception_plugin
     src/perception_plugin.cpp
 )
 target_link_libraries(ed_perception_plugin ${catkin_LIBRARIES} ed_perception2)
-
 
 # ------------------------------------------------------------------------------------------------
 

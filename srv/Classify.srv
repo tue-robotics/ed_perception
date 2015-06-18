@@ -1,0 +1,4 @@
+string[] ids     # ids to classify  
+string[] types   # types to recognize
+---
+string[] types   # classified types (in same order as 'ids' in request)
