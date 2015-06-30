@@ -320,7 +320,15 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
 
 bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res)
 {
-    std::cout << "GOING" << std::endl;
+    if (req.enable_continuous_mode)
+    {
+        continuous_ = true;
+    }
+
+    if (req.disable_continuous_mode)
+    {
+        continuous_ = false;
+    }
 
     res.types.resize(req.ids.size(), "");
     for(unsigned int i_entity = 0; i_entity < req.ids.size(); ++i_entity)

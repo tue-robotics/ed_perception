@@ -1,3 +1,6 @@
+bool enable_continuous_mode     # Set to true to enable continuous mode
+bool disable_continuous_mode    # Set to true to disable continuous mode
+
 string[] ids     # ids to classify  
 string[] types   # types to recognize
 ---
