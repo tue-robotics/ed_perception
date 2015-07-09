@@ -337,29 +337,32 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
         if (!e || e->shape() || e->convexHull().points.empty())
             continue;
 
-        WorkerInput input_;
-        input_.entity = e;
+        WorkerInput worker_input;
+        worker_input.entity = e;
 
         // Add all possible model types to the type distribution
         for(std::vector<std::string>::const_iterator it = model_list_.begin(); it != model_list_.end(); ++it)
-            input_.type_distribution.setScore(*it, 1);
+            worker_input.type_distribution.setScore(*it, 1);
 
-        WorkerOutput output_;
+        WorkerOutput worker_output;
 
         for(std::vector<boost::shared_ptr<Module> >::const_iterator it = perception_modules_.begin(); it != perception_modules_.end(); ++it)
         {
             // Clear type distribution update
-            output_.type_update = CategoricalDistribution();
+            worker_output.type_update = CategoricalDistribution();
 
-            std::string context_msg = "Perception module '" + (*it)->name() + "', entity '" + input_.entity->id().str() + "'";
+            std::string context_msg = "Perception module '" + (*it)->name() + "', entity '" + worker_input.entity->id().str() + "'";
             ed::ErrorContext errc(context_msg.c_str());
-            (*it)->process(input_, output_);
+            (*it)->process(worker_input, worker_output);
 
             // Update total type distribution
-            input_.type_distribution.update(output_.type_update);
+            worker_input.type_distribution.update(worker_output.type_update);
         }
 
-        const CategoricalDistribution& type_dist = input_.type_distribution;
+        // Always add the perception data to the entity
+        update_req_->addData(e->id(), worker_output.data.data());
+
+        const CategoricalDistribution& type_dist = worker_input.type_distribution;
 
         std::cout << type_dist << std::endl;
 
@@ -367,16 +370,22 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
         double best_score;
         type_dist.getMaximum(expected_type, best_score);
 
-        double min_prob = std::max(type_dist.getUnknownScore(), 0.8 * best_score);
+        std::string best_filtered_type;
+        double best_prob = std::max(type_dist.getUnknownScore(), 0.8 * best_score);
         for(std::vector<std::string>::const_iterator it_type = req.types.begin(); it_type != req.types.end(); ++it_type)
         {
             double prob;
-            if (type_dist.getScore(*it_type, prob) && prob > min_prob)
+            if (type_dist.getScore(*it_type, prob) && prob > best_prob)
             {
-                res.types[i_entity] = *it_type;
-                min_prob = prob;
+                best_filtered_type = *it_type;
+                best_prob = prob;
             }
         }
+
+        res.types[i_entity] = best_filtered_type;
+        if (!best_filtered_type.empty())
+            // Update the entity type
+            update_req_->setType(e->id(), best_filtered_type);
     }
 
     return true;
