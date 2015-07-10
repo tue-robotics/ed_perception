@@ -344,6 +344,9 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
         for(std::vector<std::string>::const_iterator it = model_list_.begin(); it != model_list_.end(); ++it)
             worker_input.type_distribution.setScore(*it, 1);
 
+        worker_input.type_distribution.setUnknownScore(0.01); // TODO: magic number (probability that an object you encounter is unknown (not in the model list))
+        worker_input.type_distribution.normalize();
+
         WorkerOutput worker_output;
 
         for(std::vector<boost::shared_ptr<Module> >::const_iterator it = perception_modules_.begin(); it != perception_modules_.end(); ++it)
