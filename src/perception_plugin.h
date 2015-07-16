@@ -37,6 +37,8 @@ public:
 
     const std::vector<std::string>& model_list() const { return model_list_; }
 
+    double unknown_probability_prior() const { return unknown_probability_prior_; }
+
 private:
 
     // List of possible object types
@@ -51,6 +53,8 @@ private:
     std::map<UUID, boost::shared_ptr<Worker> > workers_;
 
     double type_persistence_;
+
+    double unknown_probability_prior_;
 
     EntityLiveViewerCV* entity_viewer_;
     bool enable_live_viewer_;

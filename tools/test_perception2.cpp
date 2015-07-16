@@ -164,13 +164,14 @@ int main(int argc, char **argv)
         tue::Configuration result;
         output.data = result;
 
+        input.type_distribution.setUnknownScore(plugin.unknown_probability_prior());
         // Add all possible model types to the type distribution
         for(std::vector<std::string>::const_iterator it = plugin.model_list().begin(); it != plugin.model_list().end(); ++it)
-            input.type_distribution.setScore(*it, 1);
+            input.type_distribution.setScore(*it, (1.0 - plugin.unknown_probability_prior()) / plugin.model_list().size());
 
-        input.type_distribution.setUnknownScore(0.01); // TODO: magic number (probability that an object you encounter is unknown (not in the model list))
+//        input.type_distribution.setUnknownScore(0.01); // TODO: magic number (probability that an object you encounter is unknown (not in the model list))
 
-        input.type_distribution.normalize();
+//        input.type_distribution.normalize();
 
 
         const std::vector<boost::shared_ptr<ed::perception::Module> >& modules = plugin.perception_modules();

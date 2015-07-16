@@ -22,7 +22,7 @@ public:
         STOPPED
     };
 
-    Worker(const std::vector<std::string>& model_list, double type_persistence);
+    Worker(const std::vector<std::string>& model_list, double type_persistence, double unknown_probability_prior);
 
     virtual ~Worker();
 
@@ -76,6 +76,8 @@ protected:
     std::vector<std::string> model_list_;
 
     double type_persistence_;
+
+    double unknown_probability_prior_;
 
     WorkerState state_;
 

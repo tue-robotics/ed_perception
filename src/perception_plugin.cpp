@@ -104,6 +104,7 @@ void PerceptionPlugin::initialize(ed::InitData& init)
     }
 
     config.value("type_persistence", type_persistence_);
+    config.value("unknown_probability_prior", unknown_probability_prior_);
 
     // Get parameter that determines if perception should be run continuously or not
     int int_continuous = 0;
@@ -234,7 +235,7 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
             // No worker active for this entity, so create one
 
             // create worker and add measurements
-            boost::shared_ptr<Worker> worker(new Worker(model_list_, type_persistence_));
+            boost::shared_ptr<Worker> worker(new Worker(model_list_, type_persistence_, unknown_probability_prior_));
             worker->setEntity(e);
             worker->setPerceptionModules(perception_modules_);
 
@@ -340,12 +341,10 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
         WorkerInput worker_input;
         worker_input.entity = e;
 
+        worker_input.type_distribution.setUnknownScore(unknown_probability_prior());
         // Add all possible model types to the type distribution
-        for(std::vector<std::string>::const_iterator it = model_list_.begin(); it != model_list_.end(); ++it)
-            worker_input.type_distribution.setScore(*it, 1);
-
-        worker_input.type_distribution.setUnknownScore(0.01); // TODO: magic number (probability that an object you encounter is unknown (not in the model list))
-        worker_input.type_distribution.normalize();
+        for(std::vector<std::string>::const_iterator it = model_list().begin(); it != model_list().end(); ++it)
+            worker_input.type_distribution.setScore(*it, (1.0 - unknown_probability_prior()) / model_list().size());
 
         WorkerOutput worker_output;
 

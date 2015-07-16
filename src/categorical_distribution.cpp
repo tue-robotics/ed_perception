@@ -108,17 +108,19 @@ void CategoricalDistribution::update(const CategoricalDistribution& other)
         }
     }
 
+    double unknown_score_rel = other.unknown_score_ / (pmf_.size() - other.pmf_.size() + 1);
+
     // Update
     for(std::map<std::string, double>::iterator it = pmf_.begin(); it != pmf_.end(); ++it)
     {
         double score;
         if (!other.getScore(it->first, score))
-            score = other.unknown_score_ / (pmf_.size() - other.pmf_.size());
+            score = unknown_score_rel;
 
         it->second *= score;
     }
 
-    unknown_score_ *= other.unknown_score_;
+    unknown_score_ *= unknown_score_rel;
 
     normalize();
 }

@@ -14,8 +14,9 @@ namespace perception
 
 // ----------------------------------------------------------------------------------------------------
 
-Worker::Worker(const std::vector<std::string>& model_list, double type_persistence)
-    : model_list_(model_list), type_persistence_(type_persistence), t_last_processing(0), state_(IDLE), signal_stop_(false)
+Worker::Worker(const std::vector<std::string>& model_list, double type_persistence, double unknown_probability_prior)
+    : model_list_(model_list), type_persistence_(type_persistence), unknown_probability_prior_(unknown_probability_prior),
+      t_last_processing(0), state_(IDLE), signal_stop_(false)
 {
 }
 
@@ -69,15 +70,13 @@ void Worker::run()
     // Reset from possible previous time
     output_.data = tue::Configuration();
 
-    if (input_.type_distribution.empty())
+    if (input_.type_distribution.empty() || type_persistence_ == 0)
     {
+        input_.type_distribution.setUnknownScore(unknown_probability_prior_);
+
         // Add all possible model types to the type distribution
         for(std::vector<std::string>::const_iterator it = model_list_.begin(); it != model_list_.end(); ++it)
-            input_.type_distribution.setScore(*it, 1);
-
-        input_.type_distribution.setUnknownScore(0.01); // TODO: magic number (probability that an object you encounter is unknown (not in the model list))
-
-        input_.type_distribution.normalize();
+            input_.type_distribution.setScore(*it, (1.0 - unknown_probability_prior_) / model_list_.size());
     }
     else
     {
