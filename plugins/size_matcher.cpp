@@ -209,7 +209,14 @@ void SizeMatcher::process(const ed::perception::WorkerInput& input, ed::percepti
     if (!hypothesis.empty()){
         for (std::map<std::string, double>::const_iterator it = hypothesis.begin(); it != hypothesis.end(); ++it){
 //                output.type_update.setScore(it->first, std::max(it->second/2, type_negative_score_));
-            output.type_update.setScore(it->first, it->second);
+
+            // if the best score is above 0 assert that, otherwise assert a negative score
+            if (it->second > 0)
+                output.type_update.setScore(it->first, it->second);
+            else
+                output.type_update.setScore(it->first, type_negative_score_);
+
+            // std::cout << "[" << module_name_ << "] " << "Asserting: " << it->first << ": " << it->second << std::endl;
         }
     }
 
