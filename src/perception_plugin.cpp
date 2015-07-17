@@ -179,6 +179,13 @@ void PerceptionPlugin::initialize(ed::InitData& init)
         config.endArray();
     }
 
+    // Make sure a connection with ROS is initialized
+    if (!ros::isInitialized())
+    {
+        ros::M_string remapping_args;
+        ros::init(remapping_args, "ed");
+    }
+
     // Initialize service
     ros::NodeHandle nh("~");
     nh.setCallbackQueue(&cb_queue_);
