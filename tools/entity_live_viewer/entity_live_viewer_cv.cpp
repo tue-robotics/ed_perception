@@ -124,11 +124,14 @@ void EntityLiveViewerCV::updateViewer(std::vector<viewer_common::EntityInfo>& en
     for(std::vector<viewer_common::EntityInfo>::const_iterator entity_it = entity_list.begin(); entity_it != entity_list.end(); ++entity_it){
 
         std::stringstream ss;
+        ss.precision(2);
+
         ss << "   " << counter << ": " << (std::string)(entity_it->id).substr(0, 4);
 
         // show type if it is known
 //        if (!entity_it->type.empty())
-             ss << "    [" << entity_it->type << "]";
+
+        ss << "    [" << entity_it->type << "] [" << (double)entity_it->area << "]";
 
         // warning to show the entity was not updated
         if (entity_it->last_updated > 1)
@@ -309,8 +312,10 @@ int EntityLiveViewerCV::requestEntityROI(const std::string& entity_id, cv::Mat& 
         res >> rows;
         res >> cols;
 
+        // std::cout << module_name_ << "size : (" << rows << "x" << cols << ")" << std::endl;
+
         // TEMPORARY ugly bug fix, sometimes the size is wrong for some reason
-        if (rows * cols > 0){
+        if (rows * cols > 0 && rows * cols < 1280*1024 && rows > 1 && cols > 1){
 
             roi = cv::Mat::zeros(rows, cols, CV_8UC3);
 
@@ -374,18 +379,20 @@ int EntityLiveViewerCV::requestEntityList(std::vector<viewer_common::EntityInfo>
         res >> num_entities;
 
         for(int i=0 ; i<num_entities; i++){
-            std::string id;
-            std::string type;
-            std::string data;
+            std::string id = "";
+            std::string type = "";
+            std::string data = "";
+            double area;
 
             res >> id;
             res >> type;
             res >> data;
+            res >> area;
 
-            list.push_back(viewer_common::EntityInfo(id, type, data));
+            list.push_back(viewer_common::EntityInfo(id, type, data, area));
+            // std::cout << "pushing " << id << " with area " << area << std::endl;
         }
 
-//        std::cout << "got " << num_entities << " entities in the response" << std::endl;
         return 0;
     } else {
         std::cout << module_name_ << "Probe request failed!" << std::endl;
@@ -416,12 +423,13 @@ int EntityLiveViewerCV::mainLoop(){
                     if (entity_it->id.compare(new_entity_it->id) == 0){
                         entity_it->last_updated = 0;
                         entity_it->data_str = new_entity_it->data_str;
+                        entity_it->area = new_entity_it->area;
                         exists = true;
                     }
                 }
 
                 if (!exists){
-                    entity_list.push_back(viewer_common::EntityInfo(new_entity_it->id, new_entity_it->type, new_entity_it->data_str));
+                    entity_list.push_back(viewer_common::EntityInfo(new_entity_it->id, new_entity_it->type, new_entity_it->data_str, new_entity_it->area));
                 }
             }
 

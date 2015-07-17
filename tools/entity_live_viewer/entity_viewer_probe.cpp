@@ -146,7 +146,7 @@ void EntityViewerProbe::getEntityImage(tue::serialization::OutputArchive& res, c
                 res << (int)roi_masked.rows;
                 res << (int)roi_masked.cols;
 
-//                std::cout << "size: " << roi_masked.rows << " x " << roi_masked.cols << std::endl;
+                std::cout << "response size: " << roi_masked.rows << " x " << roi_masked.cols << std::endl;
 
                 int size = roi_masked.cols * roi_masked.rows * 3;
                 for(int i = 0; i < size; ++i)
@@ -207,9 +207,11 @@ void EntityViewerProbe::getEntityList(tue::serialization::OutputArchive& res, co
         // filter entities
         if (!e->shape() && !e->convexHull().points.empty()){
             std::stringstream data;
-            data << e->data();
+            double area = e->convexHull().area;
 
-            entity_list.push_back(viewer_common::EntityInfo(e->id().str(), e->type(), data.str()));
+            
+
+            entity_list.push_back(viewer_common::EntityInfo(e->id().str(), e->type(), data.str(), area));
         }
     }
 
@@ -217,7 +219,7 @@ void EntityViewerProbe::getEntityList(tue::serialization::OutputArchive& res, co
     res << (int)entity_list.size();
 
     for (std::vector<viewer_common::EntityInfo>::const_iterator it = entity_list.begin() ; it != entity_list.end(); ++it){
-        res << (std::string)it->id << (std::string)it->type << (std::string)it->data_str;
+        res << (std::string)it->id << (std::string)it->type << (std::string)it->data_str << (double)it->area;
     }
 }
 

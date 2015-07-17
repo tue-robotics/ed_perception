@@ -25,6 +25,7 @@ namespace viewer_common
             std::string type;
             std::string data_str;
             tue::config::DataConstPointer data_ptr;
+            double area;
 
             ed::EntityConstPtr entity_pt;
             cv::Mat color_img;
@@ -34,24 +35,15 @@ namespace viewer_common
             cv::Rect roi;
             int last_updated;
 
-            EntityInfo(std::string id_, std::string model_name_, std::string data = ""):
+            EntityInfo(std::string id_, std::string model_name_, std::string data, double area_):
                 id(id_),
                 type(model_name_),
                 data_str(data),
-                last_updated(0){}
-
-            EntityInfo(const ed::EntityConstPtr& e):
-                entity_pt(e),
-                id(e->id().str()),
-                data_ptr(e->data()),
+                area(area_),
                 last_updated(0){}
 
             void updateData(std::string data);
     };
-
-    void  EntityInfo::updateData(std::string data){
-        data_str = data;
-    }
 
     enum RequestType{
         GET_ENTITY_LIST = 0,
