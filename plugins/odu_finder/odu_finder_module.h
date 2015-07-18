@@ -37,7 +37,7 @@ private:
     bool debug_mode_;
     std::string debug_folder_;
 
-    double type_unknown_score_;
+    double score_factor_;
 
     std::string database_path_;
     std::string module_path_;

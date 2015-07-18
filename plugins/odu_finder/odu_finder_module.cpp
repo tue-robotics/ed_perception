@@ -41,8 +41,8 @@ void ODUFinderModule::configure(tue::Configuration config) {
     if (!config.value("debug_mode", debug_mode_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'debug_mode' not found. Using default: " << debug_mode_ << std::endl;
 
-    if (!config.value("type_unknown_score", type_unknown_score_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'type_unknown_score' not found. Using default: " << type_unknown_score_ << std::endl;
+    if (!config.value("score_factor", score_factor_, tue::OPTIONAL))
+        std::cout << "[" << module_name_ << "] " << "Parameter 'score_factor' not found. Using default: " << score_factor_ << std::endl;
 
     if (!config.value("debug_folder", debug_folder_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'debug_folder' not found. Using default: " << debug_folder_ << std::endl;
@@ -76,7 +76,7 @@ void ODUFinderModule::loadConfig(const std::string& config_path)
     database_path_ = "/database";
 
     // default values in case configure(...) is not called!
-    type_unknown_score_ = 0.05;
+    score_factor_ = 0.1;
     debug_mode_ = false;
 }
 
@@ -89,7 +89,7 @@ void ODUFinderModule::process(const ed::perception::WorkerInput& input, ed::perc
 
     ed::ErrorContext errc("Processing entity in ODUFinderModule");
 
-    output.type_update.setUnknownScore(type_unknown_score_);
+//    output.type_update.setUnknownScore(type_unknown_score_);
 
     if (!init_success_)
         return;
@@ -137,15 +137,25 @@ void ODUFinderModule::process(const ed::perception::WorkerInput& input, ed::perc
 
     result.writeGroup("odu_finder");
 
-    output.type_update.setUnknownScore(type_unknown_score_);
+//    output.type_update.setUnknownScore(type_unknown_score_);
+
+    double total_score = 0;
 
     // if an hypothesis is found, assert it
     if (!results.empty())
     {
-        for(std::map<std::string, float>::const_iterator it = results.begin(); it != results.end(); ++it){
-            output.type_update.setScore(it->first, it->second);
+        for(std::map<std::string, float>::const_iterator it = results.begin(); it != results.end(); ++it)
+        {
+            double score = it->second * score_factor_;
+            output.type_update.setScore(it->first, score);
+            total_score += score;
         }
     }
+
+    if (total_score < 1.0)
+        output.type_update.setUnknownScore(1.0 - total_score);
+    else
+        output.type_update.setUnknownScore(0);
 
     result.endGroup();  // close odu_finder group
     result.endGroup();  // close perception_result group
