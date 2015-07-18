@@ -339,6 +339,7 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
     }
 
     res.types.resize(req.ids.size(), "");
+    res.probabilities.resize(req.ids.size(), 0);
     for(unsigned int i_entity = 0; i_entity < req.ids.size(); ++i_entity)
     {
         ed::EntityConstPtr e = world_->getEntity(req.ids[i_entity]);
@@ -380,10 +381,15 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
         type_dist.getMaximum(expected_type, best_score);
 
         std::string best_filtered_type;
+        double best_filtered_score = 0;
+
         if (req.types.empty())
         {
             if (best_score > type_dist.getUnknownScore())
+            {
                 best_filtered_type = expected_type;
+                best_filtered_score = best_score;
+            }
         }
         else
         {
@@ -394,12 +400,15 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
                 if (type_dist.getScore(*it_type, prob) && prob > best_prob)
                 {
                     best_filtered_type = *it_type;
+                    best_filtered_score = prob;
                     best_prob = prob;
                 }
             }
         }
 
         res.types[i_entity] = best_filtered_type;
+        res.probabilities[i_entity] = best_filtered_score;
+
         if (!best_filtered_type.empty())
             // Update the entity type
             update_req_->setType(e->id(), best_filtered_type);
