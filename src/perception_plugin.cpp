@@ -380,14 +380,22 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
         type_dist.getMaximum(expected_type, best_score);
 
         std::string best_filtered_type;
-        double best_prob = std::max(type_dist.getUnknownScore(), 0.8 * best_score);
-        for(std::vector<std::string>::const_iterator it_type = req.types.begin(); it_type != req.types.end(); ++it_type)
+        if (req.types.empty())
         {
-            double prob;
-            if (type_dist.getScore(*it_type, prob) && prob > best_prob)
+            if (best_score > type_dist.getUnknownScore())
+                best_filtered_type = expected_type;
+        }
+        else
+        {
+            double best_prob = std::max(type_dist.getUnknownScore(), 0.8 * best_score);
+            for(std::vector<std::string>::const_iterator it_type = req.types.begin(); it_type != req.types.end(); ++it_type)
             {
-                best_filtered_type = *it_type;
-                best_prob = prob;
+                double prob;
+                if (type_dist.getScore(*it_type, prob) && prob > best_prob)
+                {
+                    best_filtered_type = *it_type;
+                    best_prob = prob;
+                }
             }
         }
 
