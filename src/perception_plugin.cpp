@@ -328,6 +328,10 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
 
 bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res)
 {
+    req.no_unknown = true;
+
+    ROS_WARN("Classifying with 'no_unknown' is true! (Muhahaha, Sjoerd enforced this)");
+
     if (req.enable_continuous_mode)
     {
         continuous_ = true;
@@ -385,7 +389,7 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
 
         if (req.types.empty())
         {
-            if (best_score > type_dist.getUnknownScore())
+            if (req.no_unknown || best_score > type_dist.getUnknownScore())
             {
                 best_filtered_type = expected_type;
                 best_filtered_score = best_score;
@@ -393,11 +397,15 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
         }
         else
         {
-            double best_prob = std::max(type_dist.getUnknownScore(), 0.8 * best_score);
+            double best_prob = 0;
+
+            if (!req.no_unknown)
+                best_prob = std::max(type_dist.getUnknownScore(), 0.8 * best_score);
+
             for(std::vector<std::string>::const_iterator it_type = req.types.begin(); it_type != req.types.end(); ++it_type)
             {
                 double prob;
-                if (type_dist.getScore(*it_type, prob) && prob > best_prob)
+                if (type_dist.getScore(*it_type, prob) && prob >= best_prob)
                 {
                     best_filtered_type = *it_type;
                     best_filtered_score = prob;

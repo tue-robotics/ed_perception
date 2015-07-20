@@ -2,7 +2,11 @@ bool enable_continuous_mode     # Set to true to enable continuous mode
 bool disable_continuous_mode    # Set to true to disable continuous mode
 
 string[] ids     # ids to classify  
+
 string[] types   # types to recognize
+bool no_unknown  # If set to true, all ids will have one of the types specified
+                 # (In other words, no unknown thresholding will be used)
+bool unique_types  # If set to true, no type will be assigned to more than one id
 ---
 string[] types   # classified types (in same order as 'ids' in request)
 float64[] probabilities  # Probabilities of classified types
