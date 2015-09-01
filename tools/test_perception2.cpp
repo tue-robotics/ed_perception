@@ -29,6 +29,43 @@
 
 // ----------------------------------------------------------------------------------------------------
 
+class ConfusionMatrix
+{
+public:
+    ConfusionMatrix(std::vector<std::string> options)
+    {
+        options_ = options;
+        mat_ = std::vector<float>(options.size()*options.size(),0.0);
+    }
+
+    std::ostream toStream()
+    {
+        std::ostream str(NULL);
+
+        int i = 0,j = 0; // column and row, respectively
+
+        for (std::vector<float>::const_iterator it = mat_.begin(); it != mat_.end(); it++ )
+        {
+            if ( i == width_ - 1 )
+            {
+                i = 0;
+                j++;
+                str << std::endl << options_[j];
+            }
+            i++;
+        }
+    }
+
+    void addResult(ed::perception::CategoricalDistribution dstr);
+
+private:
+    std::vector<float> mat_;
+    int width_;
+    std::vector<std::string> options_;
+};
+
+// ----------------------------------------------------------------------------------------------------
+
 void showMeasurement(const ed::Measurement& msr)
 {
     const cv::Mat& rgb_image = msr.image()->getRGBImage();
@@ -114,6 +151,9 @@ int main(int argc, char **argv)
     while(crawler.nextPath(filename))
     {
         std::string filename_without_ext = filename.withoutExtension().string();
+
+        std::cout << "Filename: " << filename.string() << "\nfilename.filename: " << filename.filename() << "\nparentPath" << filename.parentPath() << std::endl;
+
         if (files_had.find(filename_without_ext) != files_had.end())
             continue;
 
