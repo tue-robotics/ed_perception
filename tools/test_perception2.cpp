@@ -38,29 +38,55 @@ public:
         mat_ = std::vector<float>(options.size()*options.size(),0.0);
     }
 
-    std::ostream toStream()
+    void print()
     {
-        std::ostream str(NULL);
+//        printf("%-25s%-20s%-10s%-10s%-10s\n", "Name", "Title", "Gross", "Tax", "Net");
+//        printf("%-25s%-20s%-10.2f%-10.2f%-10.2f\n", name.c_str(), title.c_str(), gross, tax, net);
 
-        int i = 0,j = 0; // column and row, respectively
+        for (std::vector<std::string>::const_iterator it = options_.begin(); it != options_.end(); it++ )
+        {
+            printf("%-15s", it->c_str());
+        }
+
+        printf("\n");
+
+        int i = 0, j = 0; // column and row, respectively
 
         for (std::vector<float>::const_iterator it = mat_.begin(); it != mat_.end(); it++ )
         {
-            if ( i == width_ - 1 )
+            printf("%-15f", *it);
+            if ( i == options_.size() - 1 )
             {
+                printf("\n");
                 i = 0;
                 j++;
-                str << std::endl << options_[j];
             }
+
             i++;
         }
     }
 
-    void addResult(ed::perception::CategoricalDistribution dstr);
+    void addResult(const ed::perception::CategoricalDistribution& dstr, const std::string& cat)
+    {
+        std::string label;
+        double score;
+        int labeli, cati;
+
+        dstr.getMaximum(label,score);
+
+        for ( int i = 0; i <= options_.size(); i++ )
+        {
+            if (options_[i] == label)
+                labeli;
+            else if (options_[i] == cat)
+                cati;
+        }
+
+        mat_[cati*options_.size()+labeli]++;
+    }
 
 private:
     std::vector<float> mat_;
-    int width_;
     std::vector<std::string> options_;
 };
 
@@ -142,6 +168,8 @@ int main(int argc, char **argv)
 
     // - - - - -
 
+    ConfusionMatrix cm(plugin.model_list());
+
     tue::filesystem::Crawler crawler(measurement_dir);
 
     std::set<std::string> files_had;
@@ -152,7 +180,7 @@ int main(int argc, char **argv)
     {
         std::string filename_without_ext = filename.withoutExtension().string();
 
-        std::cout << "Filename: " << filename.string() << "\nfilename.filename: " << filename.filename() << "\nparentPath" << filename.parentPath() << std::endl;
+        std::string truth = filename.parentPath().filename();
 
         if (files_had.find(filename_without_ext) != files_had.end())
             continue;
@@ -190,12 +218,12 @@ int main(int argc, char **argv)
         if (!e)
             continue;
 
-        if (e->lastMeasurement())
-            showMeasurement(*e->lastMeasurement());
+//        if (e->lastMeasurement())
+//            showMeasurement(*e->lastMeasurement());
 
-        std::cout << "\n\n------------------------------------------------------------" << std::endl;
-        std::cout << "    " << filename.withoutExtension() << std::endl;
-        std::cout << "------------------------------------------------------------" << std::endl << std::endl;
+//        std::cout << "\n\n------------------------------------------------------------" << std::endl;
+//        std::cout << "    " << filename.withoutExtension() << std::endl;
+//        std::cout << "------------------------------------------------------------" << std::endl << std::endl;
 
         ed::perception::WorkerInput input;
         input.entity = e;
@@ -227,29 +255,33 @@ int main(int argc, char **argv)
 
             output.type_update.normalize();
 
-            std::cout << module->name() << ":\n\t" << output.type_update << "\n" << std::endl;
+//            std::cout << module->name() << ":\n\t" << output.type_update << "\n" << std::endl;
 
             // Update total type distribution
             input.type_distribution.update(output.type_update);
         }
 
-        std::cout << "Total: \n\t" << input.type_distribution << std::endl;
-        std::cout << std::endl;
+//        std::cout << "Total: \n\t" << input.type_distribution << std::endl;
+//        std::cout << std::endl;
 
         // print perception result
-        std::cout << result << std::endl;
+//        std::cout << result << std::endl;
+
+        cm.addResult(input.type_distribution,truth);
 
         std::string max_type;
-        double max_score;
-        if (input.type_distribution.getMaximum(max_type, max_score) && max_score > input.type_distribution.getUnknownScore())
-            std::cout << "Expected type: " << max_type << " (probability = " << max_score << ")" << std::endl;
-        else
-            std::cout << "Unknown entity (probability = " << input.type_distribution.getUnknownScore() << ")" << std::endl;
+//        double max_score;
+//        if (input.type_distribution.getMaximum(max_type, max_score) && max_score > input.type_distribution.getUnknownScore())
+//            std::cout << "Expected type: " << max_type << " (probability = " << max_score << ")" << std::endl;
+//        else
+//            std::cout << "Unknown entity (probability = " << input.type_distribution.getUnknownScore() << ")" << std::endl;
 
         ++n_measurements;
 
-        cv::waitKey();
+//        cv::waitKey();
     }
+
+    cm.print();
 
     if (n_measurements == 0)
         std::cout << "No measurements found." << std::endl;
