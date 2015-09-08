@@ -286,3 +286,10 @@ ADD_DEFINITIONS(-DQT_NO_KEYWORDS)
 #    ${QT4ENTITYVIEWERGUI}
 #    ${QT_LIBRARIES}
 #)
+
+# -------------- ANNOTATION GUI --------------
+add_executable(annotation_gui tools/annotation_gui/src/annotation_gui.cpp)
+target_link_libraries(annotation_gui ${QT_LIBRARIES} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
+
+
