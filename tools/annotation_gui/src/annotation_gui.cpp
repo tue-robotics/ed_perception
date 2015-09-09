@@ -16,7 +16,8 @@
 
 #include <opencv2/highgui/highgui.hpp>
 
-struct Annotation {
+struct Annotation
+{
     Annotation(std::string label, double px, double py) : label(label), px(px), py(py) {}
 
     std::string label;
@@ -24,7 +25,8 @@ struct Annotation {
     double py;
 };
 
-struct {
+struct AnnotationData
+{
     std::string filename;
     std::string json;
     rgbd::ImagePtr image;
