@@ -149,35 +149,40 @@ bool readMeasurement()
 
     ed::io::JSONReader r(ANNOTATION_INSTANCE.json.c_str());
 
-    if (r.readGroup("rgbd_measurement"))
+    std::string rgbd_filename;
+    if (r.readValue("rgbd_filename", rgbd_filename))
     {
-        std::string rgbd_filename, mask_filename;
-        if (r.readValue("image_file", rgbd_filename) && r.readValue("mask_file", mask_filename))
-        {
-            std::string base_path = tue::filesystem::Path(ANNOTATION_INSTANCE.filename).parentPath().string();
+        std::string base_path = tue::filesystem::Path(ANNOTATION_INSTANCE.filename).parentPath().string();
 
-            ANNOTATION_INSTANCE.image = readRGBDImage(base_path + "/" + rgbd_filename);
+        ANNOTATION_INSTANCE.image = readRGBDImage(base_path + "/" + rgbd_filename);
 
-            cv::imshow("annotation_image", ANNOTATION_INSTANCE.image->getRGBImage());
-            cv::setMouseCallback("annotation_image", CallBackFunc, NULL);
-            cv::waitKey();
+        cv::imshow("annotation_image", ANNOTATION_INSTANCE.image->getRGBImage());
+        cv::setMouseCallback("annotation_image", CallBackFunc, NULL);
+        cv::waitKey();
 
-            writeMeasurement();
-        }
-
-        r.endGroup();
+        writeMeasurement();
     }
+    else
+    {
+        std::cout << "Invalid file: " << ANNOTATION_INSTANCE.filename << ". Should contain field 'rgbd_filename'." << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 // ---------------------------------------------------------------------------------------------
 
 int main(int argc, char** argv)
 {
-    tue::filesystem::Crawler crawler("/home/amigo/object_learning/checked");
+    std::string path = ".";
+    if (argc > 1)
+        path = argv[1];
+
+    tue::filesystem::Crawler crawler(path);
 
     QApplication app(argc, argv);
 
-    int n_measurements = 0;
     tue::filesystem::Path filename;
     while(crawler.nextPath(filename))
     {
