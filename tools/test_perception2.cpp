@@ -55,14 +55,15 @@ public:
         for (std::vector<float>::const_iterator it = mat_.begin(); it != mat_.end(); it++ )
         {
             printf("%-15f", *it);
+
             if ( i == options_.size() - 1 )
             {
                 printf("\n");
                 i = 0;
                 j++;
             }
-
-            i++;
+            else
+                i++;
         }
     }
 
@@ -70,16 +71,27 @@ public:
     {
         std::string label;
         double score;
-        int labeli, cati;
+        int labeli = -1, cati = -1;
 
         dstr.getMaximum(label,score);
 
-        for ( int i = 0; i <= options_.size(); i++ )
+        for ( int i = 0; i < options_.size(); i++ )
         {
             if (options_[i] == label)
-                labeli;
-            else if (options_[i] == cat)
-                cati;
+                labeli = i;
+            if (options_[i] == cat)
+                cati = i;
+        }
+
+        if (labeli == -1)
+        {
+            std::cout << "Item with maximum score is not one of the options" << std::endl;
+            return;
+        }
+        if (cati == -1)
+        {
+            std::cout << "Ground truth item not one of the options" << std::endl;
+            return;
         }
 
         mat_[cati*options_.size()+labeli]++;
@@ -178,18 +190,24 @@ int main(int argc, char **argv)
     tue::filesystem::Path filename;
     while(crawler.nextPath(filename))
     {
+        // Get measurement id
         std::string filename_without_ext = filename.withoutExtension().string();
 
+        // Get ground truth from folder name of containing file
         std::string truth = filename.parentPath().filename();
 
+        // If file already done, continue to next file
         if (files_had.find(filename_without_ext) != files_had.end())
             continue;
 
+        // Insert measurement id in files that were already handled
         files_had.insert(filename_without_ext);
 
+        // We need an entity in a world model to run perception on
         ed::EntityConstPtr e;
         ed::WorldModel wm;
 
+        // Add measurement to entity in world model using update request
         if (tue::filesystem::Path(filename_without_ext + ".json").exists())
         {
             ed::UpdateRequest update_req;
@@ -221,10 +239,7 @@ int main(int argc, char **argv)
 //        if (e->lastMeasurement())
 //            showMeasurement(*e->lastMeasurement());
 
-//        std::cout << "\n\n------------------------------------------------------------" << std::endl;
-//        std::cout << "    " << filename.withoutExtension() << std::endl;
-//        std::cout << "------------------------------------------------------------" << std::endl << std::endl;
-
+        // Create and configure perception worker input and output
         ed::perception::WorkerInput input;
         input.entity = e;
 
@@ -232,18 +247,15 @@ int main(int argc, char **argv)
         tue::Configuration result;
         output.data = result;
 
+        // Set prior score of "unknown" entry in distribution
         input.type_distribution.setUnknownScore(plugin.unknown_probability_prior());
+
         // Add all possible model types to the type distribution
         for(std::vector<std::string>::const_iterator it = plugin.model_list().begin(); it != plugin.model_list().end(); ++it)
             input.type_distribution.setScore(*it, (1.0 - plugin.unknown_probability_prior()) / plugin.model_list().size());
 
-//        input.type_distribution.setUnknownScore(0.01); // TODO: magic number (probability that an object you encounter is unknown (not in the model list))
-
-//        input.type_distribution.normalize();
-
-
+        // Loop through perception modules
         const std::vector<boost::shared_ptr<ed::perception::Module> >& modules = plugin.perception_modules();
-
         for(std::vector<boost::shared_ptr<ed::perception::Module> >::const_iterator it = modules.begin(); it != modules.end(); ++it)
         {
             const boost::shared_ptr<ed::perception::Module>& module = *it;
@@ -251,8 +263,10 @@ int main(int argc, char **argv)
             // Clear type distribution update
             output.type_update = ed::perception::CategoricalDistribution();
 
+            // Process current module
             module->process(input, output);
 
+            // Normalize output distribution
             output.type_update.normalize();
 
 //            std::cout << module->name() << ":\n\t" << output.type_update << "\n" << std::endl;
@@ -261,15 +275,13 @@ int main(int argc, char **argv)
             input.type_distribution.update(output.type_update);
         }
 
-//        std::cout << "Total: \n\t" << input.type_distribution << std::endl;
-//        std::cout << std::endl;
+        std::cout << "Total: \n\t" << input.type_distribution << std::endl;
+        std::cout << std::endl;
 
-        // print perception result
-//        std::cout << result << std::endl;
-
+        // Add perception result for current measurement to confusion matrix using the final type distribution and the ground truth
         cm.addResult(input.type_distribution,truth);
 
-        std::string max_type;
+//        std::string max_type;
 //        double max_score;
 //        if (input.type_distribution.getMaximum(max_type, max_score) && max_score > input.type_distribution.getUnknownScore())
 //            std::cout << "Expected type: " << max_type << " (probability = " << max_score << ")" << std::endl;
@@ -281,6 +293,7 @@ int main(int argc, char **argv)
 //        cv::waitKey();
     }
 
+    // Print confusion matrix
     cm.print();
 
     if (n_measurements == 0)
