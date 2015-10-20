@@ -35,14 +35,12 @@ public:
     ConfusionMatrix(std::vector<std::string> options)
     {
         options_ = options;
-        mat_ = std::vector<float>(options.size()*options.size(),0.0);
+        mat_ = std::vector<int>(options.size()*options.size(),0.0);
+        maximum_ = 0;
     }
 
     void print()
     {
-//        printf("%-25s%-20s%-10s%-10s%-10s\n", "Name", "Title", "Gross", "Tax", "Net");
-//        printf("%-25s%-20s%-10.2f%-10.2f%-10.2f\n", name.c_str(), title.c_str(), gross, tax, net);
-
         for (std::vector<std::string>::const_iterator it = options_.begin(); it != options_.end(); it++ )
         {
             printf("%-15s", it->c_str());
@@ -52,9 +50,9 @@ public:
 
         int i = 0, j = 0; // column and row, respectively
 
-        for (std::vector<float>::const_iterator it = mat_.begin(); it != mat_.end(); it++ )
+        for (std::vector<int>::const_iterator it = mat_.begin(); it != mat_.end(); it++ )
         {
-            printf("%-15f", *it);
+            printf("%-15i", *it);
 
             if ( i == options_.size() - 1 )
             {
@@ -67,6 +65,42 @@ public:
         }
     }
 
+    cv::Mat toCvMat(int resize_factor)
+    {
+        unsigned int column = 0, row = 0;
+        cv::Mat mat = cv::Mat(options_.size(), options_.size(), CV_16UC1, cv::Scalar(0));
+        for ( std::vector<int>::iterator it = mat_.begin(); it != mat_.end(); it++ )
+        {
+            if ( *it > 0 )
+            {
+                std::cout << "Putting something in the image at (" << row << "," << column << ")" << std::endl;
+                mat.at<unsigned short int>(row,column) = *it;
+            }
+
+            if ( column == options_.size()-1 )
+            {
+                row++;
+                column = 0;
+            }
+            else
+                column++;
+        }
+
+        std::cout << mat << std::endl;
+
+        cv::Mat dst;
+
+        cv::resize(mat,dst,cv::Size(0,0),resize_factor,resize_factor,cv::INTER_NEAREST);
+
+        for ( int i = 0; i < options_.size(); i++ )
+        {
+            cv::line(dst,cv::Point(0,resize_factor*i),cv::Point(resize_factor*options_.size(),resize_factor*i),cv::Scalar(maximum_));
+            cv::line(dst,cv::Point(resize_factor*i,0),cv::Point(resize_factor*i,resize_factor*options_.size()),cv::Scalar(maximum_));
+        }
+
+        return dst;
+    }
+
     void addResult(const ed::perception::CategoricalDistribution& dstr, const std::string& cat)
     {
         std::string label;
@@ -74,6 +108,9 @@ public:
         int labeli = -1, cati = -1;
 
         dstr.getMaximum(label,score);
+
+        std::cout << "Ground truth: " << cat << std::endl;
+        std::cout << "Perc. result: " << label << std::endl;
 
         for ( int i = 0; i < options_.size(); i++ )
         {
@@ -94,38 +131,35 @@ public:
             return;
         }
 
+        std::cout << "Adding result at gt and res indices " << cati << " and " << labeli << std::endl;
+
         mat_[cati*options_.size()+labeli]++;
+        if ( mat_[cati*options_.size()+labeli] > maximum_ )
+            maximum_ = mat_[cati*options_.size()+labeli];
+    }
+
+    int size()
+    {
+        return options_.size();
+    }
+
+    int getMaximum()
+    {
+        return maximum_;
     }
 
 private:
-    std::vector<float> mat_;
+    std::vector<int> mat_;
     std::vector<std::string> options_;
+    int maximum_;
 };
-
-// ----------------------------------------------------------------------------------------------------
-
-void showMeasurement(const ed::Measurement& msr)
-{
-    const cv::Mat& rgb_image = msr.image()->getRGBImage();
-    const cv::Mat& depth_image = msr.image()->getDepthImage();
-
-    cv::Mat masked_rgb_image(rgb_image.rows, rgb_image.cols, CV_8UC3, cv::Scalar(0, 0, 0));
-    cv::Mat masked_depth_image(depth_image.rows, depth_image.cols, depth_image.type(), 0.0);
-
-    for(ed::ImageMask::const_iterator it = msr.imageMask().begin(rgb_image.cols); it != msr.imageMask().end(); ++it)
-        masked_rgb_image.at<cv::Vec3b>(*it) = rgb_image.at<cv::Vec3b>(*it);
-
-    for(ed::ImageMask::const_iterator it = msr.imageMask().begin(depth_image.cols); it != msr.imageMask().end(); ++it)
-        masked_depth_image.at<float>(*it) = depth_image.at<float>(*it);
-
-    cv::imshow("Measurement: depth", masked_depth_image / 8);
-    cv::imshow("Measurement: rgb", masked_rgb_image);
-}
 
 // ----------------------------------------------------------------------------------------------------
 
 int main(int argc, char **argv)
 {
+
+    int resize_factor = 20;
 
     if (argc < 3)
     {
@@ -236,9 +270,6 @@ int main(int argc, char **argv)
         if (!e)
             continue;
 
-//        if (e->lastMeasurement())
-//            showMeasurement(*e->lastMeasurement());
-
         // Create and configure perception worker input and output
         ed::perception::WorkerInput input;
         input.entity = e;
@@ -269,8 +300,6 @@ int main(int argc, char **argv)
             // Normalize output distribution
             output.type_update.normalize();
 
-//            std::cout << module->name() << ":\n\t" << output.type_update << "\n" << std::endl;
-
             // Update total type distribution
             input.type_distribution.update(output.type_update);
         }
@@ -281,17 +310,16 @@ int main(int argc, char **argv)
         // Add perception result for current measurement to confusion matrix using the final type distribution and the ground truth
         cm.addResult(input.type_distribution,truth);
 
-//        std::string max_type;
-//        double max_score;
-//        if (input.type_distribution.getMaximum(max_type, max_score) && max_score > input.type_distribution.getUnknownScore())
-//            std::cout << "Expected type: " << max_type << " (probability = " << max_score << ")" << std::endl;
-//        else
-//            std::cout << "Unknown entity (probability = " << input.type_distribution.getUnknownScore() << ")" << std::endl;
-
         ++n_measurements;
-
-//        cv::waitKey();
     }
+
+    cv::Mat mat = cm.toCvMat(resize_factor);
+
+    std::cout << "Size is " << cm.size() <<   std::endl;
+
+    cv::imshow("Confusion matrix", mat*int(65535/cm.getMaximum()));
+
+    cv::waitKey();
 
     // Print confusion matrix
     cm.print();
