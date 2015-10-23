@@ -18,6 +18,14 @@
 
 #include <opencv2/highgui/highgui.hpp>
 
+// Meta-data read / write
+#include <tue/config/read.h>
+#include <tue/config/write.h>
+#include <tue/config/reader.h>
+#include <tue/config/writer.h>
+#include <tue/config/reader_writer.h>
+#include <tue/config/data_pointer.h>
+
 int CIRCLE_RADIUS = 6;
 double FONT_SIZE = 1.0;
 
@@ -25,6 +33,8 @@ unsigned int INDEX = 0;
 unsigned int TOTAL;
 
 std::string WINDOW_NAME = "annotation_gui";
+
+// ---------------------------------------------------------------------------------------------
 
 struct Annotation
 {
@@ -36,19 +46,22 @@ struct Annotation
     double py;
 };
 
+// ---------------------------------------------------------------------------------------------
+
 struct AnnotationData
 {
     std::string filename;
-    std::string json;
+//    std::string json;
+    tue::config::DataPointer meta_data;
     rgbd::ImagePtr image;
     std::vector<Annotation> annotations;
 
     void clear()
     {
         filename = "";
-        json = "";
         image = rgbd::ImagePtr();
         annotations.clear();
+        meta_data = tue::config::DataPointer();
     }
 } ANNOTATION_INSTANCE;
 
@@ -76,35 +89,35 @@ void redraw()
     cv::imshow(WINDOW_NAME, draw_img);
 }
 
+// ----------------------------------------------------------------------------------------------------
+
 void write()
 {
-    ANNOTATION_INSTANCE.json[ANNOTATION_INSTANCE.json.size() - 1] = ',';
+    // Temporarily make new data containing the annotations. If we would directly add to the existing meta-data
+    // we would add the existing annotations *again*. Now, we will completely overwrite them.
+    tue::config::DataPointer data;
 
-    std::ofstream f_out;
-    f_out.open(ANNOTATION_INSTANCE.filename.c_str());
-    f_out << ANNOTATION_INSTANCE.json;
+    tue::config::Writer w(data);
 
-    std::stringstream ss;
-
-    ed::io::JSONWriter w(ss);
     w.writeArray("annotations");
     for (std::vector<Annotation>::const_iterator it = ANNOTATION_INSTANCE.annotations.begin(); it != ANNOTATION_INSTANCE.annotations.end(); ++it)
     {
         w.addArrayItem();
         const Annotation& a = *it;
-        w.writeValue("label", a.label);
-        w.writeValue("px", a.px);
-        w.writeValue("py", a.py);
+        w.setValue("label", a.label);
+        w.setValue("px", a.px);
+        w.setValue("py", a.py);
         w.endArrayItem();
     }
     w.endArray();
 
-    w.finish();
+    // Add the new annotations to the existing meta data (complete overwriting the annotations array)
+    ANNOTATION_INSTANCE.meta_data.add(data);
 
-    f_out << ss.str().substr(1, ss.str().size() - 2);
-
-    f_out << "}";
+    tue::config::toFile(ANNOTATION_INSTANCE.filename, ANNOTATION_INSTANCE.meta_data, tue::config::JSON, 0);
 }
+
+// ----------------------------------------------------------------------------------------------------
 
 void CallBackFunc(int event, int x, int y, int flags, void* userdata)
 {
@@ -184,30 +197,35 @@ rgbd::ImagePtr readRGBDImage(const std::string& filename)
 // ---------------------------------------------------------------------------------------------
 
 bool load(const std::string& filename)
-{
+{    
+    //! 1) Clear current annotation
     ANNOTATION_INSTANCE.clear();
 
-    //! 1) Open the file
-    std::ifstream f_in;
-    f_in.open(filename.c_str());
-    if (!f_in.is_open())
+
+    //! 2) Parse meta-data file
+    try
     {
-        QMessageBox mbox;
-        mbox.setText(QString::fromStdString("Could not open '" + filename + "'."));
-        mbox.exec();
+        ANNOTATION_INSTANCE.meta_data = tue::config::fromFile(filename);
+    }
+    catch (tue::config::ParseException& e)
+    {
+        std::cout << "Could not open '" << filename << "'.\n\n" << e.what() << std::endl;
+
+//        QMessageBox mbox;
+//        mbox.setText(QString::fromStdString("Could not open '" + filename + "'.\n\n" + e.what()));
+//        mbox.exec();
         return false;
     }
+
+//    tue::config::toStream(std::cout, ANNOTATION_INSTANCE.meta_data, tue::config::JSON, 2);
+
     ANNOTATION_INSTANCE.filename = filename;
 
-    //! 2) To Json
-    std::stringstream buffer;
-    buffer << f_in.rdbuf();
-    ANNOTATION_INSTANCE.json = buffer.str();
-    ed::io::JSONReader r(ANNOTATION_INSTANCE.json.c_str());
+    tue::config::ReaderWriter r(ANNOTATION_INSTANCE.meta_data);
 
     //! 3) Read image
     std::string rgbd_filename;
-    if (r.readValue("rgbd_filename", rgbd_filename))
+    if (r.value("rgbd_filename", rgbd_filename))
     {
         std::string base_path = tue::filesystem::Path(ANNOTATION_INSTANCE.filename).parentPath().string();
 
@@ -236,12 +254,18 @@ bool load(const std::string& filename)
         {
             ANNOTATION_INSTANCE.annotations.push_back(Annotation());
             Annotation& a = ANNOTATION_INSTANCE.annotations.back();
-            r.readValue("label", a.label);
-            r.readValue("px", a.px);
-            r.readValue("py", a.py);
+            r.value("label", a.label);
+            r.value("px", a.px);
+            r.value("py", a.py);
         }
 
         r.endArray();
+    }
+
+    if (r.hasError())
+    {
+        std::cout << "Error while reading file '" << filename << "':\n\n" << r.error() << std::endl;
+        return false;
     }
 
     return true;
@@ -255,10 +279,6 @@ char show()
     cv::setMouseCallback(WINDOW_NAME, CallBackFunc, NULL);
     return cv::waitKey();
 }
-
-// ---------------------------------------------------------------------------------------------
-
-
 
 // ---------------------------------------------------------------------------------------------
 
@@ -287,39 +307,85 @@ int main(int argc, char** argv)
             filenames.push_back(filename.string());
 
     TOTAL = filenames.size();
-    if (TOTAL > 0)
-    {
-        QMessageBox intro;
-        intro.setText(" == Annotation tool == \n\n Usage:\n - Click to annotate\n - Click on an annotation to modify or delete the annotation\n - Use the left/right arrow keys to browse\n - Escape to exit");
-        intro.exec();
-
-        for (;;)
-        {
-            if (!load(filenames[INDEX]))
-                break;
-
-            char key = show();
-
-            if (key == 81) { //left
-                INDEX = (INDEX == 0) ? 0 : INDEX-1;
-            }
-            else if (key == 83) { //right
-                INDEX = (INDEX == filenames.size()-1) ? filenames.size()-1 : INDEX+1;
-            }
-            else if (key == 27 || key == -1) { // escape
-                break;
-            }
-        }
-
-        QMessageBox mbox;
-        mbox.setText("Thanks for using this awesome tool!");
-        mbox.exec();
-    }
-    else
+    if (TOTAL == 0)
     {
         QMessageBox mbox;
         mbox.setText(QString::fromStdString("No .json files found in directory " + path));
         mbox.exec();
+        return 0;
+    }
+    std::cout << " == Annotation tool == \n\n Usage:\n - Click to annotate\n - Click on an annotation to modify or delete the annotation\n - Use the left/right arrow keys to browse\n - Escape to exit" << std::endl;
+
+    //        QMessageBox intro;
+    //        intro.setText(" == Annotation tool == \n\n Usage:\n - Click to annotate\n - Click on an annotation to modify or delete the annotation\n - Use the left/right arrow keys to browse\n - Escape to exit");
+    //        intro.exec();
+
+    // Load first valid file
+
+    while(!load(filenames[INDEX]))
+    {
+        ++INDEX;
+        if (INDEX >= TOTAL)
+        {
+            QMessageBox mbox;
+            mbox.setText(QString::fromStdString("No valid meta-data files found in directory " + path));
+            mbox.exec();
+            return 0;
+        }
+    }
+
+    for (;;)
+    {
+        char key = show();
+
+        if (key == 81) // left
+        {
+            if (INDEX > 0)
+            {
+                int new_index = INDEX - 1;
+                while(true)
+                {
+                    if (load(filenames[new_index]))
+                    {
+                        INDEX = new_index;
+                        break;
+                    }
+
+                    --new_index;
+                    if (new_index < 0)
+                    {
+                        load(filenames[INDEX]);
+                        break;
+                    }
+                }
+            }
+        }
+        else if (key == 83) // right
+        {
+            if (INDEX + 1 < TOTAL)
+            {
+                int new_index = INDEX + 1;
+                while(true)
+                {
+                    if (load(filenames[new_index]))
+                    {
+                        INDEX = new_index;
+                        break;
+                    }
+
+                    ++new_index;
+                    if (new_index >= TOTAL)
+                    {
+                        load(filenames[INDEX]);
+                        break;
+                    }
+                }
+            }
+        }
+        else if (key == 27 || key == -1 || key == 'q')  // escape
+        {
+            break;
+        }
     }
 
     return 0;
