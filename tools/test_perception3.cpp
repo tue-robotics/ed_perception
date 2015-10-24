@@ -41,7 +41,7 @@ public:
     ConfusionMatrix(std::vector<std::string> options)
     {
         options_ = options;
-        mat_ = std::vector<int>(options.size()*options.size(),0.0);
+        mat_ = std::vector<int>((options.size()+1)*options.size(),0.0);
         maximum_ = 0;
     }
 
@@ -56,7 +56,7 @@ public:
         {
             printf("%-15s", it->c_str());
         }
-
+        printf("%-15s", "unknown");
         printf("\n");
 
         int i = 0, j = 0; // column and row, respectively
@@ -65,7 +65,7 @@ public:
         {
             printf("%-15i", *it);
 
-            if ( i == options_.size() - 1 )
+            if ( i == options_.size() )
             {
                 printf("\n");
                 i = 0;
@@ -79,7 +79,7 @@ public:
     cv::Mat toCvMat(int factor)
     {
         unsigned int column = 0, row = 0;
-        cv::Mat mat = cv::Mat(options_.size(), options_.size(), CV_64FC3, cv::Scalar(0.0,0.0,0.0));
+        cv::Mat mat = cv::Mat(options_.size(), options_.size()+1, CV_64FC3, cv::Scalar(0.0,0.0,0.0));
         for ( std::vector<int>::iterator it = mat_.begin(); it != mat_.end(); it++ )
         {
             if ( *it > 0 )
@@ -93,7 +93,7 @@ public:
 
             }
 
-            if ( column == options_.size()-1 )
+            if ( column == options_.size() )
             {
                 row++;
                 column = 0;
@@ -106,9 +106,9 @@ public:
 
         cv::resize(mat,dst,cv::Size(0,0),factor,factor,cv::INTER_NEAREST);
 
-        for ( int i = 0; i < options_.size(); i++ )
+        for ( int i = 0; i < options_.size()+1; i++ )
         {
-            cv::line(dst,cv::Point(0,factor*i),cv::Point(factor*options_.size(),factor*i),cv::Scalar(.2,.2,.2));
+            cv::line(dst,cv::Point(0,factor*i),cv::Point(factor*(options_.size()+1),factor*i),cv::Scalar(.2,.2,.2));
             cv::line(dst,cv::Point(factor*i,0),cv::Point(factor*i,factor*options_.size()),cv::Scalar(.2,.2,.2));
         }
 
@@ -131,6 +131,9 @@ public:
                 cati = i;
         }
 
+        if ( dstr.getUnknownScore() > score )
+            labeli = options_.size();
+
         if (labeli == -1)
         {
             std::cout << "Item with maximum score is not one of the options" << std::endl;
@@ -142,9 +145,9 @@ public:
             return;
         }
 
-        mat_[cati*options_.size()+labeli]++;
-        if ( mat_[cati*options_.size()+labeli] > maximum_ )
-            maximum_ = mat_[cati*options_.size()+labeli];
+        mat_[cati*(options_.size()+1)+labeli]++;
+        if ( mat_[cati*(options_.size()+1)+labeli] > maximum_ )
+            maximum_ = mat_[cati*(options_.size()+1)+labeli];
     }
 
     int size()
@@ -159,12 +162,14 @@ public:
 
     std::vector<std::string> getOptions()
     {
-        return options_;
+        std::vector<std::string> options(options_);
+        options.push_back("unknown");
+        return options;
     }
 
     int at(int result, int truth )
     {
-        return mat_[truth*options_.size()+result];
+        return mat_[truth*(options_.size()+1)+result];
     }
 
 private:
@@ -346,6 +351,15 @@ int main(int argc, char **argv)
 
             // Update total type distribution
             input.type_distribution.update(output.type_update);
+
+            std::string result_name;
+            double d;
+            output.type_update.getMaximum(result_name,d);
+            if ( result_name != truth )
+            {
+                std::cout << module->name() << ":\nground truth: " << truth << "\nresult: " << result_name << "\n" << output.type_update << std::endl << std::endl;
+            }
+
         }
 
         std::string result_name;
