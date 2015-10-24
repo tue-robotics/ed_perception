@@ -108,8 +108,8 @@ public:
 
         for ( int i = 0; i < options_.size(); i++ )
         {
-            cv::line(dst,cv::Point(0,factor*i),cv::Point(factor*options_.size(),factor*i),cv::Scalar(1,1,1));
-            cv::line(dst,cv::Point(factor*i,0),cv::Point(factor*i,factor*options_.size()),cv::Scalar(1,1,1));
+            cv::line(dst,cv::Point(0,factor*i),cv::Point(factor*options_.size(),factor*i),cv::Scalar(.2,.2,.2));
+            cv::line(dst,cv::Point(factor*i,0),cv::Point(factor*i,factor*options_.size()),cv::Scalar(.2,.2,.2));
         }
 
         return dst;
@@ -122,9 +122,6 @@ public:
         int labeli = -1, cati = -1;
 
         dstr.getMaximum(label,score);
-
-        std::cout << "Ground truth: " << cat << std::endl;
-        std::cout << "Perc. result: " << label << std::endl;
 
         for ( int i = 0; i < options_.size(); i++ )
         {
@@ -144,8 +141,6 @@ public:
             std::cout << "Ground truth item not one of the options" << std::endl;
             return;
         }
-
-        std::cout << "Adding result at gt and res indices " << cati << " and " << labeli << std::endl;
 
         mat_[cati*options_.size()+labeli]++;
         if ( mat_[cati*options_.size()+labeli] > maximum_ )
@@ -201,8 +196,8 @@ void onMouse(int event, int x, int y, int flags, void* param)
 
     sprintf(text, "Perception result: %s, ground truth: %s.", result.c_str(), gtruth.c_str());
     sprintf(counttext, "Count=%i", count);
-    cv::putText(img2, text, cv::Point(5,15), cv::FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0));
-    cv::putText(img2, counttext, cv::Point(5,30), cv::FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0));
+    cv::putText(img2, text, cv::Point(45,15), cv::FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0));
+    cv::putText(img2, counttext, cv::Point(45,35), cv::FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0));
     cv::imshow("Confusion matrix", img2);
 }
 
@@ -353,19 +348,27 @@ int main(int argc, char **argv)
             input.type_distribution.update(output.type_update);
         }
 
-        std::cout << "Total: \n\t" << input.type_distribution << std::endl;
-        std::cout << std::endl;
+        std::string result_name;
+        double d;
+
+        input.type_distribution.getMaximum(result_name,d);
+        if ( result_name != truth )
+        {
+            std::cout << "Total: \n\t" << input.type_distribution << std::endl;
+            std::cout << std::endl;
+        }
 
         // Add perception result for current measurement to confusion matrix using the final type distribution and the ground truth
         cm.addResult(input.type_distribution,truth);
 
         ++n_measurements;
 
-        cv::namedWindow("Confusion matrix");
-        cv::setMouseCallback("Confusion matrix", onMouse, &cm);
-        cv::imshow("Confusion matrix", cm.toCvMat(resize_factor));
-        cv::waitKey();
     }
+
+    cv::namedWindow("Confusion matrix");
+    cv::setMouseCallback("Confusion matrix", onMouse, &cm);
+    cv::imshow("Confusion matrix", cm.toCvMat(resize_factor));
+    cv::waitKey();
 
     if (n_measurements == 0)
         std::cout << "No measurements found." << std::endl;
