@@ -29,137 +29,28 @@
 
 // ----------------------------------------------------------------------------------------------------
 
-class ConfusionMatrix
+void showMeasurement(const ed::Measurement& msr)
 {
-public:
-    ConfusionMatrix(std::vector<std::string> options)
-    {
-        options_ = options;
-        mat_ = std::vector<int>(options.size()*options.size(),0.0);
-        maximum_ = 0;
-    }
+    const cv::Mat& rgb_image = msr.image()->getRGBImage();
+    const cv::Mat& depth_image = msr.image()->getDepthImage();
 
-    void print()
-    {
-        for (std::vector<std::string>::const_iterator it = options_.begin(); it != options_.end(); it++ )
-        {
-            printf("%-15s", it->c_str());
-        }
+    cv::Mat masked_rgb_image(rgb_image.rows, rgb_image.cols, CV_8UC3, cv::Scalar(0, 0, 0));
+    cv::Mat masked_depth_image(depth_image.rows, depth_image.cols, depth_image.type(), 0.0);
 
-        printf("\n");
+    for(ed::ImageMask::const_iterator it = msr.imageMask().begin(rgb_image.cols); it != msr.imageMask().end(); ++it)
+        masked_rgb_image.at<cv::Vec3b>(*it) = rgb_image.at<cv::Vec3b>(*it);
 
-        int i = 0, j = 0; // column and row, respectively
+    for(ed::ImageMask::const_iterator it = msr.imageMask().begin(depth_image.cols); it != msr.imageMask().end(); ++it)
+        masked_depth_image.at<float>(*it) = depth_image.at<float>(*it);
 
-        for (std::vector<int>::const_iterator it = mat_.begin(); it != mat_.end(); it++ )
-        {
-            printf("%-15i", *it);
-
-            if ( i == options_.size() - 1 )
-            {
-                printf("\n");
-                i = 0;
-                j++;
-            }
-            else
-                i++;
-        }
-    }
-
-    cv::Mat toCvMat(int resize_factor)
-    {
-        unsigned int column = 0, row = 0;
-        cv::Mat mat = cv::Mat(options_.size(), options_.size(), CV_16UC1, cv::Scalar(0));
-        for ( std::vector<int>::iterator it = mat_.begin(); it != mat_.end(); it++ )
-        {
-            if ( *it > 0 )
-            {
-                std::cout << "Putting something in the image at (" << row << "," << column << ")" << std::endl;
-                mat.at<unsigned short int>(row,column) = *it;
-            }
-
-            if ( column == options_.size()-1 )
-            {
-                row++;
-                column = 0;
-            }
-            else
-                column++;
-        }
-
-        std::cout << mat << std::endl;
-
-        cv::Mat dst;
-
-        cv::resize(mat,dst,cv::Size(0,0),resize_factor,resize_factor,cv::INTER_NEAREST);
-
-        for ( int i = 0; i < options_.size(); i++ )
-        {
-            cv::line(dst,cv::Point(0,resize_factor*i),cv::Point(resize_factor*options_.size(),resize_factor*i),cv::Scalar(maximum_));
-            cv::line(dst,cv::Point(resize_factor*i,0),cv::Point(resize_factor*i,resize_factor*options_.size()),cv::Scalar(maximum_));
-        }
-
-        return dst;
-    }
-
-    void addResult(const ed::perception::CategoricalDistribution& dstr, const std::string& cat)
-    {
-        std::string label;
-        double score;
-        int labeli = -1, cati = -1;
-
-        dstr.getMaximum(label,score);
-
-        std::cout << "Ground truth: " << cat << std::endl;
-        std::cout << "Perc. result: " << label << std::endl;
-
-        for ( int i = 0; i < options_.size(); i++ )
-        {
-            if (options_[i] == label)
-                labeli = i;
-            if (options_[i] == cat)
-                cati = i;
-        }
-
-        if (labeli == -1)
-        {
-            std::cout << "Item with maximum score is not one of the options" << std::endl;
-            return;
-        }
-        if (cati == -1)
-        {
-            std::cout << "Ground truth item not one of the options" << std::endl;
-            return;
-        }
-
-        std::cout << "Adding result at gt and res indices " << cati << " and " << labeli << std::endl;
-
-        mat_[cati*options_.size()+labeli]++;
-        if ( mat_[cati*options_.size()+labeli] > maximum_ )
-            maximum_ = mat_[cati*options_.size()+labeli];
-    }
-
-    int size()
-    {
-        return options_.size();
-    }
-
-    int getMaximum()
-    {
-        return maximum_;
-    }
-
-private:
-    std::vector<int> mat_;
-    std::vector<std::string> options_;
-    int maximum_;
-};
+    cv::imshow("Measurement: depth", masked_depth_image / 8);
+    cv::imshow("Measurement: rgb", masked_rgb_image);
+}
 
 // ----------------------------------------------------------------------------------------------------
 
 int main(int argc, char **argv)
 {
-
-    int resize_factor = 20;
 
     if (argc < 3)
     {
@@ -214,8 +105,6 @@ int main(int argc, char **argv)
 
     // - - - - -
 
-    ConfusionMatrix cm(plugin.model_list());
-
     tue::filesystem::Crawler crawler(measurement_dir);
 
     std::set<std::string> files_had;
@@ -224,24 +113,15 @@ int main(int argc, char **argv)
     tue::filesystem::Path filename;
     while(crawler.nextPath(filename))
     {
-        // Get measurement id
         std::string filename_without_ext = filename.withoutExtension().string();
-
-        // Get ground truth from folder name of containing file
-        std::string truth = filename.parentPath().filename();
-
-        // If file already done, continue to next file
         if (files_had.find(filename_without_ext) != files_had.end())
             continue;
 
-        // Insert measurement id in files that were already handled
         files_had.insert(filename_without_ext);
 
-        // We need an entity in a world model to run perception on
         ed::EntityConstPtr e;
         ed::WorldModel wm;
 
-        // Add measurement to entity in world model using update request
         if (tue::filesystem::Path(filename_without_ext + ".json").exists())
         {
             ed::UpdateRequest update_req;
@@ -270,7 +150,13 @@ int main(int argc, char **argv)
         if (!e)
             continue;
 
-        // Create and configure perception worker input and output
+        if (e->lastMeasurement())
+            showMeasurement(*e->lastMeasurement());
+
+        std::cout << "\n\n------------------------------------------------------------" << std::endl;
+        std::cout << "    " << filename.withoutExtension() << std::endl;
+        std::cout << "------------------------------------------------------------" << std::endl << std::endl;
+
         ed::perception::WorkerInput input;
         input.entity = e;
 
@@ -278,15 +164,18 @@ int main(int argc, char **argv)
         tue::Configuration result;
         output.data = result;
 
-        // Set prior score of "unknown" entry in distribution
         input.type_distribution.setUnknownScore(plugin.unknown_probability_prior());
-
         // Add all possible model types to the type distribution
         for(std::vector<std::string>::const_iterator it = plugin.model_list().begin(); it != plugin.model_list().end(); ++it)
             input.type_distribution.setScore(*it, (1.0 - plugin.unknown_probability_prior()) / plugin.model_list().size());
 
-        // Loop through perception modules
+//        input.type_distribution.setUnknownScore(0.01); // TODO: magic number (probability that an object you encounter is unknown (not in the model list))
+
+//        input.type_distribution.normalize();
+
+
         const std::vector<boost::shared_ptr<ed::perception::Module> >& modules = plugin.perception_modules();
+
         for(std::vector<boost::shared_ptr<ed::perception::Module> >::const_iterator it = modules.begin(); it != modules.end(); ++it)
         {
             const boost::shared_ptr<ed::perception::Module>& module = *it;
@@ -294,11 +183,11 @@ int main(int argc, char **argv)
             // Clear type distribution update
             output.type_update = ed::perception::CategoricalDistribution();
 
-            // Process current module
             module->process(input, output);
 
-            // Normalize output distribution
             output.type_update.normalize();
+
+            std::cout << module->name() << ":\n\t" << output.type_update << "\n" << std::endl;
 
             // Update total type distribution
             input.type_distribution.update(output.type_update);
@@ -307,22 +196,20 @@ int main(int argc, char **argv)
         std::cout << "Total: \n\t" << input.type_distribution << std::endl;
         std::cout << std::endl;
 
-        // Add perception result for current measurement to confusion matrix using the final type distribution and the ground truth
-        cm.addResult(input.type_distribution,truth);
+        // print perception result
+        std::cout << result << std::endl;
+
+        std::string max_type;
+        double max_score;
+        if (input.type_distribution.getMaximum(max_type, max_score) && max_score > input.type_distribution.getUnknownScore())
+            std::cout << "Expected type: " << max_type << " (probability = " << max_score << ")" << std::endl;
+        else
+            std::cout << "Unknown entity (probability = " << input.type_distribution.getUnknownScore() << ")" << std::endl;
 
         ++n_measurements;
+
+        cv::waitKey();
     }
-
-    cv::Mat mat = cm.toCvMat(resize_factor);
-
-    std::cout << "Size is " << cm.size() <<   std::endl;
-
-    cv::imshow("Confusion matrix", mat*int(65535/cm.getMaximum()));
-
-    cv::waitKey();
-
-    // Print confusion matrix
-    cm.print();
 
     if (n_measurements == 0)
         std::cout << "No measurements found." << std::endl;
