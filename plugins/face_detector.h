@@ -78,6 +78,19 @@ public:
 
     void configure(tue::Configuration config);
 
+
+    // New interface
+
+    ed::perception::CategoricalDistribution classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior) const {}
+
+    void addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value) {}
+
+    void train() {}
+
+    void loadRecognitionData(const std::string& path) {}
+
+    void saveRecognitionData(const std::string& path) const {}
+
 };
 
 #endif
