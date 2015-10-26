@@ -146,11 +146,11 @@ add_library(face_detector
 )
 target_link_libraries(face_detector shared_methods ${catkin_LIBRARIES})
 
-add_library(face_recognition_ed
-    plugins/face_recognition.cpp
-    plugins/face_recognition.h
-)
-target_link_libraries(face_recognition_ed shared_methods shared_methods ${catkin_LIBRARIES})
+#add_library(face_recognition_ed
+#    plugins/face_recognition.cpp
+#    plugins/face_recognition.h
+#)
+#target_link_libraries(face_recognition_ed shared_methods shared_methods ${catkin_LIBRARIES})
 
 add_library(open_biometrics_ed
     plugins/open_biometrics_ed.cpp

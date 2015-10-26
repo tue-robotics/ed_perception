@@ -12,14 +12,18 @@
 #include <rgbd/Image.h>
 #include <rgbd/View.h>
 
-#include "../shared_methods.h"
+#include <tue/config/write.h>
+#include <tue/config/writer.h>
+#include <tue/config/read.h>
+#include <tue/config/reader.h>
 
+// ---------------------------------------------------------------------------------------------------
 
 ColorMatcher::ColorMatcher() :
     ed::perception::Module("color_matcher"),
-    color_table_(ColorNameTable::instance()),  // Init colorname table
     init_success_(false)
 {
+    this->registerPropertyServed("type");
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -30,7 +34,183 @@ ColorMatcher::~ColorMatcher()
 
 // ----------------------------------------------------------------------------------------------------
 
-void ColorMatcher::configure(tue::Configuration config) {
+void ColorMatcher::classify(const ed::Entity& e, const std::string& property,
+                            const ed::perception::CategoricalDistribution& prior,
+                            ed::perception::ClassificationOutput& output) const
+{
+    if (!init_success_)
+        return;
+
+    if (property != "type")
+        return;
+
+    tue::Configuration& result = output.data;
+
+    ColorHistogram color_histogram;
+    calculateHistogram(e, color_histogram);
+
+    float color_threshold = 0.1;
+
+    for(std::map<std::string, ColorHistogram>::const_iterator it = models_.begin(); it != models_.end(); ++it)
+    {
+        const std::string& model_name = it->first;
+        const ColorHistogram& model_color_histogram = it->second;
+
+        output.likelihood.setScore(model_name, 1);
+        for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
+        {
+            if (model_color_histogram[i] < color_threshold && color_histogram[i] > color_threshold)
+                output.likelihood.setScore(model_name, 0);
+        }
+    }
+
+    // Represent data (for debugging)
+    result.writeArray("colors");
+    for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
+    {
+        result.addArrayItem();
+        result.setValue("color", "color");
+        result.setValue("value", color_histogram[i]);
+        result.endArrayItem();
+    }
+    result.endArray();
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ColorMatcher::addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value)
+{
+    if (property != "type")
+        return;
+
+    ColorHistogram color_histogram;
+    calculateHistogram(e, color_histogram);
+
+    std::map<std::string, ColorHistogram>::iterator it = models_.find(value);
+    if (it == models_.end())
+    {
+        // No other training instances for this type
+        models_[value] = color_histogram;
+    }
+    else
+    {
+        ColorHistogram& model_color_histogram = it->second;
+
+        // Determine maximum for each histogram bin (i.e., determine maximum for each color)
+        for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
+            model_color_histogram[i] = std::max(model_color_histogram[i], color_histogram[i]);
+    }
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ColorMatcher::loadRecognitionData(const std::string& path)
+{
+    tue::config::DataPointer data = tue::config::fromFile(path);
+
+    tue::config::Reader r(data);
+
+    if (!r.readArray("models"))
+        return;
+
+    while(r.nextArrayItem())
+    {
+        std::string model_name;
+        if (!r.value("name", model_name))
+            continue;
+
+        ColorHistogram& model_color_histogram = models_[model_name];
+        model_color_histogram.resize(ColorNameTable::NUM_COLORS, 0);
+
+        if (r.readArray("colors"))
+        {
+            int i = 0;
+            while(r.nextArrayItem())
+            {
+                float value;
+                if (r.value("value", value))
+                    model_color_histogram[i] = value;
+                ++i;
+            }
+
+            r.endArray();
+        }
+    }
+
+    r.endArray(); // models
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ColorMatcher::saveRecognitionData(const std::string& path) const
+{
+    tue::config::Writer w;
+
+    w.writeArray("models");
+    for(std::map<std::string, ColorHistogram>::const_iterator it = models_.begin(); it != models_.end(); ++it)
+    {
+        const std::string& model_name = it->first;
+        const ColorHistogram& model_color_histogram = it->second;
+
+        w.addArrayItem();
+        w.setValue("name", model_name);
+
+        w.writeArray("colors");
+        for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
+        {
+            w.addArrayItem();
+            w.setValue("value", model_color_histogram[i]);
+            w.endArrayItem();
+        }
+        w.endArray();
+
+        w.endArrayItem();
+    }
+    w.endArray();
+
+    tue::config::toFile(path, w.data(), tue::config::YAML, 4);
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ColorMatcher::calculateHistogram(const ed::Entity& e, ColorHistogram& histogram) const
+{
+    ed::MeasurementConstPtr msr = e.lastMeasurement();
+    if (!msr)
+        return;
+
+    histogram.resize(ColorNameTable::NUM_COLORS);
+    histogram.assign(ColorNameTable::NUM_COLORS, 0);
+
+    // get color image
+    const cv::Mat& img = msr->image()->getRGBImage();
+
+    int pixel_count = 0;
+
+    for(ed::ImageMask::const_iterator it = msr->imageMask().begin(img.cols); it != msr->imageMask().end(); ++it)
+    {
+        ++pixel_count;
+        const cv::Point2i& p = *it;
+
+        // Calculate prob distribution
+        const cv::Vec3b& bgr = img.at<cv::Vec3b>(p);
+
+        const float* probs = color_table_.rgbToDistribution(bgr[2], bgr[1], bgr[0]);
+
+        for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
+            histogram[i] += probs[i];
+    }
+
+    // normalize histogram
+    for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
+        histogram[i] /= pixel_count;
+}
+
+// ----------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------
+
+void ColorMatcher::configure(tue::Configuration config)
+{
 
     if (!config.value("color_table", color_table_path_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'color_table' not found. Using default: " << color_table_path_ << std::endl;
@@ -46,12 +226,12 @@ void ColorMatcher::configure(tue::Configuration config) {
     if (!config.value("type_unknown_score", type_unknown_score_, tue::OPTIONAL))
         std::cout << "[" << module_name_ << "] " << "Parameter 'type_unknown_score' not found. Using default: " << type_unknown_score_ << std::endl;
 
-    if (debug_mode_)
-        ed::perception::cleanDebugFolder(debug_folder_);
+//    if (debug_mode_)
+//        ed::perception::cleanDebugFolder(debug_folder_);
 
     std::cout << "[" << module_name_ << "] " << "Loading color names..." << std::endl;
 
-    if (!color_table_.load_config(color_table_path_)){
+    if (!color_table_.readFromFile(color_table_path_)){
         std::cout << "[" << module_name_ << "] " << "Failed loading color names from " << color_table_path_ << std::endl;
         return;
     }
@@ -62,328 +242,5 @@ void ColorMatcher::configure(tue::Configuration config) {
 }
 
 // ----------------------------------------------------------------------------------------------------
-
-void ColorMatcher::loadConfig(const std::string& config_path) {
-
-    module_name_ = "color_matcher";
-    module_path_ = config_path;
-
-    // default values in case configure(...) is not called!
-    debug_folder_ = "/tmp/color_matcher/";
-    debug_mode_ = false;
-    color_table_path_ = config_path + "/color_names.txt";
-    type_unknown_score_ = 0.05;
-}
-
-
-// ---------------------------------------------------------------------------------------------------
-
-
-void ColorMatcher::loadModel(const std::string& model_name, const std::string& model_path)
-{
-    std::string models_folder = model_path.substr(0, model_path.find_last_of("/") - 1); // remove last slash
-    models_folder = models_folder.substr(0, models_folder.find_last_of("/"));   // remove color from path
-
-    std::string path = models_folder + "/models/" + model_name +  "/" +  model_name + ".yml";
-
-    if (loadLearning(path, model_name)){
-//        std::cout << "[" << module_name_ << "] " << "Loaded colors for " << model_name << std::endl;
-    }
-    else{
-//        std::cout << "[" << kModuleName << "] " << "Couldn not load colors for " << path << "!" << std::endl;
-    }
-}
-
-
-// ---------------------------------------------------------------------------------------------------
-
-
-void ColorMatcher::process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const
-{
-    if (!init_success_)
-        return;
-
-    const ed::EntityConstPtr& e = input.entity;
-    tue::Configuration& result = output.data;
-
-    // ---------- PREPARE MEASUREMENT ----------
-
-    // Get the best measurement from the entity
-    ed::MeasurementConstPtr msr = e->lastMeasurement();
-    if (!msr)
-        return;
-
-    // get color image
-    const cv::Mat& color_image = msr->image()->getRGBImage();
-
-    cv::Mat color_hist;
-    std::map<std::string, double> color_amount = getImageColorProbability(color_image, msr->imageMask(), color_hist);
-
-    std::map<std::string, double> hypothesis;
-    getHypothesis(color_amount, hypothesis);
-
-    // ---------- ASSERT RESULTS ----------
-
-    // create group if it doesnt exist
-    if (!result.readGroup("perception_result", tue::OPTIONAL))
-    {
-        result.writeGroup("perception_result");
-    }
-
-    result.writeGroup("color_matcher");
-
-
-    // assert colors
-    if (!color_amount.empty()){
-        result.writeArray("colors");
-        for (std::map<std::string, double>::const_iterator it = color_amount.begin(); it != color_amount.end(); ++it)
-        {
-            result.addArrayItem();
-            result.setValue("name", it->first);
-            result.setValue("value", it->second);
-            result.endArrayItem();
-        }
-        result.endArray();
-    }
-
-    // assert hypothesis
-    if (!hypothesis.empty()){
-        for (std::map<std::string, double>::const_iterator it = hypothesis.begin(); it != hypothesis.end(); ++it)
-        {
-            output.type_update.setScore(it->first, it->second);
-        }
-    }
-
-    output.type_update.setUnknownScore(type_unknown_score_);
-
-    result.endGroup();  // close color_matcher group
-    result.endGroup();  // close perception_result group
-
-
-    // ---------- DEBUG ----------
-
-//    if (debug_mode_){
-//        cv::Mat temp;
-//        ed::UUID id = ed::Entity::generateID();
-
-//        roi.copyTo(temp, roi_mask);
-
-//        cv::imwrite(debug_folder_ + id.str() + "_color_matcher_full.png", roi);
-//        cv::imwrite(debug_folder_ + id.str() + "_color_matcher_masked.png", temp);
-//    }
-}
-
-// ---------------------------------------------------------------------------------------------------
-
-std::map<std::string, double> ColorMatcher::getImageColorProbability(const cv::Mat& img, const ed::ImageMask& mask, cv::Mat& histogram) const
-{
-    std::map<std::string, double> color_count;
-    uint pixel_count = 0;
-
-    for(ed::ImageMask::const_iterator it = mask.begin(img.cols); it != mask.end(); ++it)
-    {
-        pixel_count ++;
-        const cv::Point2i& p = *it;
-
-        // Calculate prob distribution
-        const cv::Vec3b& c = img.at<cv::Vec3b>(p);
-
-        ColorNamePoint cp((float) c[2],(float) c[1],(float) c[0]);
-        std::vector<ColorProbability> probs = color_table_.getProbabilities(cp);
-
-        //            std::string highest_prob_name;
-        //            float highest_prob = 0;
-
-        for (std::vector<ColorProbability>::iterator it = probs.begin(); it != probs.end(); ++it)
-        {
-            //                if (it->probability() > highest_prob) {
-            //                    highest_prob = it->probability();
-            //                    highest_prob_name = it->name();
-            //                }
-
-            const std::string& name = it->name();
-            double prob = it->probability();
-
-            // Check if the highest prob name exists in the map
-            std::map<std::string, double>::iterator found_it = color_count.find(name);
-            if (found_it == color_count.end()) // init on 1
-                color_count[name] = prob;
-            else // +1
-                color_count[name] += prob;
-        }
-    }
-
-    // initialize histogram
-    histogram = cv::Mat::zeros(1, ColorNames::getTotalColorsNum(), CV_32FC1);
-
-    std::map<std::string, double> color_prob;
-    for (std::map<std::string, double>::const_iterator it = color_count.begin(); it != color_count.end(); ++it)
-    {
-//        std::cout << it->first << ": " << it->second / pixel_count << std::endl;
-
-        color_prob[it->first] = it->second / pixel_count;
-
-        histogram.at<float>(colorToInt(it->first)) = (double)it->second/pixel_count;
-    }
-
-    return color_prob;
-}
-
-// ----------------------------------------------------------------------------------------------------
-
-
-void ColorMatcher::getHypothesis(const std::map<std::string, double>& curr_hist, std::map<std::string, double>& hypothesis) const
-{
-    std::map<std::string, std::vector<std::map<std::string, double> > >::const_iterator model_it;
-    std::map<std::string, double>::const_iterator set_it;
-
-    double best_score;
-
-//    std::cout << "-----" << std::endl;
-
-    // iterate through all learned models
-    for(model_it = models_colors_.begin(); model_it != models_colors_.end(); ++model_it)
-    {
-        const std::string& model_name = model_it->first;
-        best_score = 0;
-
-        // iterate through all color sets
-        for (uint i = 0; i < model_it->second.size(); i++)
-        {
-            const std::map<std::string, double>& model_hist = model_it->second[i];
-
-            double score = 0;
-
-            // Compare histograms
-            for(std::map<std::string, double>::const_iterator it = curr_hist.begin(); it != curr_hist.end(); ++it)
-            {
-                std::map<std::string, double>::const_iterator it2 = model_hist.find(it->first);
-                if (it2 != model_hist.end())
-                    score += it->second * it2->second;
-            }
-
-////            cv::Mat model_hist = cv::Mat::zeros(1, ColorNames::getTotalColorsNum(), CV_32FC1);
-
-//            // fill histogram for the current color set of the model
-//            for(set_it = model_it->second[i].begin(); set_it != model_it->second[i].end(); ++set_it){
-//                model_hist.at<float>(colorToInt(set_it->first)) = set_it->second;
-//            }
-
-//            // use correlation to compare histograms
-//            score = cv::compareHist(model_hist, curr_hist, CV_COMP_CORREL);
-
-            if (best_score < score){
-                best_score = score;
-            }
-        }
-
-//        std::cout << model_name << ": " << best_score << std::endl;
-
-        // save hypothesis score, 1 is correct, 0 is incorrect, sometimes get negative dont know why
-        if (best_score > 0)
-            hypothesis.insert(std::pair<std::string, double>(model_name, best_score));
-        else
-            hypothesis[model_name] = 0.001;
-    }
-
-//    std::cout << "-----" << std::endl;
-}
-
-
-// ---------------------------------------------------------------------------------------------------
-
-std::string ColorMatcher::getHighestProbColor(std::map<std::string, double>& map) const
-{
-    double max = 0;
-    std::string max_name;
-    for (std::map<std::string, double>::const_iterator it = map.begin(); it != map.end(); ++it)
-    {
-        if (it->second > max) {
-            max = it->second;
-            max_name = it->first;
-        }
-    }
-    return max_name;
-}
-
-
-// ----------------------------------------------------------------------------------------------------
-
-bool ColorMatcher::loadLearning(std::string path, std::string model_name_not_needed)
-{
-    if (path.empty()){
-        std::cout << "[" << module_name_ << "] " << "Empty path!" << path << std::endl;
-        return false;
-    }
-
-    tue::Configuration conf;
-    double amount;
-    std::string color;
-    std::string model_name = "";
-
-    if (!conf.loadFromYAMLFile(path))       // read YAML configuration
-    {
-//        std::cout << "Could not load config file: " << path << std::endl;
-        return false;
-    }
-
-    if (!conf.readGroup("model"))       // read Model group
-    {
-        std::cout << "[" << module_name_ << "] " << "Could not find 'model' group" << std::endl;
-        return false;
-    }
-
-    if (!conf.value("name", model_name))   // read model Name
-    {
-        std::cout << "[" << module_name_ << "] " << "Could not find model name!" << std::endl;
-        return false;
-    }
-
-    if (conf.readArray("color"))    // read color array
-    {
-        std::vector<std::map<std::string, double> > color_sets;
-
-        while(conf.nextArrayItem())
-        {
-            if (conf.readArray("set"))    // read set array
-            {
-                std::map<std::string, double> set;
-                while(conf.nextArrayItem())
-                {
-                    color = "";
-                    // Iterate through all existing colors, Orange is 0, Black is 10, because...
-                    for (ColorNames::Color it_color = ColorNames::Orange; it_color <= ColorNames::Black; ++it_color)
-                    {
-                        // read the color and amount
-                        if (conf.value(colorToString(it_color), amount, tue::OPTIONAL)){
-                            color = colorToString(it_color);
-                            break;
-                        }
-                    }
-
-                    if (color.empty())
-                        std::cout << "[" << module_name_ << "] " << "Error: Unmatched color name, not good!" << std::endl;
-
-                    // add color and amount to set
-                    set.insert(std::pair<std::string, double>(color, amount));
-                }
-                conf.endArray();     // close Set array
-
-                // save the set
-                color_sets.push_back(set);
-            }
-        }
-
-        // save the sets for this model
-        models_colors_[model_name] = color_sets;
-
-        conf.endArray();     // close Color array
-    }else
-        std::cout << "[" << module_name_ << "] " << "Could not find 'size' group" << std::endl;
-
-    conf.endGroup();    // close Model group
-
-    return true;
-}
 
 ED_REGISTER_PERCEPTION_MODULE(ColorMatcher)

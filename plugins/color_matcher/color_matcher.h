@@ -17,8 +17,7 @@
 
 #include <ed/perception/module.h>
 
-using namespace ColorNames;
-
+typedef std::vector<float> ColorHistogram;
 
 class ColorMatcher : public ed::perception::Module
 {
@@ -31,28 +30,37 @@ public:
 
     void configure(tue::Configuration config);
 
-    void loadModel(const std::string& model_name, const std::string& model_path);
+    void loadModel(const std::string& model_name, const std::string& model_path) {}
 
-    void loadConfig(const std::string& config_path);
+    void loadConfig(const std::string& config_path) {}
 
-    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const;
+    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const {}
 
 
     // New interface
 
-    ed::perception::CategoricalDistribution classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior) const {}
+    void classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior,
+                  ed::perception::ClassificationOutput& output) const;
 
-    void addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value) {}
+    void addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value);
 
+    // Does nothing: training algorithm is online and doesn't need batch training
     void train() {}
 
-    void loadRecognitionData(const std::string& path) {}
+    void loadRecognitionData(const std::string& path);
 
-    void saveRecognitionData(const std::string& path) const {}
+    void saveRecognitionData(const std::string& path) const;
 
 private:
 
-    ColorNameTable& color_table_;
+    ColorNameTable color_table_;
+
+    std::map<std::string, ColorHistogram> models_;
+
+    void calculateHistogram(const ed::Entity& e, ColorHistogram& histogram) const;
+
+
+
 
     // module configuration
     bool init_success_;
@@ -64,18 +72,6 @@ private:
     std::string color_table_path_;
 
     double type_unknown_score_;
-
-    // Module methods
-    std::map<std::string, double> getImageColorProbability(const cv::Mat& img, const ed::ImageMask& mask, cv::Mat &histogram) const;
-
-    std::string getHighestProbColor(std::map<std::string, double>& map) const;
-
-    // Object colors
-    std::map<std::string, std::vector<std::map<std::string, double> > > models_colors_;
-
-    bool loadLearning(std::string path, std::string model_name);
-
-    void getHypothesis(const std::map<std::string, double>& curr_hist, std::map<std::string, double>& hypothesis) const;
 };
 
 

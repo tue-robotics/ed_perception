@@ -474,7 +474,7 @@ void FaceRecognition::getEntityHistogram(tue::Configuration config, cv::Mat& ent
     double amount;
 
     // initialize histogram
-    entity_histogram = cv::Mat::zeros(1, ColorNames::getTotalColorsNum(), CV_32FC1);
+    entity_histogram = cv::Mat::zeros(1, ColorNameTable::NUM_COLORS, CV_32FC1);
 
     // crawl through the config
     if (!config.readGroup("perception_result")) return;

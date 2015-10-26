@@ -14,6 +14,14 @@ namespace ed
 namespace perception
 {
 
+struct ClassificationOutput
+{
+    ClassificationOutput(tue::Configuration& data_) : data(data_) {}
+
+    CategoricalDistribution likelihood;
+    tue::Configuration& data;
+};
+
 class Module
 {
 
@@ -35,7 +43,7 @@ public:
     // New interface
 
     // Return the value distribution for the given entity and property
-    virtual CategoricalDistribution classify(const Entity& e, const std::string& property, const CategoricalDistribution& prior) const = 0;
+    virtual void classify(const Entity& e, const std::string& property, const CategoricalDistribution& prior, ClassificationOutput& output) const = 0;
 
     // Add a training instance for the given entity, property and property value
     virtual void addTrainingInstance(const Entity& e, const std::string& property, const std::string& value) = 0;

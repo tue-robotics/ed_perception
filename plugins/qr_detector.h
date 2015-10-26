@@ -21,7 +21,8 @@ public:
 
     // New interface
 
-    ed::perception::CategoricalDistribution classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior) const {}
+    void classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior,
+                  ed::perception::ClassificationOutput& output) const {}
 
     void addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value) {}
 
