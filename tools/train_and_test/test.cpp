@@ -10,7 +10,7 @@
 
 void usage()
 {
-    std::cout << "Usage: train-perception CONFIG-FILE IMAGE-FILE-OR-DIRECTORY" << std::endl;
+    std::cout << "Usage: test-perception CONFIG-FILE IMAGE-FILE-OR-DIRECTORY" << std::endl;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -86,13 +86,15 @@ int main(int argc, char **argv)
 
     tue::Configuration config;
     if (config.loadFromYAMLFile(argv[1]))
-        aggregator.configure(config, true);
+        aggregator.configure(config, false);
 
     if (config.hasError())
     {
         std::cout << config.error() << std::endl;
         return 1;
     }
+
+    aggregator.loadRecognitionData();
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -113,12 +115,18 @@ int main(int argc, char **argv)
                 continue;
 
             const Annotation& a = crawler.annotations()[i];
-            aggregator.addTrainingInstance(*e, "type", a.label);
+
+            tue::Configuration data;
+            ed::perception::ClassificationOutput output(data);
+            ed::perception::CategoricalDistribution prior;
+
+            aggregator.classify(*e, "type", prior, output);
+
+            std::cout << a.label << ": " << output.likelihood << std::endl;
+
+//            std::cout << data << std::endl;
         }
     }
-
-    aggregator.train();
-    aggregator.saveRecognitionData();
 
     return 0;
 }

@@ -27,7 +27,7 @@ bool getEnvironmentVariable(const std::string& var, std::string& value)
 
 // ----------------------------------------------------------------------------------------------------
 
-Aggregator::Aggregator() : Module("aggregator")
+Aggregator::Aggregator()
 {
 }
 
@@ -39,7 +39,7 @@ Aggregator::~Aggregator()
 
 // ----------------------------------------------------------------------------------------------------
 
-void Aggregator::configure(tue::Configuration config)
+void Aggregator::configure(tue::Configuration config, bool for_training)
 {
     // Get the plugin paths
     std::string ed_plugin_paths;
@@ -115,19 +115,20 @@ void Aggregator::configure(tue::Configuration config)
                 continue;
             }
 
-            // Configure the module
+            // If module is going to be used for training, load training config
+            if (for_training)
             {
                 ed::ErrorContext errc("Configuring perception module", perception_module->name().c_str());
 
                 if (config.readGroup("parameters"))
                 {
-                    perception_module->configure(config.limitScope());
+                    perception_module->configureTraining(config.limitScope());
                     config.endGroup();
                 }
                 else
                 {
                     tue::Configuration tmp_config;
-                    perception_module->configure(tmp_config);
+                    perception_module->configureTraining(tmp_config);
                     if (tmp_config.hasError())
                         config.addError(tmp_config.error());
                 }
@@ -146,19 +147,39 @@ void Aggregator::configure(tue::Configuration config)
 
 void Aggregator::classify(const Entity& e, const std::string& property, const CategoricalDistribution& prior, ClassificationOutput& output) const
 {
+    std::vector<CategoricalDistribution> sub_distribs;
+
     for(std::vector<boost::shared_ptr<Module> >::const_iterator it = modules_.begin(); it != modules_.end(); ++it)
     {
         const Module& m = **it;
         if (!m.serves_property(property))
             continue;
 
-        std::cout << m.name() << ": classifying" << std::endl;
+        output.data.writeGroup(m.name());
 
-        tue::Configuration data;
-        ClassificationOutput sub_output(data);
-        m.classify(e, property, output.likelihood, sub_output);
+        ClassificationOutput sub_output(output.data);
+        m.classify(e, property, prior, sub_output);
 
-        output.likelihood.update(sub_output.likelihood);
+        output.data.endGroup();
+
+        sub_distribs.push_back(sub_output.likelihood);
+
+//        output.likelihood.update(sub_output.likelihood);
+    }
+
+    for(std::vector<CategoricalDistribution>::const_iterator it = sub_distribs.begin(); it != sub_distribs.end(); ++it)
+    {
+        const CategoricalDistribution& d = *it;
+        for(std::map<std::string, double>::const_iterator it2 = d.values().begin(); it2 != d.values().end(); ++it2)
+            output.likelihood.setScore(it2->first, 1);
+    }
+
+    output.likelihood.normalize();
+
+    for(std::vector<CategoricalDistribution>::const_iterator it = sub_distribs.begin(); it != sub_distribs.end(); ++it)
+    {
+        const CategoricalDistribution& d = *it;
+        output.likelihood.update(d);
     }
 }
 
@@ -189,17 +210,14 @@ void Aggregator::train()
 
 // ----------------------------------------------------------------------------------------------------
 
-void Aggregator::loadRecognitionData(const std::string& path)
+void Aggregator::loadRecognitionData()
 {
     for(std::vector<boost::shared_ptr<Module> >::const_iterator it = modules_.begin(); it != modules_.end(); ++it)
     {
         Module& m = **it;
 
-        tue::filesystem::Path p(path);
+        tue::filesystem::Path p(classification_model_path_);
         p = p.join(m.name());
-
-        std::cout << m.name() << ": " << p.string() << std::endl;
-
 
         if (p.exists())
             m.loadRecognitionData(p.string());
@@ -208,13 +226,13 @@ void Aggregator::loadRecognitionData(const std::string& path)
 
 // ----------------------------------------------------------------------------------------------------
 
-void Aggregator::saveRecognitionData(const std::string& path) const
+void Aggregator::saveRecognitionData() const
 {
     for(std::vector<boost::shared_ptr<Module> >::const_iterator it = modules_.begin(); it != modules_.end(); ++it)
     {
         Module& m = **it;
 
-        tue::filesystem::Path p(path);
+        tue::filesystem::Path p(classification_model_path_);
         p = p.join(m.name());
         m.saveRecognitionData(p.string());
     }
@@ -224,9 +242,6 @@ void Aggregator::saveRecognitionData(const std::string& path) const
 
 void Aggregator::addModule(const boost::shared_ptr<Module>& m)
 {
-    for(std::set<std::string>::const_iterator it = m->properties_served().begin(); it != m->properties_served().end(); ++it)
-        this->registerPropertyServed(*it);
-
     modules_.push_back(m);
 }
 

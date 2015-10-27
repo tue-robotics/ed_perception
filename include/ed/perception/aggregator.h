@@ -8,7 +8,7 @@ namespace ed
 namespace perception
 {
 
-class Aggregator : public Module
+class Aggregator
 {
 
 public:
@@ -17,7 +17,7 @@ public:
 
     ~Aggregator();
 
-    void configure(tue::Configuration config);
+    void configure(tue::Configuration config, bool for_training);
 
     void classify(const Entity& e, const std::string& property, const CategoricalDistribution& prior, ClassificationOutput& output) const;
 
@@ -25,19 +25,11 @@ public:
 
     void train();
 
-    void loadRecognitionData(const std::string& path);
+    void loadRecognitionData();
 
-    void saveRecognitionData(const std::string& path) const;
+    void saveRecognitionData() const;
 
     void addModule(const boost::shared_ptr<Module>& m);
-
-
-    void loadRecognitionData() { loadRecognitionData(classification_model_path_); }
-
-    void saveRecognitionData() { saveRecognitionData(classification_model_path_); }
-
-
-    void process(const WorkerInput& input, WorkerOutput& output) const {}
 
 private:
 

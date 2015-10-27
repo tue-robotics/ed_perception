@@ -220,11 +220,16 @@ target_link_libraries(create-rgbd-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRA
 
 # --------------
 
-add_executable(train-perception
-    tools/train_and_test/train.cpp
+add_library(train-and-test-lib
     tools/train_and_test/image_crawler.cpp
 )
-target_link_libraries(train-perception ed_perception2 ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} color_matcher)
+target_link_libraries(train-and-test-lib ed_perception2 ${catkin_LIBRARIES})
+
+add_executable(train-perception tools/train_and_test/train.cpp)
+target_link_libraries(train-perception train-and-test-lib ed_perception2)
+
+add_executable(test-perception-new tools/train_and_test/test.cpp)
+target_link_libraries(test-perception-new train-and-test-lib ed_perception2)
 
 # -------------- ED LEARNING TOOL --------------
 add_executable(ed-learning-tool tools/ed_learning_tool.cpp)

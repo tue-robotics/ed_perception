@@ -38,6 +38,8 @@ public:
 
     void waterDown(double factor);
 
+    const std::map<std::string, double>& values() const { return pmf_; }
+
     friend std::ostream& operator<< (std::ostream& out, const CategoricalDistribution& c);
 
 private:

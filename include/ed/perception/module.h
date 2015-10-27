@@ -58,6 +58,9 @@ public:
     // Save the data needed to classify to the given path
     virtual void saveRecognitionData(const std::string& path) const = 0;
 
+    // Configure the module for training
+    virtual void configureTraining(tue::Configuration config) {}
+
     // Returns the name of this module
     const std::string& name() const { return name_; }
 

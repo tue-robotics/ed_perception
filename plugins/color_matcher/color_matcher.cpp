@@ -67,7 +67,7 @@ void ColorMatcher::classify(const ed::Entity& e, const std::string& property,
     for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
     {
         result.addArrayItem();
-        result.setValue("color", "color");
+        result.setValue("color", ColorNameTable::intToColorName(i));
         result.setValue("value", color_histogram[i]);
         result.endArrayItem();
     }
@@ -144,10 +144,12 @@ void ColorMatcher::loadRecognitionData(const std::string& path_str)
         }
     }
 
+    r.endArray(); // models
+
     color_margin_ = 0;
     r.value("color_margin", color_margin_);
 
-    r.endArray(); // models
+    initialize();
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -221,18 +223,19 @@ void ColorMatcher::calculateHistogram(const ed::Entity& e, ColorHistogram& histo
 }
 
 // ----------------------------------------------------------------------------------------------------
+
+void ColorMatcher::configureTraining(tue::Configuration config)
+{
+    config.value("color_margin", color_margin_);
+    initialize();
+}
+
 // ----------------------------------------------------------------------------------------------------
 
-void ColorMatcher::configure(tue::Configuration config)
+void ColorMatcher::initialize()
 {
-    std::string color_table_path_ = ros::package::getPath("ed_perception") + "/data/color_names.txt";
-
-    if (!color_table_.readFromFile(color_table_path_)){
-        config.addError("Failed loading color names from '" + color_table_path_ + "'.");
-        return;
-    }
-
-    config.value("color_margin", color_margin_);
+    std::string color_table_path = ros::package::getPath("ed_perception") + "/data/color_names.txt";
+    color_table_.readFromFile(color_table_path);
 }
 
 // ----------------------------------------------------------------------------------------------------

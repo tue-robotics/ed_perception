@@ -34,7 +34,7 @@ public:
 
     virtual ~ColorMatcher();
 
-    void configure(tue::Configuration config);
+    void configureTraining(tue::Configuration config);
 
     void loadModel(const std::string& model_name, const std::string& model_path) {}
 
@@ -56,6 +56,9 @@ public:
     void loadRecognitionData(const std::string& path);
 
     void saveRecognitionData(const std::string& path) const;
+
+    void initialize();
+
 
 private:
 
