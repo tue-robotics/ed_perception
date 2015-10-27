@@ -270,6 +270,8 @@ bool ImageCrawler::reload()
     }
 
     entity_updates_ = res.entity_updates;
+
+    return true;
 }
 
 // ----------------------------------------------------------------------------------------------------
