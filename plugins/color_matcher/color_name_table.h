@@ -39,6 +39,8 @@ public:
         return &table_[NUM_COLORS * ((r / STEP) + (RESOLUTION * ((g / STEP) + (RESOLUTION * (b / STEP)))))];
     }
 
+    static const char* intToColorName(int i);
+
 private:
 
     static int RESOLUTION;

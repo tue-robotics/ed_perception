@@ -52,3 +52,11 @@ bool ColorNameTable::readFromFile(const std::string& filename)
 
 // ----------------------------------------------------------------------------------------------------
 
+const char* ColorNameTable::intToColorName(int i)
+{
+    static const char* color_names[11] = { "black", "blue", "brown", "grey", "green", "orange", "pink", "purple", "red", "white", "yellow" };
+    return color_names[i];
+}
+
+// ----------------------------------------------------------------------------------------------------
+

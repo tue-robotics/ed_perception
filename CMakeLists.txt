@@ -4,6 +4,7 @@ project(ed_perception)
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
   ed_object_models
+  ed_sensor_integration
   geolib2
   rgbd
   roscpp
@@ -65,11 +66,14 @@ add_library(ed_perception2
     include/ed/perception/worker_output.h
     include/ed/perception/module.h
     include/ed/perception/worker.h
+    include/ed/perception/aggregator.h
 
     src/categorical_distribution.cpp
     src/module.cpp
     src/worker.cpp
+    src/aggregator.cpp
 )
+target_link_libraries(ed_perception2 ${catkin_LIBRARIES})
 add_dependencies(ed_perception2 ${PROJECT_NAME}_generate_messages_cpp)
 
 # ------------------------------------------------------------------------------------------------
@@ -213,6 +217,14 @@ target_link_libraries(test-perception3 ed_perception2 ed_perception_plugin ${cat
 
 add_executable(create-rgbd-measurement tools/create_rgbd_measurement.cpp)
 target_link_libraries(create-rgbd-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
+# --------------
+
+add_executable(train-perception
+    tools/train_and_test/train.cpp
+    tools/train_and_test/image_crawler.cpp
+)
+target_link_libraries(train-perception ed_perception2 ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} color_matcher)
 
 # -------------- ED LEARNING TOOL --------------
 add_executable(ed-learning-tool tools/ed_learning_tool.cpp)

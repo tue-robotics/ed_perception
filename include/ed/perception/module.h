@@ -65,7 +65,7 @@ public:
     const std::set<std::string>& properties_served() const { return properties_served_; }
 
     // Returns true if this module serves the given property
-    bool serves_property(const std::string& property)
+    bool serves_property(const std::string& property) const
     {
         return properties_served_.find(property) != properties_served_.end();
     }

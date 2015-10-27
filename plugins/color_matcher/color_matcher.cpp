@@ -17,6 +17,10 @@
 #include <tue/config/read.h>
 #include <tue/config/reader.h>
 
+#include <tue/filesystem/path.h>
+
+#include <ros/package.h>
+
 // ---------------------------------------------------------------------------------------------------
 
 ColorMatcher::ColorMatcher() :
@@ -100,13 +104,23 @@ void ColorMatcher::addTrainingInstance(const ed::Entity& e, const std::string& p
         for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
             model_color_histogram[i] = std::max(model_color_histogram[i], color_histogram[i]);
     }
+
+    ColorHistogram& model_color_histogram = models_[value];
+    std::cout << value << ":";
+    for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
+        std::cout << " " << model_color_histogram[i];
+    std::cout << std::endl;
 }
 
 // ----------------------------------------------------------------------------------------------------
 
-void ColorMatcher::loadRecognitionData(const std::string& path)
+void ColorMatcher::loadRecognitionData(const std::string& path_str)
 {
-    tue::config::DataPointer data = tue::config::fromFile(path);
+    tue::filesystem::Path path(path_str + "/models.yaml");
+    if (!path.exists())
+        return;
+
+    tue::config::DataPointer data = tue::config::fromFile(path.string());
 
     tue::config::Reader r(data);
 
@@ -160,6 +174,7 @@ void ColorMatcher::saveRecognitionData(const std::string& path) const
         {
             w.addArrayItem();
             w.setValue("value", model_color_histogram[i]);
+            w.setValue("color", ColorNameTable::intToColorName(i));
             w.endArrayItem();
         }
         w.endArray();
@@ -168,7 +183,7 @@ void ColorMatcher::saveRecognitionData(const std::string& path) const
     }
     w.endArray();
 
-    tue::config::toFile(path, w.data(), tue::config::YAML, 4);
+    tue::config::toFile(path + "/models.yaml", w.data(), tue::config::YAML, 4);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -230,6 +245,8 @@ void ColorMatcher::configure(tue::Configuration config)
 //        ed::perception::cleanDebugFolder(debug_folder_);
 
     std::cout << "[" << module_name_ << "] " << "Loading color names..." << std::endl;
+
+    color_table_path_ = ros::package::getPath("ed_perception") + "/data/color_names.txt";
 
     if (!color_table_.readFromFile(color_table_path_)){
         std::cout << "[" << module_name_ << "] " << "Failed loading color names from " << color_table_path_ << std::endl;
