@@ -23,9 +23,7 @@
 
 // ---------------------------------------------------------------------------------------------------
 
-ColorMatcher::ColorMatcher() :
-    ed::perception::Module("color_matcher"),
-    init_success_(false)
+ColorMatcher::ColorMatcher() : ed::perception::Module("color_matcher")
 {
     this->registerPropertyServed("type");
 }
@@ -42,9 +40,6 @@ void ColorMatcher::classify(const ed::Entity& e, const std::string& property,
                             const ed::perception::CategoricalDistribution& prior,
                             ed::perception::ClassificationOutput& output) const
 {
-    if (!init_success_)
-        return;
-
     if (property != "type")
         return;
 
@@ -53,17 +48,16 @@ void ColorMatcher::classify(const ed::Entity& e, const std::string& property,
     ColorHistogram color_histogram;
     calculateHistogram(e, color_histogram);
 
-    float color_threshold = 0.1;
-
-    for(std::map<std::string, ColorHistogram>::const_iterator it = models_.begin(); it != models_.end(); ++it)
+    for(std::map<std::string, ColorModel>::const_iterator it = models_.begin(); it != models_.end(); ++it)
     {
         const std::string& model_name = it->first;
-        const ColorHistogram& model_color_histogram = it->second;
+        const ColorModel& model = it->second;
 
         output.likelihood.setScore(model_name, 1);
         for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
         {
-            if (model_color_histogram[i] < color_threshold && color_histogram[i] > color_threshold)
+            float v = color_histogram[i];
+            if (v < model.min[i] - color_margin_ || v > model.max[i] + color_margin_)
                 output.likelihood.setScore(model_name, 0);
         }
     }
@@ -90,26 +84,25 @@ void ColorMatcher::addTrainingInstance(const ed::Entity& e, const std::string& p
     ColorHistogram color_histogram;
     calculateHistogram(e, color_histogram);
 
-    std::map<std::string, ColorHistogram>::iterator it = models_.find(value);
+    std::map<std::string, ColorModel>::iterator it = models_.find(value);
     if (it == models_.end())
     {
         // No other training instances for this type
-        models_[value] = color_histogram;
+        ColorModel& model = models_[value];
+        model.min = color_histogram;
+        model.max = color_histogram;
     }
     else
     {
-        ColorHistogram& model_color_histogram = it->second;
+        ColorModel& model = it->second;
 
         // Determine maximum for each histogram bin (i.e., determine maximum for each color)
         for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
-            model_color_histogram[i] = std::max(model_color_histogram[i], color_histogram[i]);
+        {
+            model.min[i] = std::min(model.min[i], color_histogram[i]);
+            model.max[i] = std::max(model.max[i], color_histogram[i]);
+        }
     }
-
-    ColorHistogram& model_color_histogram = models_[value];
-    std::cout << value << ":";
-    for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
-        std::cout << " " << model_color_histogram[i];
-    std::cout << std::endl;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -133,23 +126,26 @@ void ColorMatcher::loadRecognitionData(const std::string& path_str)
         if (!r.value("name", model_name))
             continue;
 
-        ColorHistogram& model_color_histogram = models_[model_name];
-        model_color_histogram.resize(ColorNameTable::NUM_COLORS, 0);
+        ColorModel& model = models_[model_name];
+        model.min.resize(ColorNameTable::NUM_COLORS, 0);
+        model.max.resize(ColorNameTable::NUM_COLORS, 0);
 
         if (r.readArray("colors"))
         {
             int i = 0;
             while(r.nextArrayItem())
             {
-                float value;
-                if (r.value("value", value))
-                    model_color_histogram[i] = value;
+                r.value("min", model.min[i]);
+                r.value("max", model.max[i]);
                 ++i;
             }
 
             r.endArray();
         }
     }
+
+    color_margin_ = 0;
+    r.value("color_margin", color_margin_);
 
     r.endArray(); // models
 }
@@ -161,10 +157,10 @@ void ColorMatcher::saveRecognitionData(const std::string& path) const
     tue::config::Writer w;
 
     w.writeArray("models");
-    for(std::map<std::string, ColorHistogram>::const_iterator it = models_.begin(); it != models_.end(); ++it)
+    for(std::map<std::string, ColorModel>::const_iterator it = models_.begin(); it != models_.end(); ++it)
     {
         const std::string& model_name = it->first;
-        const ColorHistogram& model_color_histogram = it->second;
+        const ColorModel& model = it->second;
 
         w.addArrayItem();
         w.setValue("name", model_name);
@@ -173,7 +169,8 @@ void ColorMatcher::saveRecognitionData(const std::string& path) const
         for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
         {
             w.addArrayItem();
-            w.setValue("value", model_color_histogram[i]);
+            w.setValue("min", model.min[i]);
+            w.setValue("max", model.max[i]);
             w.setValue("color", ColorNameTable::intToColorName(i));
             w.endArrayItem();
         }
@@ -182,6 +179,8 @@ void ColorMatcher::saveRecognitionData(const std::string& path) const
         w.endArrayItem();
     }
     w.endArray();
+
+    w.setValue("color_margin", color_margin_);
 
     tue::config::toFile(path + "/models.yaml", w.data(), tue::config::YAML, 4);
 }
@@ -226,36 +225,14 @@ void ColorMatcher::calculateHistogram(const ed::Entity& e, ColorHistogram& histo
 
 void ColorMatcher::configure(tue::Configuration config)
 {
-
-    if (!config.value("color_table", color_table_path_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'color_table' not found. Using default: " << color_table_path_ << std::endl;
-
-    color_table_path_ = module_path_ + "/" + color_table_path_;
-
-    if (!config.value("debug_mode", debug_mode_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_mode' not found. Using default: " << debug_mode_ << std::endl;
-
-    if (!config.value("debug_folder", debug_folder_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_folder' not found. Using default: " << debug_folder_ << std::endl;
-
-    if (!config.value("type_unknown_score", type_unknown_score_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'type_unknown_score' not found. Using default: " << type_unknown_score_ << std::endl;
-
-//    if (debug_mode_)
-//        ed::perception::cleanDebugFolder(debug_folder_);
-
-    std::cout << "[" << module_name_ << "] " << "Loading color names..." << std::endl;
-
-    color_table_path_ = ros::package::getPath("ed_perception") + "/data/color_names.txt";
+    std::string color_table_path_ = ros::package::getPath("ed_perception") + "/data/color_names.txt";
 
     if (!color_table_.readFromFile(color_table_path_)){
-        std::cout << "[" << module_name_ << "] " << "Failed loading color names from " << color_table_path_ << std::endl;
+        config.addError("Failed loading color names from '" + color_table_path_ + "'.");
         return;
     }
 
-    init_success_ = true;
-
-    std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
+    config.value("color_margin", color_margin_);
 }
 
 // ----------------------------------------------------------------------------------------------------

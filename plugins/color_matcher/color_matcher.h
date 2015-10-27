@@ -19,6 +19,12 @@
 
 typedef std::vector<float> ColorHistogram;
 
+struct ColorModel
+{
+    ColorHistogram min;
+    ColorHistogram max;
+};
+
 class ColorMatcher : public ed::perception::Module
 {
 
@@ -55,23 +61,15 @@ private:
 
     ColorNameTable color_table_;
 
-    std::map<std::string, ColorHistogram> models_;
+    std::map<std::string, ColorModel> models_;
 
     void calculateHistogram(const ed::Entity& e, ColorHistogram& histogram) const;
 
 
+    // Parameters
 
+    double color_margin_;
 
-    // module configuration
-    bool init_success_;
-    bool debug_mode_;
-    std::string module_name_;
-
-    std::string debug_folder_;
-    std::string module_path_;
-    std::string color_table_path_;
-
-    double type_unknown_score_;
 };
 
 
