@@ -122,39 +122,56 @@ void ConfusionMatrix::drawImage_()
 {
     int column, row = 0;
 
-    cv::Mat mat = cv::Mat(options_.size(), options_.size()+1, CV_64FC3, cv::Scalar(0.0,0.0,0.0));
+    resize_factor_ = 300/options_.size();
+
+    img_ = cv::Mat(resize_factor_ * options_.size(), resize_factor_* (options_.size() + 1), CV_8UC3, cv::Scalar(0, 0, 0));
 
     for ( std::vector<std::vector<int> >::iterator row_it = mat_.begin(); row_it != mat_.end(); row_it++ )
     {
         column = 0;
 
+        int total_count = unknowns[row];
+        for (std::vector<int>::iterator it = row_it->begin(); it != row_it->end(); it++)
+            total_count += *it;
+
+        double f = 1.0 / total_count;
+
         if ( unknowns[row] > 0 )
-            mat.at<cv::Vec3d>(row,options_.size())[2] = 1.0;
+        {
+            double v = f * unknowns[row];
+            cv::Point2d center = resize_factor_ * cv::Point2d(0.5 + options_.size(), 0.5 + row);
+            cv::Point2d half_size = (resize_factor_ * v / 2) * cv::Point2d(1, 1);
+            cv::rectangle(img_, center - half_size, center + half_size, cv::Scalar(0, 0, 255), CV_FILLED);
+        }
 
         for (std::vector<int>::iterator it = row_it->begin(); it != row_it->end(); it++ )
         {
             if ( *it > 0 )
             {
-                if ( row == column )
-                    mat.at<cv::Vec3d>(row,column)[1] = 1.0;
-                else
-                    mat.at<cv::Vec3d>(row,column)[2] = 1.0;
+                double v = f * (*it);
+
+                cv::Point2d center = resize_factor_ * cv::Point2d(0.5 + column, 0.5 + row);
+                cv::Point2d half_size = (resize_factor_ * v / 2) * cv::Point2d(1, 1);
+
+                cv::Scalar color(0, 0, 255);
+                if (row == column)
+                    color = cv::Scalar(0, 255, 0);
+
+                cv::rectangle(img_, center - half_size, center + half_size, color, CV_FILLED);
             }
             column++;
         }
         row++;
     }
 
-    resize_factor_ = 300/options_.size();
-
-    cv::resize(mat,img_,cv::Size(0,0),resize_factor_,resize_factor_,cv::INTER_NEAREST);
+    cv::Scalar line_color(51, 51, 51);
 
     for ( int i = 0; i <= options_.size(); i++ )
     {
         // Horizontal line
-        cv::line(img_,cv::Point(0,resize_factor_*i),cv::Point(resize_factor_*(options_.size()+1),resize_factor_*i),cv::Scalar(.2,.2,.2));
+        cv::line(img_,cv::Point(0,resize_factor_*i),cv::Point(resize_factor_*(options_.size()+1),resize_factor_*i), line_color);
         // Vertical line
-        cv::line(img_,cv::Point(resize_factor_*i,0),cv::Point(resize_factor_*i,resize_factor_*(options_.size()+1)),cv::Scalar(.2,.2,.2));
+        cv::line(img_,cv::Point(resize_factor_*i,0),cv::Point(resize_factor_*i,resize_factor_*(options_.size()+1)), line_color);
     }
 }
 
