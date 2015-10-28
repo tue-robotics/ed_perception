@@ -158,10 +158,12 @@ void Aggregator::classify(const Entity& e, const std::string& property, const Ca
         output.data.writeGroup(m.name());
 
         ClassificationOutput sub_output(output.data);
+        sub_output.likelihood.setUnknownScore(0.01); // TODO
         m.classify(e, property, prior, sub_output);
 
         output.data.endGroup();
 
+        sub_output.likelihood.normalize();
         sub_distribs.push_back(sub_output.likelihood);
 
 //        output.likelihood.update(sub_output.likelihood);
@@ -174,6 +176,7 @@ void Aggregator::classify(const Entity& e, const std::string& property, const Ca
             output.likelihood.setScore(it2->first, 1);
     }
 
+    output.likelihood.setUnknownScore(0.01); // TODO
     output.likelihood.normalize();
 
     for(std::vector<CategoricalDistribution>::const_iterator it = sub_distribs.begin(); it != sub_distribs.end(); ++it)
