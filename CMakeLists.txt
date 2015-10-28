@@ -212,8 +212,8 @@ target_link_libraries(test-perception ed_perception2 ${catkin_LIBRARIES} ${OpenC
 add_executable(test-perception2 tools/test_perception2.cpp)
 target_link_libraries(test-perception2 ed_perception2 ed_perception_plugin ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
-add_executable(test-perception3 tools/test_perception3.cpp)
-target_link_libraries(test-perception3 ed_perception2 ed_perception_plugin ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+#add_executable(test-perception3 tools/test_perception3.cpp)
+#target_link_libraries(test-perception3 ed_perception2 ed_perception_plugin ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(create-rgbd-measurement tools/create_rgbd_measurement.cpp)
 target_link_libraries(create-rgbd-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
@@ -228,8 +228,8 @@ target_link_libraries(train-and-test-lib ed_perception2 ${catkin_LIBRARIES})
 add_executable(train-perception tools/train_and_test/train.cpp)
 target_link_libraries(train-perception train-and-test-lib ed_perception2)
 
-add_executable(test-perception-new tools/train_and_test/test.cpp)
-target_link_libraries(test-perception-new train-and-test-lib ed_perception2)
+add_executable(test-perception-new tools/train_and_test/test.cpp tools/confusionmatrix.cpp)
+target_link_libraries(test-perception-new train-and-test-lib ed_perception2 ${OpenCV_LIBRARIES})
 
 # -------------- ED LEARNING TOOL --------------
 add_executable(ed-learning-tool tools/ed_learning_tool.cpp)

@@ -5,6 +5,7 @@
 
 #include <ed/entity.h>
 #include <ed/measurement.h>
+#include "../confusionmatrix.h"
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -98,6 +99,12 @@ int main(int argc, char **argv)
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Set up confusion matrix
+
+    ConfusionMatrix confusionMatrix;
+
     ImageCrawler crawler;
     crawler.setPath(argv[2]);
 
@@ -124,9 +131,13 @@ int main(int argc, char **argv)
 
             std::cout << a.label << ": " << output.likelihood << std::endl;
 
+            confusionMatrix.addResult(output.likelihood,a.label);
+
 //            std::cout << data << std::endl;
         }
     }
+
+    confusionMatrix.show();
 
     return 0;
 }

@@ -27,184 +27,11 @@
 // Include the perception plugin
 #include "../src/perception_plugin.h"
 
+#include "confusionmatrix.h"
+
 // ----------------------------------------------------------------------------------------------------
 
 int resize_factor = 20;
-
-// ----------------------------------------------------------------------------------------------------
-
-class ConfusionMatrix
-{
-public:
-//    friend std::ostream& operator<<(std::ostream& os, const ConfusionMatrix& cm);
-
-    ConfusionMatrix(std::vector<std::string> options)
-    {
-        options_ = options;
-        mat_ = std::vector<int>((options.size()+1)*options.size(),0.0);
-        maximum_ = 0;
-    }
-
-//    std::ostream& operator<<(std::ostream& os, const ConfusionMatrix& cm)
-//    {
-
-//    }
-
-    void print()
-    {
-        for (std::vector<std::string>::const_iterator it = options_.begin(); it != options_.end(); it++ )
-        {
-            printf("%-15s", it->c_str());
-        }
-        printf("%-15s", "unknown");
-        printf("\n");
-
-        int i = 0, j = 0; // column and row, respectively
-
-        for (std::vector<int>::const_iterator it = mat_.begin(); it != mat_.end(); it++ )
-        {
-            printf("%-15i", *it);
-
-            if ( i == options_.size() )
-            {
-                printf("\n");
-                i = 0;
-                j++;
-            }
-            else
-                i++;
-        }
-    }
-
-    cv::Mat toCvMat(int factor)
-    {
-        unsigned int column = 0, row = 0;
-        cv::Mat mat = cv::Mat(options_.size(), options_.size()+1, CV_64FC3, cv::Scalar(0.0,0.0,0.0));
-        for ( std::vector<int>::iterator it = mat_.begin(); it != mat_.end(); it++ )
-        {
-            if ( *it > 0 )
-            {
-                mat.at<cv::Vec3d>(row,column)[2] = 1.0; // times *iterator?
-                if ( row == column )
-                {
-                    mat.at<cv::Vec3d>(row,column)[2] = 0.0;
-                    mat.at<cv::Vec3d>(row,column)[1] = 1.0; // times *iterator?
-                }
-
-            }
-
-            if ( column == options_.size() )
-            {
-                row++;
-                column = 0;
-            }
-            else
-                column++;
-        }
-
-        cv::Mat dst;
-
-        cv::resize(mat,dst,cv::Size(0,0),factor,factor,cv::INTER_NEAREST);
-
-        for ( int i = 0; i < options_.size()+1; i++ )
-        {
-            cv::line(dst,cv::Point(0,factor*i),cv::Point(factor*(options_.size()+1),factor*i),cv::Scalar(.2,.2,.2));
-            cv::line(dst,cv::Point(factor*i,0),cv::Point(factor*i,factor*options_.size()),cv::Scalar(.2,.2,.2));
-        }
-
-        return dst;
-    }
-
-    void addResult(const ed::perception::CategoricalDistribution& dstr, const std::string& cat)
-    {
-        std::string label;
-        double score;
-        int labeli = -1, cati = -1;
-
-        dstr.getMaximum(label,score);
-
-        for ( int i = 0; i < options_.size(); i++ )
-        {
-            if (options_[i] == label)
-                labeli = i;
-            if (options_[i] == cat)
-                cati = i;
-        }
-
-        if ( dstr.getUnknownScore() > score )
-            labeli = options_.size();
-
-        if (labeli == -1)
-        {
-            std::cout << "Item with maximum score is not one of the options" << std::endl;
-            return;
-        }
-        if (cati == -1)
-        {
-            std::cout << "Ground truth item not one of the options" << std::endl;
-            return;
-        }
-
-        mat_[cati*(options_.size()+1)+labeli]++;
-        if ( mat_[cati*(options_.size()+1)+labeli] > maximum_ )
-            maximum_ = mat_[cati*(options_.size()+1)+labeli];
-    }
-
-    int size()
-    {
-        return options_.size();
-    }
-
-    int getMaximum()
-    {
-        return maximum_;
-    }
-
-    std::vector<std::string> getOptions()
-    {
-        std::vector<std::string> options(options_);
-        options.push_back("unknown");
-        return options;
-    }
-
-    int at(int result, int truth )
-    {
-        return mat_[truth*(options_.size()+1)+result];
-    }
-
-private:
-    std::vector<int> mat_;
-    std::vector<std::string> options_;
-    int maximum_;
-};
-
-// ----------------------------------------------------------------------------------------------------
-
-void onMouse(int event, int x, int y, int flags, void* param)
-{
-    ConfusionMatrix* cm = (ConfusionMatrix*) param;
-    cv::Mat mat = cm->toCvMat(resize_factor);
-
-    char text[100];
-    char counttext[20];
-    cv::Mat img2;
-
-    img2 = mat.clone();
-
-    int resulti = x/resize_factor;
-    int gtruthi = y/resize_factor;
-
-    std::string result = cm->getOptions()[resulti];
-    std::string gtruth = cm->getOptions()[gtruthi];
-
-    int count = cm->at(resulti,gtruthi);
-
-    sprintf(text, "Perception result: %s, ground truth: %s.", result.c_str(), gtruth.c_str());
-    sprintf(counttext, "Count=%i", count);
-    cv::putText(img2, text, cv::Point(45,15), cv::FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0));
-    cv::putText(img2, counttext, cv::Point(45,35), cv::FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0));
-    cv::imshow("Confusion matrix", img2);
-}
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -379,10 +206,7 @@ int main(int argc, char **argv)
 
     }
 
-    cv::namedWindow("Confusion matrix");
-    cv::setMouseCallback("Confusion matrix", onMouse, &cm);
-    cv::imshow("Confusion matrix", cm.toCvMat(resize_factor));
-    cv::waitKey();
+    cm.show();
 
     if (n_measurements == 0)
         std::cout << "No measurements found." << std::endl;
