@@ -36,7 +36,7 @@ void onMouse(int event, int x, int y, int flags, void* param)
 
 void ConfusionMatrix::addResult(const ed::perception::CategoricalDistribution& dstr, const std::string& cat)
 {
-    for ( std::map<std::string,double>::const_iterator it = dstr.values().begin(); it != dstr.values().begin(); it++ )
+    for ( std::map<std::string,double>::const_iterator it = dstr.values().begin(); it != dstr.values().end(); it++ )
     {
         if ( option_indices_.find(it->first) == option_indices_.end() )
         {
