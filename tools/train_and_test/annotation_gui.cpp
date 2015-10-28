@@ -8,6 +8,8 @@
 
 #include <opencv2/highgui/highgui.hpp>
 #include <rgbd/Image.h>
+#include <ed/entity.h>
+#include <ed/measurement.h>
 
 class GUI
 {
@@ -31,6 +33,7 @@ public:
     std::set<std::string> types;
     std::vector<std::string> possible_types;
     int i_possible_types;
+    std::string selected_type;
 
     // ---------------------------------------------------------------------------------------------
 
@@ -40,6 +43,46 @@ public:
         cv::Mat draw_img = img.clone();
 
         std::stringstream ss; ss << "(" << (crawler.index() + 1) << "/" << crawler.filenames().size() << ") " << crawler.filename();
+
+        int i_entity = 1;
+        cv::Mat segm_img(draw_img.rows, draw_img.cols, CV_32SC1, cv::Scalar(0));
+        for(std::vector<ed::EntityConstPtr>::const_iterator it = image.entities.begin(); it != image.entities.end(); ++it)
+        {
+            const ed::EntityConstPtr& e = *it;
+            ed::MeasurementConstPtr m = e->bestMeasurement();
+            if (!m)
+                continue;
+
+            cv::Point p_min(img.cols, img.rows);
+            cv::Point p_max(0, 0);
+
+            const ed::ImageMask& mask = m->imageMask();
+            for(ed::ImageMask::const_iterator it = mask.begin(img.cols); it != mask.end(); ++it)
+            {
+                const cv::Point2i& p = *it;
+                segm_img.at<int>(p) = i_entity;
+                p_min.x = std::min(p_min.x, p.x);
+                p_min.y = std::min(p_min.y, p.y);
+                p_max.x = std::max(p_max.x, p.x);
+                p_max.y = std::max(p_max.y, p.y);
+            }
+
+            cv::rectangle(draw_img, p_min, p_max, cv::Scalar(255, 255, 255), 2);
+            cv::rectangle(draw_img, p_min - cv::Point(2, 2), p_max + cv::Point(2, 2), cv::Scalar(0, 0, 0), 2);
+            cv::rectangle(draw_img, p_min + cv::Point(2, 2), p_max - cv::Point(2, 2), cv::Scalar(0, 0, 0), 2);
+
+            ++i_entity;
+        }
+
+        for(int y = 0; y < img.rows; ++y)
+        {
+            for(int x = 0; x < img.cols; ++x)
+            {
+                int i = segm_img.at<int>(y, x);
+                if (i < 1)
+                    draw_img.at<cv::Vec3b>(y, x) = 0.5 * draw_img.at<cv::Vec3b>(y, x);
+            }
+        }
 
         cv::rectangle(draw_img, cv::Point(0,0), cv::Point(img.cols,16), CV_RGB(0,0,0), CV_FILLED);
         cv::putText(draw_img, ss.str().c_str(), cv::Point2i(0, 12), 0, 0.4, cv::Scalar(255,255,255), 1);
@@ -59,7 +102,11 @@ public:
             cv::putText(draw_img, a.label.c_str(), cv::Point2i(x+15,y), 0, FONT_SIZE, text_color, 2);
         }
 
-        if (!possible_types.empty())
+        if (!selected_type.empty())
+        {
+            cv::putText(draw_img, selected_type, cv::Point2i(20, 50), 0, FONT_SIZE, cv::Scalar(100, 100, 255), 2);
+        }
+        else if (!possible_types.empty())
         {
             int n = 3;
             int i_min = std::max<int>(0, i_possible_types - n + 1);
@@ -71,7 +118,7 @@ public:
                 if (i == i_possible_types)
                     text_color = cv::Scalar(255, 255, 0);
 
-                cv::putText(draw_img, possible_types[i], cv::Point2i(20, 40 + 30 * (i - i_min)), 0, FONT_SIZE, text_color, 2);
+                cv::putText(draw_img, possible_types[i], cv::Point2i(20, 50 + 30 * (i - i_min)), 0, FONT_SIZE, text_color, 2);
             }
         }
 
@@ -118,8 +165,6 @@ public:
             for(std::vector<Annotation>::const_iterator it = image.annotations.begin(); it != image.annotations.end(); ++it)
                 types.insert(it->label);
 
-
-
             redraw();
             char key = cv::waitKey();
 
@@ -152,12 +197,14 @@ public:
                 {
                     typed = typed.substr(0, typed.size() - 1);
                     updatePossibleTypes();
+                    selected_type.clear();
                 }
             }
             else if (key == 10) // Enter
             {
-//                typed.clear();
-//                updatePossibleTypes();
+                selected_type = possible_types[i_possible_types];
+                typed.clear();
+                updatePossibleTypes();
             }
             else if (key == 9) // Tab
             {
@@ -167,6 +214,7 @@ public:
             {
                 typed += key;
                 updatePossibleTypes();
+                selected_type.clear();
             }
         }
 
