@@ -1,8 +1,8 @@
-#include <QApplication>
-#include <QInputDialog>
-#include <QMessageBox>
-#include <QPushButton>
-#include <QDialogButtonBox>
+//#include <QApplication>
+//#include <QInputDialog>
+//#include <QMessageBox>
+//#include <QPushButton>
+//#include <QDialogButtonBox>
 
 #include "image_crawler.h"
 
@@ -160,9 +160,7 @@ public:
 
         if (!crawler.next(image))
         {
-            QMessageBox mbox;
-            mbox.setText("No meta-data files found.");
-            mbox.exec();
+            std::cerr << "No meta-data files found." << std::endl;
             return 1;
         }
 
@@ -296,19 +294,9 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata)
 
 int main(int argc, char** argv)
 {
-    QApplication app(argc, argv);
-
     std::string path = ".";
     if (argc > 1)
-    {
         path = argv[1];
-    }
-    else
-    {
-        QMessageBox mbox;
-        mbox.setText("No path specified, I will take the current working directory ...");
-        mbox.exec();
-    }
 
     GUI gui;
     return gui.run(path);

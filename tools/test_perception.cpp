@@ -1,147 +1,82 @@
-#include <ed/perception/module.h>
-//#include <ed/perception/aggregator.h>
+#include "image_crawler.h"
+#include "ed/perception/aggregator.h"
 
-#include <ed/entity.h>
-
-// Measurement data structures
-#include <ed/measurement.h>
-#include <rgbd/Image.h>
-
-// File crawling
-#include <tue/filesystem/crawler.h>
-
-// Model loading
-#include <ros/package.h>
-
-// Measurement loading
-#include <ed/io/filesystem/read.h>
-#include <fstream>
-#include <rgbd/serialization.h>
-#include <ed/serialization/serialization.h>
-
-// Show measurement
-#include <opencv2/highgui/highgui.hpp>
+#include "confusionmatrix.h"
 
 // ----------------------------------------------------------------------------------------------------
 
-void showMeasurement(const ed::Measurement& msr)
+void usage()
 {
-    const cv::Mat& rgb_image = msr.image()->getRGBImage();
-    const cv::Mat& depth_image = msr.image()->getDepthImage();
-
-    cv::Mat masked_rgb_image(rgb_image.rows, rgb_image.cols, CV_8UC3, cv::Scalar(0, 0, 0));
-    cv::Mat masked_depth_image(depth_image.rows, depth_image.cols, depth_image.type(), 0.0);
-
-    for(ed::ImageMask::const_iterator it = msr.imageMask().begin(rgb_image.cols); it != msr.imageMask().end(); ++it)
-        masked_rgb_image.at<cv::Vec3b>(*it) = rgb_image.at<cv::Vec3b>(*it);
-
-    for(ed::ImageMask::const_iterator it = msr.imageMask().begin(depth_image.cols); it != msr.imageMask().end(); ++it)
-        masked_depth_image.at<float>(*it) = depth_image.at<float>(*it);
-
-    cv::imshow("Measurement: depth", masked_depth_image / 8);
-    cv::imshow("Measurement: rgb", masked_rgb_image);
+    std::cout << "Usage: test-perception CONFIG-FILE IMAGE-FILE-OR-DIRECTORY" << std::endl;
 }
 
 // ----------------------------------------------------------------------------------------------------
 
-int main(int argc, char **argv) {
-
-    std::string measurement_dir;
-    std::vector<std::string> perception_libs;
-
-    if (argc < 3)
+int main(int argc, char **argv)
+{
+    if (argc != 3)
     {
-        std::cout << "Usage for:\n\n   test-perception MEASUREMENT_DIRECTORY PERCEPTION_LIBRARY [PERCEPTION_LIBRARY_2]\n\n";
+        usage();
         return 1;
     }
-    else if (argc == 3)
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Load aggregator configuration
+
+    ed::perception::Aggregator aggregator;
+
+    tue::Configuration config;
+    if (config.loadFromYAMLFile(argv[1]))
+        aggregator.configure(config, false);
+
+    if (config.hasError())
     {
-        measurement_dir = argv[1];
-        perception_libs.push_back(argv[2]);
-    }
-    else if (argc > 3)
-    {
-        measurement_dir = argv[1];
-        for(int i = 2; i < argc; ++i)
-            perception_libs.push_back(argv[i]);
-    }
-
-    // - - - - -
-
-    std::vector<boost::shared_ptr<ed::perception::Module> > modules;
-
-    std::vector<class_loader::ClassLoader*> perception_loaders(perception_libs.size(), 0);
-    for(unsigned int i = 0; i < perception_libs.size(); ++i)
-    {
-        class_loader::ClassLoader* class_loader = new class_loader::ClassLoader(perception_libs[i]);
-        perception_loaders[i] = class_loader;
-
-        boost::shared_ptr<ed::perception::Module> perception_mod = ed::perception::loadPerceptionModule(class_loader);
-        if (perception_mod)
-        {
-            modules.push_back(perception_mod);
-        }
-        else
-        {
-
-        }
+        std::cout << config.error() << std::endl;
+        return 1;
     }
 
-    tue::filesystem::Crawler crawler(measurement_dir);
+    aggregator.loadRecognitionData();
 
-    int n_measurements = 0;
-    tue::filesystem::Path filename;
-    while(crawler.nextPath(filename))
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+    ConfusionMatrix confusionMatrix;
+
+    ImageCrawler crawler;
+    crawler.setPath(argv[2]);
+
+    AnnotatedImage image;
+
+    while(crawler.next(image))
     {
-        if (filename.extension() != ".mask")
-            continue;
+        std::cout << crawler.filename() << std::endl;
 
-        ed::MeasurementPtr msr(new ed::Measurement);
-        if (!ed::read(filename.withoutExtension().string(), *msr))
+        std::vector<ed::EntityConstPtr> correspondences;
+        findAnnotationCorrespondences(image, correspondences);
+
+        for(unsigned int i = 0; i < image.annotations.size(); ++i)
         {
-            continue;
+            const ed::EntityConstPtr& e = correspondences[i];
+            const Annotation& a = image.annotations[i];
+
+            if (!e || a.is_supporting)
+                continue;
+
+            tue::Configuration data;
+            ed::perception::ClassificationOutput output(data);
+            ed::perception::CategoricalDistribution prior;
+
+            aggregator.classify(*e, "type", prior, output);
+
+            std::cout << a.label << ": " << output.likelihood << std::endl;
+
+            confusionMatrix.addResult(output.likelihood,a.label);
+
+//            std::cout << data << std::endl;
         }
-
-        showMeasurement(*msr);
-
-        ed::EntityPtr e(new ed::Entity("test-entity", "", 5));
-        e->addMeasurement(msr);
-
-        std::cout << std::endl << "------------------------------------------------------------" << std::endl;
-        std::cout << "    " << filename.withoutExtension() << std::endl;
-        std::cout << "------------------------------------------------------------" << std::endl << std::endl;
-
-        ed::perception::WorkerInput input;
-        input.entity = e;
-
-        ed::perception::WorkerOutput output;
-        tue::Configuration result;
-        output.data = result;
-
-        for(std::vector<boost::shared_ptr<ed::perception::Module> >::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
-        {
-            (*it_mod)->process(input, output);
-
-            // Display the result
-        }
-
-        std::cout << result << std::endl;
-
-        ++n_measurements;
-
-        cv::waitKey();
     }
 
-    if (n_measurements == 0)
-        std::cout << "No measurements found." << std::endl;
-
-    // Delete all perception modules
-    for(std::vector<boost::shared_ptr<ed::perception::Module> >::iterator it_mod = modules.begin(); it_mod != modules.end(); ++it_mod)
-        it_mod->reset();
-
-    // Delete the class loaders (which will unload the libraries)
-    for(unsigned int i = 0; i < perception_loaders.size(); ++i)
-        delete perception_loaders[i];
+    confusionMatrix.show();
 
     return 0;
 }

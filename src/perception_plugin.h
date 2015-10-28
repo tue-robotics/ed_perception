@@ -11,9 +11,6 @@
 #include <ros/service_server.h>
 #include <ros/callback_queue.h>
 
-// Entity live viewer
-#include "../tools/entity_live_viewer/entity_live_viewer_cv.h"
-
 namespace ed
 {
 
@@ -55,9 +52,6 @@ private:
     double type_persistence_;
 
     double unknown_probability_prior_;
-
-    EntityLiveViewerCV* entity_viewer_;
-    bool enable_live_viewer_;
 
 
     // SERVICE
