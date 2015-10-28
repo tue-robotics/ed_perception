@@ -3,6 +3,8 @@
 #include <tue/filesystem/path.h>
 #include <ed/error_context.h>
 
+#include <boost/filesystem.hpp>
+
 namespace ed
 {
 namespace perception
@@ -231,13 +233,25 @@ void Aggregator::loadRecognitionData()
 
 void Aggregator::saveRecognitionData() const
 {
+    tue::filesystem::Path p(classification_model_path_);
+    if (!p.exists())
+    {
+        std::cerr << "Cannot save recognition data: path '" << classification_model_path_ << "' does not exist" << std::endl;
+        return;
+    }
+
     for(std::vector<boost::shared_ptr<Module> >::const_iterator it = modules_.begin(); it != modules_.end(); ++it)
     {
         Module& m = **it;
+        tue::filesystem::Path p_module = p.join(m.name());
 
-        tue::filesystem::Path p(classification_model_path_);
-        p = p.join(m.name());
-        m.saveRecognitionData(p.string());
+        if (!p_module.exists())
+        {
+            boost::filesystem::path dir(p_module.string());
+            boost::filesystem::create_directories(dir);
+        }
+
+        m.saveRecognitionData(p_module.string());
     }
 }
 
