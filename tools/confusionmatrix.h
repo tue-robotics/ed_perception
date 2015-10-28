@@ -12,30 +12,27 @@ class ConfusionMatrix
 public:
     ConfusionMatrix();
 
-    cv::Mat toCvMat();
-
     void addResult(const ed::perception::CategoricalDistribution& dstr, const std::string& cat);
-
-    int size();
-
-//    int getMaximum();
-
-    std::vector<std::string> getOptions();
-
-    int at(int result, int truth );
 
     void show();
 
-    int resize_factor;
+    int at(int result, int truth ) const;
+
+    std::vector<std::string> getOptions() const;
+
+    cv::Mat getImage() const {return img_;}
 
 private:
+    friend void onMouse(int event, int x, int y, int flags, void* param);
 
-//    std::vector<int> mat_;
+    void drawImage_();
+
+    int resize_factor_;
+    cv::Mat img_;
     std::vector<std::vector<int> > mat_;
     std::vector<std::string> options_;
     std::map<std::string,int> option_indices_;
     std::vector<int> unknowns;
-//    int maximum_;
 };
 
 #endif // CONFUSIONMATRIX_H
