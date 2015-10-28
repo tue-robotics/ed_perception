@@ -11,12 +11,18 @@
 #include <ed/entity.h>
 #include <ed/measurement.h>
 
+// ---------------------------------------------------------------------------------------------
+
+void mouseCallback(int event, int x, int y, int flags, void* userdata);
+
+// ---------------------------------------------------------------------------------------------
+
 class GUI
 {
 
 public:
 
-    GUI() : CIRCLE_RADIUS(6), FONT_SIZE(1.0), WINDOW_NAME("Annotation GUI"), i_possible_types(0)
+    GUI() : CIRCLE_RADIUS(6), FONT_SIZE(1.0), WINDOW_NAME("Annotation GUI"), i_possible_types(0), image_changed(false)
     {
     }
 
@@ -34,6 +40,8 @@ public:
     std::vector<std::string> possible_types;
     int i_possible_types;
     std::string selected_type;
+
+    bool image_changed;
 
     // ---------------------------------------------------------------------------------------------
 
@@ -160,6 +168,12 @@ public:
 
         std::string alpha = "abcdefghijklmnopqrstuvwxyz1234567890_-+./";
 
+        //Create a window
+        cv::namedWindow(WINDOW_NAME, 1);
+
+        //set the callback function for any mouse event
+        cv::setMouseCallback(WINDOW_NAME, mouseCallback, this);
+
         while(true)
         {
             for(std::vector<Annotation>::const_iterator it = image.annotations.begin(); it != image.annotations.end(); ++it)
@@ -170,10 +184,16 @@ public:
 
             if (key == 81) // left
             {
+                if (image_changed)
+                    toFile(crawler.filename(), image);
+
                 crawler.previous(image);
             }
             else if (key == 83) // right
             {
+                if (image_changed)
+                    toFile(crawler.filename(), image);
+
                 crawler.next(image);
             }
             else if (key == 82) // up
@@ -188,6 +208,9 @@ public:
             }
             else if (key == 27) // ESC
             {
+                if (image_changed)
+                    toFile(crawler.filename(), image);
+
                 break;
             }
             else if (key == 8) // Backspace
@@ -221,6 +244,53 @@ public:
         return 0;
     }
 };
+
+// ---------------------------------------------------------------------------------------------
+
+void mouseCallback(int event, int x, int y, int flags, void* userdata)
+{
+    GUI* gui = static_cast<GUI*>(userdata);
+
+    double px = (double)x / gui->image.image->getRGBImage().cols;
+    double py = (double)y / gui->image.image->getRGBImage().rows;
+
+    if (event == cv::EVENT_LBUTTONDOWN || event == cv::EVENT_RBUTTONDOWN)
+    {
+        std::cout << px << ", " << py << std::endl;
+
+        std::vector<Annotation>::iterator it_clicked = gui->image.annotations.end();
+
+        // Loop over all annotations and check whether we have clicked one
+        for (std::vector<Annotation>::iterator it = gui->image.annotations.begin(); it != gui->image.annotations.end(); ++it)
+        {
+            Annotation& a = *it;
+
+            int a_x = a.px * gui->image.image->getRGBImage().cols;
+            int a_y = a.py * gui->image.image->getRGBImage().rows;
+
+            if (x > a_x - gui->CIRCLE_RADIUS && x < a_x + gui->CIRCLE_RADIUS && y > a_y - gui->CIRCLE_RADIUS && y < a_y + gui->CIRCLE_RADIUS)
+            {
+                it_clicked = it;
+                break;
+            }
+        }
+
+        if (it_clicked != gui->image.annotations.end() && event == cv::EVENT_RBUTTONDOWN)
+        {
+            gui->image.annotations.erase(it_clicked);
+            gui->image_changed = true;
+        }
+
+        if (it_clicked == gui->image.annotations.end() && event == cv::EVENT_LBUTTONDOWN && !gui->selected_type.empty())
+        {
+            gui->image.annotations.push_back(Annotation(gui->selected_type, px, py));
+            gui->types.insert(gui->selected_type);
+            gui->image_changed = true;
+        }
+
+        gui->redraw();
+    }
+}
 
 // ---------------------------------------------------------------------------------------------
 

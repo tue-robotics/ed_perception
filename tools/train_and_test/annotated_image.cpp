@@ -5,6 +5,8 @@
 #include <rgbd/View.h>
 #include <tue/config/read.h>
 #include <tue/config/reader.h>
+#include <tue/config/write.h>
+#include <tue/config/writer.h>
 #include <tue/serialization/input_archive.h>
 #include <tue/filesystem/crawler.h>
 #include <ed/serialization/serialization.h>
@@ -153,7 +155,31 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
 
 bool toFile(const std::string& filename, const AnnotatedImage& image)
 {
+    // Temporarily make new data containing the annotations. If we would directly add to the existing meta-data
+    // we would add the existing annotations *again*. Now, we will completely overwrite them.
+    tue::config::DataPointer data;
 
+    tue::config::Writer w(data);
+
+    w.writeArray("annotations");
+    for (std::vector<Annotation>::const_iterator it = image.annotations.begin(); it != image.annotations.end(); ++it)
+    {
+        w.addArrayItem();
+        const Annotation& a = *it;
+        w.setValue("label", a.label);
+        w.setValue("px", a.px);
+        w.setValue("py", a.py);
+        w.endArrayItem();
+    }
+    w.endArray();
+
+    // Add the new annotations to the existing meta data (complete overwriting the annotations array)
+
+    tue::config::DataPointer meta_data;
+    meta_data.add(image.meta_data);
+    meta_data.add(data);
+
+    tue::config::toFile(filename, meta_data, tue::config::JSON, 0);
 }
 
 // ----------------------------------------------------------------------------------------------------
