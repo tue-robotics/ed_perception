@@ -92,13 +92,15 @@ void SizeMatcher::classify(const ed::Entity& e, const std::string& property, con
     if (!calculateSize(e, width, height))
         return;
 
+    double margin = 0.01;
+
     for(std::map<std::string, SizeModel>::const_iterator it = models_.begin(); it != models_.end(); ++it)
     {
         const std::string& model_name = it->first;
         const SizeModel& model = it->second;
 
-        if (model.width_min < width && width < model.width_max
-                && model.height_min < height && height < model.height_max)
+        if (model.width_min - margin < width && width < model.width_max + margin
+                && model.height_min - margin < height && height < model.height_max + margin)
         {
             double score = 1.0 / (model.width_max - model.width_min) + 1.0 / (model.height_max - model.height_min);
 //            double score = 1;
