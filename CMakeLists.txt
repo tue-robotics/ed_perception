@@ -222,6 +222,7 @@ target_link_libraries(create-rgbd-measurement ${catkin_LIBRARIES} ${OpenCV_LIBRA
 
 add_library(train-and-test-lib
     tools/train_and_test/image_crawler.cpp
+    tools/train_and_test/annotated_image.cpp
 )
 target_link_libraries(train-and-test-lib ed_perception2 ${catkin_LIBRARIES})
 
@@ -289,6 +290,10 @@ ADD_DEFINITIONS(-DQT_NO_KEYWORDS)
 #    ${OpenCV_LIBRARIES}
 #    ${QT_LIBRARIES}
 #)
+
+
+add_executable(annotation-gui-new tools/train_and_test/annotation_gui.cpp)
+target_link_libraries(annotation-gui-new train-and-test-lib ed_perception2 ${QT_LIBRARIES} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 
 # -------------- ENTITY VIEWER CLIENT GUI --------------
