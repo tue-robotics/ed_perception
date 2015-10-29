@@ -26,6 +26,7 @@
 ColorMatcher::ColorMatcher() : ed::perception::Module("color_matcher")
 {
     this->registerPropertyServed("type");
+    this->registerPropertyServed("color");
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -40,13 +41,18 @@ void ColorMatcher::classify(const ed::Entity& e, const std::string& property,
                             const ed::perception::CategoricalDistribution& prior,
                             ed::perception::ClassificationOutput& output) const
 {
-    if (property != "type")
-        return;
-
     tue::Configuration& result = output.data;
 
     ColorHistogram color_histogram;
     calculateHistogram(e, color_histogram);
+
+    if (property == "color")
+    {
+        for(unsigned int i = 0; i < ColorNameTable::NUM_COLORS; ++i)
+            output.likelihood.setScore(color_table_.intToColorName(i), color_histogram[i]);
+        output.likelihood.setUnknownScore(0);
+        return;
+    }
 
     for(std::map<std::string, ColorModel>::const_iterator it = models_.begin(); it != models_.end(); ++it)
     {
