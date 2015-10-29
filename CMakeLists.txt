@@ -32,6 +32,11 @@ find_package(OpenCV REQUIRED)
 ## catkin specific configuration ##
 ###################################
 
+add_message_files(
+   FILES
+   CategoricalDistribution.msg
+)
+
 add_service_files(
    FILES
    LearnPerson.srv

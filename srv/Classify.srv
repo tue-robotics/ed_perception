@@ -1,12 +1,20 @@
-bool enable_continuous_mode     # Set to true to enable continuous mode
-bool disable_continuous_mode    # Set to true to disable continuous mode
+string perception_models_path  # Path to trained perception models
 
 string[] ids     # ids to classify  
 
-string[] types   # types to recognize
-bool no_unknown  # If set to true, all ids will have one of the types specified
-                 # (In other words, no unknown thresholding will be used)
-bool unique_types  # If set to true, no type will be assigned to more than one id
+string property  # property to classify (e.g., 'type', 'color')
+
+CategoricalDistribution prior  # prior probability distribution
+
 ---
-string[] types   # classified types (in same order as 'ids' in request)
-float64[] probabilities  # Probabilities of classified types
+
+string[] ids     # ids that where classified
+
+CategoricalDistribution[] posteriors   # Posterior probability distribution per id
+
+# The following is just for convenience, and can be derived from the posteriors:
+string[] expected_values                # Expected values based on posteriors, per id (empty is unknown)
+float32[] expected_value_probabilities  # Expected value probabilities, per id
+
+string error_msg
+

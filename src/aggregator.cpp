@@ -58,6 +58,8 @@ void Aggregator::configure(tue::Configuration config, bool for_training)
         return;
     }
 
+    config.value("classification_model_path", classification_model_path_);
+
     if (config.readArray("modules"))
     {
         while(config.nextArrayItem())
@@ -142,7 +144,12 @@ void Aggregator::configure(tue::Configuration config, bool for_training)
         config.endArray();
     }
 
-    config.value("classification_model_path", classification_model_path_);
+    if (!for_training)
+    {
+        // Load perception models
+        loadRecognitionData();
+    }
+
 }
 
 // ----------------------------------------------------------------------------------------------------

@@ -12,49 +12,6 @@
 #include <ros/package.h>
 #include <ros/node_handle.h>
 
-// ----------------------------------------------------------------------------------------------------
-
-namespace
-{
-
-bool getEnvironmentVariable(const std::string& var, std::string& value)
-{
-     const char * val = ::getenv(var.c_str());
-     if ( val == 0 )
-         return false;
-
-     value = val;
-     return true;
-}
-
-// ----------------------------------------------------------------------------------------------------
-
-bool loadModelList(std::string& model_list_path, std::vector<std::string>& model_list){
-    tue::Configuration conf;
-    std::string model_name;
-
-    if (!conf.loadFromYAMLFile(model_list_path)) // read YAML configuration
-        return false;
-
-    if (!conf.readArray("models"))           // read Model group
-    {
-        std::cout << "[ED PERCEPTION] While reading file " << model_list_path << ": could not find 'models' group." << std::endl;
-        return false;
-    }
-
-    while(conf.nextArrayItem())
-    {
-        if(conf.value("name", model_name))
-            model_list.push_back(model_name);
-    }
-
-    return true;
-}
-
-}
-
-// ----------------------------------------------------------------------------------------------------
-
 namespace ed
 {
 
@@ -63,7 +20,7 @@ namespace perception
 
 // ----------------------------------------------------------------------------------------------------
 
-PerceptionPlugin::PerceptionPlugin() : continuous_(false)
+PerceptionPlugin::PerceptionPlugin()
 {
 }
 
@@ -77,114 +34,8 @@ PerceptionPlugin::~PerceptionPlugin()
 
 void PerceptionPlugin::initialize(ed::InitData& init)
 {
-    tue::Configuration& config = init.config;
-
-    std::string model_list_name = "";
-
-    // Get the plugin paths
-    std::string ed_plugin_paths;
-    if (getEnvironmentVariable("ED_PLUGIN_PATH", ed_plugin_paths))
-    {
-        std::stringstream ss(ed_plugin_paths);
-        std::string item;
-        while (std::getline(ss, item, ':'))
-            plugin_paths_.push_back(item);
-    }
-    else
-    {
-        config.addError("Environment variable ED_PLUGIN_PATH not set.");
-        return;
-    }
-
-    // read model list name to be used
-    if (!config.value("model_list", model_list_name))
-    {
-//        std::cout << "Could not find model list name. Using all models." << std::endl;
-        return;
-    }
-
-    config.value("type_persistence", type_persistence_);
-    config.value("unknown_probability_prior", unknown_probability_prior_);
-
-    // Get parameter that determines if perception should be run continuously or not
-    int int_continuous = 0;
-    config.value("continuous", int_continuous);
-    continuous_ = int_continuous;
-
-    std::string object_models_path = ros::package::getPath("ed_object_models");
-    std::string model_list_path = object_models_path + "/configs/model_lists/" + model_list_name;
-
-    model_list_.clear();
-    if (!loadModelList(model_list_path, model_list_))
-    {
-        init.config.addError("Error reading file '" + model_list_path + "'");
-        return;
-    }
-
-    if (config.readArray("modules"))
-    {
-        while(config.nextArrayItem())
-        {
-            int enabled = 1;
-            if (config.value("enabled", enabled, tue::OPTIONAL) && enabled == 0)
-                continue;
-
-            std::string lib;
-            if (!config.value("lib", lib))
-                continue;
-
-            std::string lib_file;
-            for(std::vector<std::string>::const_iterator it = plugin_paths_.begin(); it != plugin_paths_.end(); ++it)
-            {
-                std::string lib_file_test = *it + "/" + lib;
-                if (tue::filesystem::Path(lib_file_test).exists())
-                {
-                    lib_file = lib_file_test;
-                    break;
-                }
-            }
-
-            if (lib_file.empty())
-            {
-                config.addError("Perception plugin '" + lib + "' could not be found.");
-                return;
-            }
-
-            // Load the library
-            class_loader::ClassLoader* class_loader = new class_loader::ClassLoader(lib_file);
-            perception_loaders_.push_back(class_loader);
-
-            // Create perception module
-            boost::shared_ptr<Module> perception_module = ed::perception::loadPerceptionModule(class_loader, model_list_name);
-
-            if (perception_module)
-            {
-                // Configure the module if there is a 'parameters' group in the config
-                if (config.readGroup("parameters"))
-                {
-                    ed::ErrorContext errc("Configuring perception module", perception_module->name().c_str());
-                    perception_module->configure(config.limitScope());
-                    config.endGroup();
-                }
-
-                // Add the perception module to the aggregator
-                perception_modules_.push_back(perception_module);
-            }
-            else
-            {
-                config.addError("No valid perception module could be found in '" + lib_file + "'.");
-            }
-
-        }
-        config.endArray();
-    }
-
-    // Make sure a connection with ROS is initialized
-    if (!ros::isInitialized())
-    {
-        ros::M_string remapping_args;
-        ros::init(remapping_args, "ed");
-    }
+//    tue::Configuration& config = init.config;
+//    aggregator_.configure(config, false);
 
     // Initialize service
     ros::NodeHandle nh("~");
@@ -200,226 +51,105 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
     update_req_ = &req;
 
     cb_queue_.callAvailable();
-
-    if (!continuous_)
-        return;
-
-    // Don't update if there are no perception modules
-    if (perception_modules_.empty())
-        return;
-
-    int n = 0;
-    for(ed::WorldModel::const_iterator it = data.world.begin(); it != data.world.end(); ++it)
-    {
-        const ed::EntityConstPtr& e = *it;
-
-        if (e->shape() || e->convexHull().points.empty())
-            continue;
-
-        ++n;
-
-        const ed::UUID& id = e->id();
-
-//        if (e->type() != "")
-//        {
-//            std::map<ed::UUID, std::string>::iterator it2 = previous_entity_types_.find(e->id());
-//            if (it2 == previous_entity_types_.end() || it2->second != e->type())
-//            {
-//                // The entity received a type it did not have before. Therefore, update it and fit
-//                // a shape model
-//                it->second = updateEntityType(e, e->type(), fit_shape_);
-
-//                previous_entity_types_[id] = e->type();
-
-//                // We do not have to start a perception worker since we already have a type
-//                continue;
-//            }
-//        }
-
-        std::map<UUID, boost::shared_ptr<Worker> >::iterator it_worker = workers_.find(id);
-        if (it_worker == workers_.end())
-        {
-            // No worker active for this entity, so create one
-
-            // create worker and add measurements
-            boost::shared_ptr<Worker> worker(new Worker(model_list_, type_persistence_, unknown_probability_prior_));
-            worker->setEntity(e);
-            worker->setPerceptionModules(perception_modules_);
-
-            workers_[id] = worker;
-            worker->start();
-        }
-        else
-        {
-            // Already a worker active
-            boost::shared_ptr<Worker> worker = it_worker->second;
-
-            // Check if it is idle, but has done work before
-            if (worker->isIdle() && worker->t_last_processing > 0)
-            {
-                // Worker has already done work and finished. Check if we want to run it again
-
-                // Get the latest measurements since the last measurement processed by the worker
-                std::vector<MeasurementConstPtr> measurements;
-                e->measurements(measurements, worker->t_last_processing);
-
-                if (!measurements.empty())
-                {
-                    // There are new measurements, so run the worker again
-                    worker->setEntity(e);
-                    worker->start();
-                }
-            }
-            // Check if it just finished processing
-            else if (worker->isDone())
-            {
-                const CategoricalDistribution& type_dist = worker->getTypeDistribution();
-
-                std::string expected_type;
-                double type_score;
-
-                // Set type, if score is high enough
-                if (type_dist.getMaximum(expected_type, type_score) && type_score > type_dist.getUnknownScore())
-                    req.setType(e->id(), expected_type);
-
-                // Update the entity with the results from the worker
-                if (!worker->getResult().empty())
-                    req.addData(e->id(), worker->getResult());
-
-                // Set worker to idle. This way, the result is not checked again on the next iteration
-                worker->setIdle();
-
-                worker->t_last_processing = worker->timestamp();
-            }
-        }
-    }
-
-    // Filter idle workers of deleted entities
-    for(std::map<UUID, boost::shared_ptr<Worker> >::iterator it = workers_.begin(); it != workers_.end();)
-    {
-        const boost::shared_ptr<Worker>& worker = it->second;
-
-        if (!data.world.getEntity(it->first))
-        {
-            if (worker->isRunning())
-            {
-                worker->signalStop();
-                ++it;
-            }
-            else
-            {
-                workers_.erase(it++);
-            }
-        }
-        else
-        {
-            ed::EntityConstPtr e = data.world.getEntity(it->first);
-            // if (e->convexHull().chull.empty())
-            //    std::cout << "WARNING: Entity " << e->id() << " has empty convex hull!" << std::endl;
-
-            ++it;
-        }
-    }
-
-//    std::cout << "Num entities: " << n << ", num workers = " << workers_.size() << std::endl;
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res)
 {
-    req.no_unknown = true;
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Configure classifier
 
-    ROS_WARN("Classifying with 'no_unknown' is true! (Muhahaha, Sjoerd enforced this)");
-
-    if (req.enable_continuous_mode)
+    if (perception_models_path_ != req.perception_models_path)
     {
-        continuous_ = true;
-    }
+        std::string config_filename = req.perception_models_path + "/classify.yaml";
+        tue::Configuration config;
+        config.loadFromYAMLFile(config_filename);
 
-    if (req.disable_continuous_mode)
-    {
-        continuous_ = false;
-    }
+        if (!config.hasError())
+            aggregator_.configure(config, false);
 
-    res.types.resize(req.ids.size(), "");
-    res.probabilities.resize(req.ids.size(), 0);
-    for(unsigned int i_entity = 0; i_entity < req.ids.size(); ++i_entity)
-    {
-        ed::EntityConstPtr e = world_->getEntity(req.ids[i_entity]);
-        if (!e || e->shape() || e->convexHull().points.empty())
-            continue;
-
-        WorkerInput worker_input;
-        worker_input.entity = e;
-
-        worker_input.type_distribution.setUnknownScore(unknown_probability_prior());
-        // Add all possible model types to the type distribution
-        for(std::vector<std::string>::const_iterator it = model_list().begin(); it != model_list().end(); ++it)
-            worker_input.type_distribution.setScore(*it, (1.0 - unknown_probability_prior()) / model_list().size());
-
-        WorkerOutput worker_output;
-
-        for(std::vector<boost::shared_ptr<Module> >::const_iterator it = perception_modules_.begin(); it != perception_modules_.end(); ++it)
+        if (config.hasError())
         {
-            // Clear type distribution update
-            worker_output.type_update = CategoricalDistribution();
-
-            std::string context_msg = "Perception module '" + (*it)->name() + "', entity '" + worker_input.entity->id().str() + "'";
-            ed::ErrorContext errc(context_msg.c_str());
-            (*it)->process(worker_input, worker_output);
-
-            // Update total type distribution
-            worker_input.type_distribution.update(worker_output.type_update);
+            res.error_msg = "Could not load configuration file '" + config_filename + "':\n\n" + config.error();
+            return true;
         }
 
-        // Always add the perception data to the entity
-        update_req_->addData(e->id(), worker_output.data.data());
+        perception_models_path_ = req.perception_models_path;
+    }
+    else if (req.perception_models_path.empty())
+    {
+        res.error_msg = "Please provide perception model path.";
+        return true;
+    }
 
-        const CategoricalDistribution& type_dist = worker_input.type_distribution;
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Convert prior msg to distribution
 
-        std::cout << type_dist << std::endl;
+    CategoricalDistribution prior;
+    for(unsigned int i = 0; i < req.prior.values.size(); ++i)
+        prior.setScore(req.prior.values[i], req.prior.probabilities[i]);
+    prior.setUnknownScore(req.prior.unknown_probability);
 
-        std::string expected_type;
-        double best_score;
-        type_dist.getMaximum(expected_type, best_score);
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Classify
 
-        std::string best_filtered_type;
-        double best_filtered_score = 0;
-
-        if (req.types.empty())
+    for(std::vector<std::string>::const_iterator it = req.ids.begin(); it != req.ids.end(); ++it)
+    {
+        ed::EntityConstPtr e = world_->getEntity(*it);
+        if (!e)
         {
-            if (req.no_unknown || best_score > type_dist.getUnknownScore())
-            {
-                best_filtered_type = expected_type;
-                best_filtered_score = best_score;
-            }
+            res.error_msg += "Entity '" + *it + "' does not exist.\n";
+            continue;
+        }
+
+        if (!e->bestMeasurement())
+        {
+            res.error_msg += "Entity '" + *it + "' does not have a measurement.\n";
+            continue;
+        }
+
+        tue::Configuration data;
+        ed::perception::ClassificationOutput output(data);
+        aggregator_.classify(*e, req.property, prior, output);
+
+        // TODO: create posterior! (is now just likelihood)
+        ed::perception::CategoricalDistribution posterior = output.likelihood;
+        posterior.normalize();
+
+        // - - - - - - - - - - - - - - - - - - - - - -
+        // Write result to message
+
+        res.ids.push_back(e->id().str());
+
+        res.posteriors.push_back(ed_perception::CategoricalDistribution());
+        ed_perception::CategoricalDistribution& dist_msg = res.posteriors.back();
+
+        for(std::map<std::string, double>::const_iterator it2 = posterior.values().begin(); it2 != posterior.values().end(); ++it2)
+        {
+            dist_msg.values.push_back(it2->first);
+            dist_msg.probabilities.push_back(it2->second);
+        }
+
+        dist_msg.unknown_probability = posterior.getUnknownScore();
+
+
+        std::string max_value;
+        double max_prob;
+        if (posterior.getMaximum(max_value, max_prob) && max_prob > posterior.getUnknownScore())
+        {
+            res.expected_values.push_back(max_value);
+            res.expected_value_probabilities.push_back(max_prob);
+
+            // If the classification property is 'type', set the type of the entity in the world model
+            if (req.property == "type")
+                update_req_->setType(e->id(), max_value);
         }
         else
         {
-            double best_prob = 0;
-
-            if (!req.no_unknown)
-                best_prob = std::max(type_dist.getUnknownScore(), 0.8 * best_score);
-
-            for(std::vector<std::string>::const_iterator it_type = req.types.begin(); it_type != req.types.end(); ++it_type)
-            {
-                double prob;
-                if (type_dist.getScore(*it_type, prob) && prob >= best_prob)
-                {
-                    best_filtered_type = *it_type;
-                    best_filtered_score = prob;
-                    best_prob = prob;
-                }
-            }
+            res.expected_values.push_back("");
+            res.expected_value_probabilities.push_back(posterior.getUnknownScore());
         }
-
-        res.types[i_entity] = best_filtered_type;
-        res.probabilities[i_entity] = best_filtered_score;
-
-        if (!best_filtered_type.empty())
-            // Update the entity type
-            update_req_->setType(e->id(), best_filtered_type);
     }
 
     return true;

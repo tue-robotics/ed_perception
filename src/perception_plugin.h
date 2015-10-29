@@ -3,8 +3,7 @@
 
 #include <ed/plugin.h>
 
-#include "ed/perception/module.h"
-#include "ed/perception/worker.h"
+#include "ed/perception/aggregator.h"
 
 // Service
 #include <ed_perception/Classify.h>
@@ -30,33 +29,13 @@ public:
 
     void process(const ed::PluginInput& data, ed::UpdateRequest& req);
 
-    const std::vector<boost::shared_ptr<Module> >& perception_modules() const { return perception_modules_; }
-
-    const std::vector<std::string>& model_list() const { return model_list_; }
-
-    double unknown_probability_prior() const { return unknown_probability_prior_; }
-
 private:
 
-    // List of possible object types
-    std::vector<std::string> model_list_;
+    Aggregator aggregator_;
 
-    std::vector<std::string> plugin_paths_;
-
-    std::vector<class_loader::ClassLoader*> perception_loaders_;
-
-    std::vector<boost::shared_ptr<Module> > perception_modules_;
-
-    std::map<UUID, boost::shared_ptr<Worker> > workers_;
-
-    double type_persistence_;
-
-    double unknown_probability_prior_;
-
+    std::string perception_models_path_;
 
     // SERVICE
-
-    bool continuous_;
 
     const ed::WorldModel* world_;
 
