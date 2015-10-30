@@ -164,7 +164,7 @@ public:
             return 1;
         }
 
-        std::string alpha = "abcdefghijklmnopqrstuvwxyz1234567890_-+./";
+        std::string alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-+./";
 
         //Create a window
         cv::namedWindow(WINDOW_NAME, 1);
@@ -234,6 +234,10 @@ public:
 
                 while(crawler.next(image, false))
                 {
+                    // Add labels
+                    for(std::vector<Annotation>::const_iterator it = image.annotations.begin(); it != image.annotations.end(); ++it)
+                        types.insert(it->label);
+
                     bool has_support = false;
                     for(std::vector<Annotation>::const_iterator it = image.annotations.begin();
                         it != image.annotations.end(); ++it)

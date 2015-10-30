@@ -46,6 +46,8 @@ bool ImageCrawler::setPath(const std::string& path_str)
         if (filename.extension() == ".json")
             filenames_.push_back(filename.string());
     }
+
+    std::sort(filenames_.begin(), filenames_.end());
 }
 
 // ----------------------------------------------------------------------------------------------------
