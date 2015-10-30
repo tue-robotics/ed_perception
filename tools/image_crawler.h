@@ -19,11 +19,11 @@ public:
 
     bool setPath(const std::string& path);
 
-    bool previous(AnnotatedImage& image);
+    bool previous(AnnotatedImage& image, bool do_segment = true);
 
-    bool next(AnnotatedImage& image);
+    bool next(AnnotatedImage& image, bool do_segment = true);
 
-    bool reload(AnnotatedImage& image);
+    bool reload(AnnotatedImage& image, bool do_segment);
 
     const std::string& filename() const { return filenames_[i_current_]; }
 

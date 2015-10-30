@@ -229,7 +229,29 @@ public:
             }
             else if (key == 9) // Tab
             {
+                if (image_changed)
+                    toFile(crawler.filename(), image);
 
+                while(crawler.next(image, false))
+                {
+                    bool has_support = false;
+                    for(std::vector<Annotation>::const_iterator it = image.annotations.begin();
+                        it != image.annotations.end(); ++it)
+                    {
+                        if (it->is_supporting)
+                        {
+                            has_support = true;
+                            break;
+                        }
+                    }
+
+                    if (!has_support)
+                    {
+                        // Reload with segmentation
+                        crawler.reload(image, true);
+                        break;
+                    }
+                }
             }
             else if (alpha.find(key) != std::string::npos)
             {

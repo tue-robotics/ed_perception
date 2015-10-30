@@ -50,7 +50,7 @@ bool ImageCrawler::setPath(const std::string& path_str)
 
 // ----------------------------------------------------------------------------------------------------
 
-bool ImageCrawler::previous(AnnotatedImage& image)
+bool ImageCrawler::previous(AnnotatedImage& image, bool do_segment)
 {
     if (filenames_.empty())
         return false;
@@ -59,12 +59,12 @@ bool ImageCrawler::previous(AnnotatedImage& image)
         return false;
 
     --i_current_;
-    return reload(image);
+    return reload(image, do_segment);
 }
 
 // ----------------------------------------------------------------------------------------------------
 
-bool ImageCrawler::next(AnnotatedImage& image)
+bool ImageCrawler::next(AnnotatedImage& image, bool do_segment)
 {
     if (filenames_.empty())
         return false;
@@ -73,12 +73,12 @@ bool ImageCrawler::next(AnnotatedImage& image)
         return false;
 
     ++i_current_;
-    return reload(image);
+    return reload(image, do_segment);
 }
 
 // ----------------------------------------------------------------------------------------------------
 
-bool ImageCrawler::reload(AnnotatedImage& image)
+bool ImageCrawler::reload(AnnotatedImage& image, bool do_segment)
 {
     if (i_current_ < 0)
         return false;
@@ -87,6 +87,9 @@ bool ImageCrawler::reload(AnnotatedImage& image)
     // Read image + meta-data
 
     fromFile(filenames_[i_current_], image);
+
+    if (!do_segment)
+        return true;
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Segment
