@@ -4,10 +4,11 @@
 #include <class_loader/class_loader.h>
 #define ED_REGISTER_PERCEPTION_MODULE(Derived)  CLASS_LOADER_REGISTER_CLASS(Derived, ed::perception::Module)
 
-#include "ed/perception/worker_input.h"
-#include "ed/perception/worker_output.h"
-
 #include <set>
+
+#include "ed/perception/categorical_distribution.h"
+#include <tue/config/configuration.h>
+#include <ed/types.h>
 
 namespace ed
 {
@@ -31,17 +32,6 @@ public:
 
     virtual ~Module() {}
 
-    virtual void process(const WorkerInput& input, WorkerOutput& output) const = 0;
-
-    virtual void loadModel(const std::string& model_name, const std::string& model_path) {}
-
-    virtual void loadConfig(const std::string& config_path) {}
-
-    virtual void configure(tue::Configuration config) {}
-
-
-    // New interface
-
     // Return the value distribution for the given entity and property
     virtual void classify(const Entity& e, const std::string& property, const CategoricalDistribution& prior, ClassificationOutput& output) const = 0;
 
@@ -63,6 +53,8 @@ public:
 
     // Configure the module for classification
     virtual void configureClassification(tue::Configuration config) {}
+
+
 
     // Returns the name of this module
     const std::string& name() const { return name_; }
@@ -92,10 +84,6 @@ private:
     std::set<std::string> properties_served_;
 
 };
-
-boost::shared_ptr<Module> loadPerceptionModule(class_loader::ClassLoader* loader, const std::string& model_list_name = std::string());
-
-bool loadModelList(std::string& model_list_path, std::vector<std::string>& model_list);
 
 } // end namespace ed
 

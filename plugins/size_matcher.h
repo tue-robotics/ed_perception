@@ -30,11 +30,6 @@ public:
 
     virtual ~SizeMatcher();
 
-    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const {}
-
-
-    // New interface
-
     void classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior,
                   ed::perception::ClassificationOutput& output) const;
 

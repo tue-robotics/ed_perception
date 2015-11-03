@@ -36,18 +36,16 @@ public:
     // New interface
 
     void classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior,
-                  ed::perception::ClassificationOutput& output) const {}
+                  ed::perception::ClassificationOutput& output) const;
 
-    void addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value) {}
+    void addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value);
 
-    void train() {}
+    void loadRecognitionData(const std::string& path);
 
-    void loadRecognitionData(const std::string& path) {}
-
-    void saveRecognitionData(const std::string& path) const {}
+    void saveRecognitionData(const std::string& path) const;
 
 private:
-    bool init_success_;
+    bool initialized_;
     bool debug_mode_;
     std::string debug_folder_;
 
@@ -58,6 +56,8 @@ private:
     std::string module_name_;
 
     odu_finder::ODUFinder* odu_finder_;
+
+    bool extractImage(const ed::Entity& e, cv::Mat& img) const;
 
 protected:
 

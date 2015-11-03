@@ -67,15 +67,10 @@ catkin_package()
 
 add_library(ed_perception
     include/ed/perception/categorical_distribution.h
-    include/ed/perception/worker_input.h
-    include/ed/perception/worker_output.h
     include/ed/perception/module.h
-    include/ed/perception/worker.h
     include/ed/perception/aggregator.h
 
     src/categorical_distribution.cpp
-    src/module.cpp
-    src/worker.cpp
     src/aggregator.cpp
 )
 target_link_libraries(ed_perception ${catkin_LIBRARIES})
@@ -126,22 +121,22 @@ add_library(size_matcher
 )
 target_link_libraries(size_matcher shared_methods ${catkin_LIBRARIES})
 
-add_library(human_contour_matcher
-    plugins/human_contour_matcher.cpp
-    plugins/human_contour_matcher.h
-    plugins/human_classifier.cpp
-    plugins/human_classifier.h
-    plugins/human_classifier_structs.h
-#    plugins/opencl_toolbox.cpp
-#    plugins/opencl_toolbox.h
-)
-target_link_libraries(human_contour_matcher shared_methods ${catkin_LIBRARIES})
+#add_library(human_contour_matcher
+#    plugins/human_contour_matcher.cpp
+#    plugins/human_contour_matcher.h
+#    plugins/human_classifier.cpp
+#    plugins/human_classifier.h
+#    plugins/human_classifier_structs.h
+##    plugins/opencl_toolbox.cpp
+##    plugins/opencl_toolbox.h
+#)
+#target_link_libraries(human_contour_matcher shared_methods ${catkin_LIBRARIES})
 
-add_library(face_detector
-    plugins/face_detector.cpp
-    plugins/face_detector.h
-)
-target_link_libraries(face_detector shared_methods ${catkin_LIBRARIES})
+#add_library(face_detector
+#    plugins/face_detector.cpp
+#    plugins/face_detector.h
+#)
+#target_link_libraries(face_detector shared_methods ${catkin_LIBRARIES})
 
 #add_library(face_recognition_ed
 #    plugins/face_recognition.cpp
@@ -149,28 +144,28 @@ target_link_libraries(face_detector shared_methods ${catkin_LIBRARIES})
 #)
 #target_link_libraries(face_recognition_ed shared_methods shared_methods ${catkin_LIBRARIES})
 
-add_library(open_biometrics_ed
-    plugins/open_biometrics_ed.cpp
-    plugins/open_biometrics_ed.h
-)
-target_link_libraries(open_biometrics_ed shared_methods ${catkin_LIBRARIES} ${Qt5_LIBRARIES})
+#add_library(open_biometrics_ed
+#    plugins/open_biometrics_ed.cpp
+#    plugins/open_biometrics_ed.h
+#)
+#target_link_libraries(open_biometrics_ed shared_methods ${catkin_LIBRARIES} ${Qt5_LIBRARIES})
 # target_link_libraries(open_biometrics_ed ${catkin_LIBRARIES} ${Qt5_LIBRARIES} /usr/local/lib/libopenbr.so)
 
-add_library(ed_odu_finder
-    plugins/odu_finder/odu_finder_module.cpp
-    plugins/odu_finder/odu_finder_module.h
-    plugins/odu_finder/odu_finder.cpp
-    plugins/odu_finder/odu_finder.h
-)
-target_link_libraries(ed_odu_finder shared_methods ${catkin_LIBRARIES} /usr/local/lib/libsiftfast.so)
+#add_library(ed_odu_finder
+#    plugins/odu_finder/odu_finder_module.cpp
+#    plugins/odu_finder/odu_finder_module.h
+#    plugins/odu_finder/odu_finder.cpp
+#    plugins/odu_finder/odu_finder.h
+#)
+#target_link_libraries(ed_odu_finder shared_methods ${catkin_LIBRARIES} /usr/local/lib/libsiftfast.so)
 
-add_library(qr_detector
-    plugins/qr_detector.cpp
-    plugins/qr_detector.h
-    plugins/qr_detector_zbar/qr_detector_zbar.cpp
-    plugins/qr_detector_zbar/qr_detector_zbar.h
-)
-target_link_libraries(qr_detector ${catkin_LIBRARIES} /usr/lib/libzbar.so)
+#add_library(qr_detector
+#    plugins/qr_detector.cpp
+#    plugins/qr_detector.h
+#    plugins/qr_detector_zbar/qr_detector_zbar.cpp
+#    plugins/qr_detector_zbar/qr_detector_zbar.h
+#)
+#target_link_libraries(qr_detector ${catkin_LIBRARIES} /usr/lib/libzbar.so)
 
 add_library(color_matcher
     plugins/color_matcher/color_matcher.cpp
@@ -180,11 +175,11 @@ add_library(color_matcher
 )
 target_link_libraries(color_matcher shared_methods ${catkin_LIBRARIES})
 
-add_library(laser_human_chest_classifier
-    plugins/laser_human_classifier/laser_human_chest_classifier.cpp
-    plugins/laser_human_classifier/laser_human_chest_classifier.h
-)
-target_link_libraries(laser_human_chest_classifier people_detector shared_methods ${catkin_LIBRARIES})
+#add_library(laser_human_chest_classifier
+#    plugins/laser_human_classifier/laser_human_chest_classifier.cpp
+#    plugins/laser_human_classifier/laser_human_chest_classifier.h
+#)
+#target_link_libraries(laser_human_chest_classifier people_detector shared_methods ${catkin_LIBRARIES})
 
 #add_library(odu_finder_db_builder tools/odu_finder_db_builder.cpp)
 #target_link_libraries(odu_finder_db_builder ${catkin_LIBRARIES} /usr/local/lib/libsiftfast.so)

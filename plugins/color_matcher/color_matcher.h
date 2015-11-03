@@ -34,15 +34,6 @@ public:
 
     virtual ~ColorMatcher();
 
-    void loadModel(const std::string& model_name, const std::string& model_path) {}
-
-    void loadConfig(const std::string& config_path) {}
-
-    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const {}
-
-
-    // New interface
-
     void configureTraining(tue::Configuration config);
 
     void configureClassification(tue::Configuration config);

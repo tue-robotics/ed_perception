@@ -19,16 +19,146 @@
 
 // ----------------------------------------------------------------------------------------------------
 
-ODUFinderModule::ODUFinderModule() :
-    ed::perception::Module("odu_finder"),
-    init_success_(false)
+ODUFinderModule::ODUFinderModule() : ed::perception::Module("odu_finder"), initialized_(false), odu_finder_(NULL)
 {
+    this->registerPropertyServed("type");
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 ODUFinderModule::~ODUFinderModule()
 {
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ODUFinderModule::classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior,
+              ed::perception::ClassificationOutput& output) const
+{
+    ed::ErrorContext errc("Processing entity in ODUFinderModule");
+
+    if (!odu_finder_)
+        return;
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Prepare image
+
+    cv::Mat cropped_mono_image;
+    if (!extractImage(e, cropped_mono_image))
+        return;
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Process image
+
+    IplImage img(cropped_mono_image);
+    std::map<std::string, float> results;
+
+    {
+        boost::lock_guard<boost::mutex> lg(mutex_update_);
+        results = odu_finder_->process_image(&img);
+    }
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Set results
+
+    tue::Configuration& result = output.data;
+
+    // create group if it doesnt exist
+    if (!result.readGroup("perception_result", tue::OPTIONAL))
+    {
+        result.writeGroup("perception_result");
+    }
+
+    result.writeGroup("odu_finder");
+
+//    output.type_update.setUnknownScore(type_unknown_score_);
+
+    double total_score = 0;
+
+    // if an hypothesis is found, assert it
+    if (!results.empty())
+    {
+        for(std::map<std::string, float>::const_iterator it = results.begin(); it != results.end(); ++it)
+        {
+            double score = it->second * score_factor_;
+            output.likelihood.setScore(it->first, score);
+            total_score += score;
+        }
+    }
+
+    if (total_score < 1.0)
+        output.likelihood.setUnknownScore(1.0 - total_score);
+    else
+        output.likelihood.setUnknownScore(0);
+
+    result.endGroup();  // close odu_finder group
+    result.endGroup();  // close perception_result group
+
+    if (debug_mode_){
+        cv::imwrite(debug_folder_ + ed::Entity::generateID().str() + "_odu_finder_module.png", cropped_mono_image);
+    }
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ODUFinderModule::addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value)
+{
+    if (!odu_finder_)
+        return;
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Prepare image
+
+    cv::Mat cropped_mono_image;
+    if (!extractImage(e, cropped_mono_image))
+        return;
+
+    vt::Document doc;
+
+    odu_finder_->add_image_to_database();
+
+    // TODO
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ODUFinderModule::loadRecognitionData(const std::string& path)
+{
+    // creat odu finder instance
+    delete odu_finder_;
+    odu_finder_ = new odu_finder::ODUFinder(path, debug_mode_);
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ODUFinderModule::saveRecognitionData(const std::string& path) const
+{
+    if (odu_finder_)
+        odu_finder_->save_database(path);
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+bool ODUFinderModule::extractImage(const ed::Entity& e, cv::Mat& img) const
+{
+    // Get the best measurement from the entity
+    ed::MeasurementConstPtr msr = e.lastMeasurement();
+    if (!msr)
+        return false;
+
+    // get color image
+    const cv::Mat& color_image = msr->image()->getRGBImage();
+
+    // Created masked image
+    cv::Rect rgb_roi;
+    ed::perception::maskImage(color_image, msr->imageMask(), rgb_roi);
+
+    // Create cropped masked color image
+    cv::Mat cropped_image = color_image(rgb_roi);
+
+    // convert to grayscale and increase contrast
+    cv::cvtColor(cropped_image, img, CV_BGR2GRAY);
+    cv::equalizeHist(croped_mono_image, img);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -62,7 +192,7 @@ void ODUFinderModule::configure(tue::Configuration config) {
     else
         std::cout << "[" << module_name_ << "] " << "Loaded information for " << odu_finder_->get_n_models_loaded() << " models" << std::endl;
 
-    init_success_ = true;
+    initialized_ = true;
 
     std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
 }
@@ -91,7 +221,7 @@ void ODUFinderModule::process(const ed::perception::WorkerInput& input, ed::perc
 
 //    output.type_update.setUnknownScore(type_unknown_score_);
 
-    if (!init_success_)
+    if (!initialized_)
         return;
 
     // Get the best measurement from the entity
