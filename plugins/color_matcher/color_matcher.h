@@ -34,8 +34,6 @@ public:
 
     virtual ~ColorMatcher();
 
-    void configureTraining(tue::Configuration config);
-
     void loadModel(const std::string& model_name, const std::string& model_path) {}
 
     void loadConfig(const std::string& config_path) {}
@@ -45,20 +43,18 @@ public:
 
     // New interface
 
+    void configureTraining(tue::Configuration config);
+
+    void configureClassification(tue::Configuration config);
+
     void classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior,
                   ed::perception::ClassificationOutput& output) const;
 
     void addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value);
 
-    // Does nothing: training algorithm is online and doesn't need batch training
-    void train() {}
-
     void loadRecognitionData(const std::string& path);
 
     void saveRecognitionData(const std::string& path) const;
-
-    void initialize();
-
 
 private:
 
@@ -69,9 +65,12 @@ private:
     void calculateHistogram(const ed::Entity& e, ColorHistogram& histogram) const;
 
 
-    // Parameters
+    // Classification parameters
 
     double color_margin_;
+
+    void initialize();
+
 
 };
 

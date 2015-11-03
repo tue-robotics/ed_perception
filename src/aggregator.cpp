@@ -58,7 +58,12 @@ void Aggregator::configure(tue::Configuration config, bool for_training)
         return;
     }
 
-    config.value("classification_model_path", classification_model_path_);
+    if (!config.value("model_path", classification_model_path_, tue::OPTIONAL))
+    {
+        // If no model path is specified, use path in which config file is stored
+        tue::filesystem::Path path(config.source());
+        classification_model_path_ = path.parentPath().string();
+    }
 
     if (config.readArray("modules"))
     {
@@ -122,9 +127,9 @@ void Aggregator::configure(tue::Configuration config, bool for_training)
             // If module is going to be used for training, load training config
             if (for_training)
             {
-                ed::ErrorContext errc("Configuring perception module", perception_module->name().c_str());
+                ed::ErrorContext errc("Configuring for training: perception module", perception_module->name().c_str());
 
-                if (config.readGroup("parameters"))
+                if (config.readGroup("training"))
                 {
                     perception_module->configureTraining(config.limitScope());
                     config.endGroup();
@@ -133,6 +138,24 @@ void Aggregator::configure(tue::Configuration config, bool for_training)
                 {
                     tue::Configuration tmp_config;
                     perception_module->configureTraining(tmp_config);
+                    if (tmp_config.hasError())
+                        config.addError(tmp_config.error());
+                }
+            }
+            else
+            {
+                // Otherwise, load classification config
+                ed::ErrorContext errc("Configuring for classification: perception module", perception_module->name().c_str());
+
+                if (config.readGroup("classification"))
+                {
+                    perception_module->configureClassification(config.limitScope());
+                    config.endGroup();
+                }
+                else
+                {
+                    tue::Configuration tmp_config;
+                    perception_module->configureClassification(tmp_config);
                     if (tmp_config.hasError())
                         config.addError(tmp_config.error());
                 }

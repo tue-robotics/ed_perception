@@ -62,7 +62,7 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
 
     if (perception_models_path_ != req.perception_models_path)
     {
-        std::string config_filename = req.perception_models_path + "/classify.yaml";
+        std::string config_filename = req.perception_models_path + "/parameters.yaml";
         tue::Configuration config;
         config.loadFromYAMLFile(config_filename);
 

@@ -151,11 +151,6 @@ void ColorMatcher::loadRecognitionData(const std::string& path_str)
     }
 
     r.endArray(); // models
-
-    color_margin_ = 0;
-    r.value("color_margin", color_margin_);
-
-    initialize();
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -187,8 +182,6 @@ void ColorMatcher::saveRecognitionData(const std::string& path) const
         w.endArrayItem();
     }
     w.endArray();
-
-    w.setValue("color_margin", color_margin_);
 
     tue::config::toFile(path + "/models.yaml", w.data(), tue::config::YAML, 4);
 }
@@ -230,9 +223,16 @@ void ColorMatcher::calculateHistogram(const ed::Entity& e, ColorHistogram& histo
 
 // ----------------------------------------------------------------------------------------------------
 
-void ColorMatcher::configureTraining(tue::Configuration config)
+void ColorMatcher::configureClassification(tue::Configuration config)
 {
     config.value("color_margin", color_margin_);
+    initialize();
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ColorMatcher::configureTraining(tue::Configuration config)
+{
     initialize();
 }
 

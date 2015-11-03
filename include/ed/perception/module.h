@@ -61,6 +61,9 @@ public:
     // Configure the module for training
     virtual void configureTraining(tue::Configuration config) {}
 
+    // Configure the module for classification
+    virtual void configureClassification(tue::Configuration config) {}
+
     // Returns the name of this module
     const std::string& name() const { return name_; }
 
