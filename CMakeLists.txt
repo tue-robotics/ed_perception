@@ -3,22 +3,22 @@ project(ed_perception)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
+  actionlib
+  actionlib_msgs
+  ann2
+  ed
   ed_object_models
   ed_sensor_integration
+  genmsg
   geolib2
+  message_generation
+  pein_srvs
   rgbd
   roscpp
   roslib
   tue_config
   tue_filesystem
   vocabulary_tree
-  message_generation
-  ann2
-  ed
-  pein_srvs
-  genmsg
-  actionlib_msgs
-  actionlib
 )
 
 #find_package(PCL REQUIRED)
@@ -33,27 +33,27 @@ find_package(OpenCV REQUIRED)
 ###################################
 
 add_message_files(
-   FILES
-   CategoricalDistribution.msg
+  FILES
+    CategoricalDistribution.msg
 )
 
 add_service_files(
-   FILES
-   LearnPerson.srv
-   Classify.srv
+  FILES
+    LearnPerson.srv
+    Classify.srv
 )
 
 add_action_files(
   DIRECTORY
-  action
+    action
   FILES
-  FaceLearning.action
+    FaceLearning.action
 )
 
 generate_messages(
   DEPENDENCIES
-  std_msgs
-  actionlib_msgs
+    std_msgs
+    actionlib_msgs
 )
 
 catkin_package()
@@ -66,12 +66,12 @@ catkin_package()
 # ------------------------------------------------------------------------------------------------
 
 add_library(ed_perception
-    include/ed/perception/categorical_distribution.h
-    include/ed/perception/module.h
-    include/ed/perception/aggregator.h
+  include/ed/perception/categorical_distribution.h
+  include/ed/perception/module.h
+  include/ed/perception/aggregator.h
 
-    src/categorical_distribution.cpp
-    src/aggregator.cpp
+  src/categorical_distribution.cpp
+  src/aggregator.cpp
 )
 target_link_libraries(ed_perception ${catkin_LIBRARIES})
 add_dependencies(ed_perception ${PROJECT_NAME}_generate_messages_cpp)
@@ -84,22 +84,22 @@ target_link_libraries(ed_perception_plugin ${catkin_LIBRARIES} ed_perception)
 # ------------------------------------------------------------------------------------------------
 
 include_directories(
-    include
-#    ${PCL_INCLUDE_DIRS}
-    ${catkin_INCLUDE_DIRS}
-    3rdparty/people_detector/PeopleDetector
-    3rdparty/people_detector/common
-    3rdparty/people_detector/features
-    3rdparty/people_detector/linalg
+  include
+  # ${PCL_INCLUDE_DIRS}
+  ${catkin_INCLUDE_DIRS}
+  3rdparty/people_detector/PeopleDetector
+  3rdparty/people_detector/common
+  3rdparty/people_detector/features
+  3rdparty/people_detector/linalg
 )
 
 
 # ----- Build Oscar Martinez Mozos people detector -----
 file(GLOB_RECURSE PEOPLE_DETECTOR_SRC
-    3rdparty/people_detector/PeopleDetector/*.cpp
-    3rdparty/people_detector/common/*.cpp
-    3rdparty/people_detector/features/*.cpp
-    3rdparty/people_detector/linalg/*.cc
+  3rdparty/people_detector/PeopleDetector/*.cpp
+  3rdparty/people_detector/common/*.cpp
+  3rdparty/people_detector/features/*.cpp
+  3rdparty/people_detector/linalg/*.cc
 )
 
 add_library(people_detector ${PEOPLE_DETECTOR_SRC})
@@ -110,14 +110,14 @@ target_link_libraries(people_detector gsl gslcblas m)
 # ------------------------------------------------------------------------------------------------
 
 add_library(shared_methods
-    plugins/shared_methods.cpp
-    plugins/shared_methods.h
+  plugins/shared_methods.cpp
+  plugins/shared_methods.h
 )
 target_link_libraries(shared_methods ${catkin_LIBRARIES})
 
 add_library(size_matcher
-    plugins/size_matcher.cpp
-    plugins/size_matcher.h
+  plugins/size_matcher.cpp
+  plugins/size_matcher.h
 )
 target_link_libraries(size_matcher shared_methods ${catkin_LIBRARIES})
 
@@ -168,10 +168,10 @@ target_link_libraries(size_matcher shared_methods ${catkin_LIBRARIES})
 #target_link_libraries(qr_detector ${catkin_LIBRARIES} /usr/lib/libzbar.so)
 
 add_library(color_matcher
-    plugins/color_matcher/color_matcher.cpp
-    plugins/color_matcher/color_matcher.h
-    plugins/color_matcher/color_name_table.cpp
-    plugins/color_matcher/color_name_table.h
+  plugins/color_matcher/color_matcher.cpp
+  plugins/color_matcher/color_matcher.h
+  plugins/color_matcher/color_name_table.cpp
+  plugins/color_matcher/color_name_table.h
 )
 target_link_libraries(color_matcher shared_methods ${catkin_LIBRARIES})
 

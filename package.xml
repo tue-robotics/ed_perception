@@ -10,34 +10,34 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
+  <build_depend>ann2</build_depend>
   <build_depend>ed</build_depend>
   <build_depend>ed_object_models</build_depend>
   <build_depend>ed_sensor_integration</build_depend>
   <build_depend>geolib2</build_depend>
-  <build_depend>rgbd</build_depend> 
-  <build_depend>zbar</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>pein_srvs</build_depend>
+  <build_depend>rgbd</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>roslib</build_depend>
   <build_depend>tue_config</build_depend>
   <build_depend>tue_filesystem</build_depend>
   <build_depend>vocabulary_tree</build_depend>
-  <build_depend>ann2</build_depend>
-  <build_depend>pein_srvs</build_depend>
-  <build_depend>message_generation</build_depend>
+  <build_depend>zbar</build_depend>
 
+  <run_depend>ann2</run_depend>
   <run_depend>ed</run_depend>
   <run_depend>ed_object_models</run_depend>
   <run_depend>ed_sensor_integration</run_depend>
   <run_depend>geolib2</run_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>pein_srvs</run_depend>
   <run_depend>rgbd</run_depend>
-  <run_depend>zbar</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>roslib</run_depend>
   <run_depend>tue_config</run_depend>
   <run_depend>tue_filesystem</run_depend>
   <run_depend>vocabulary_tree</run_depend>
-  <run_depend>ann2</run_depend>
-  <run_depend>pein_srvs</run_depend>
-  <run_depend>message_runtime</run_depend>
+  <run_depend>zbar</run_depend>
 
 </package>
