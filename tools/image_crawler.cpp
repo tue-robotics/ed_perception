@@ -100,7 +100,9 @@ bool ImageCrawler::reload(AnnotatedImage& image, bool do_segment)
     UpdateResult res(update_req);
 
     Updater updater;
-    updater.update(image.world_model, image.image, image.sensor_pose, image.area_description, res);
+    UpdateRequest kinect_update_req;
+    kinect_update_req.area_description = image.area_description;
+    updater.update(image.world_model, image.image, image.sensor_pose, kinect_update_req, res);
 
     image.world_model.update(update_req);
 
