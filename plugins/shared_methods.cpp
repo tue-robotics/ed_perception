@@ -73,9 +73,8 @@ void prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& view_color_img, cv
 
 // ----------------------------------------------------------------------------------------------------
 
-
-float getAverageDepth(cv::Mat& depth_img) {
-
+float getMedianDepth(cv::Mat& depth_img)
+{
     float median = 0;
     std::vector<float> depths;
 
@@ -106,9 +105,7 @@ float getAverageDepth(cv::Mat& depth_img) {
     return median;
 }
 
-
 // ----------------------------------------------------------------------------------------------------
-
 
 void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized) {
 

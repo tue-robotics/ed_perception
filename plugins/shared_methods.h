@@ -14,7 +14,7 @@ namespace perception
 
     void prepareMeasurement(const ed::EntityConstPtr& e, cv::Mat& cropped_image, cv::Mat& depth_image, cv::Mat& mask, cv::Rect& bouding_box);
 
-    float getAverageDepth(cv::Mat& depth_img);
+    float getMedianDepth(cv::Mat& depth_img);
 
     // create a new mask based on the convex hull of the original mask
     void optimizeContourHull(const cv::Mat& mask_orig, cv::Mat& mask_optimized);

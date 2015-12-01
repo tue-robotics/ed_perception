@@ -132,11 +132,11 @@ target_link_libraries(size_matcher shared_methods ${catkin_LIBRARIES})
 #)
 #target_link_libraries(human_contour_matcher shared_methods ${catkin_LIBRARIES})
 
-#add_library(face_detector
-#    plugins/face_detector.cpp
-#    plugins/face_detector.h
-#)
-#target_link_libraries(face_detector shared_methods ${catkin_LIBRARIES})
+add_library(face_detector
+    plugins/face_detector.cpp
+    plugins/face_detector.h
+)
+target_link_libraries(face_detector shared_methods ${catkin_LIBRARIES})
 
 #add_library(face_recognition_ed
 #    plugins/face_recognition.cpp

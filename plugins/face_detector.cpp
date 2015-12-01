@@ -19,11 +19,9 @@
 
 // ----------------------------------------------------------------------------------------------------
 
-FaceDetector::FaceDetector() :
-    ed::perception::Module("face_detector"),
-    init_success_(false)
+FaceDetector::FaceDetector() : ed::perception::Module("face_detector")
 {
-
+    this->registerPropertyServed("type");
 }
 
 
@@ -32,94 +30,17 @@ FaceDetector::FaceDetector() :
 FaceDetector::~FaceDetector()
 {
     // destroy the debug window
-    if (debug_mode_) {
+    if (debug_mode_)
+    {
         cv::destroyWindow("Face Detector Output");
     }
 }
 
 // ----------------------------------------------------------------------------------------------------
 
-void FaceDetector::configure(tue::Configuration config) {
-
-    if (!config.value("cascade_front_files_path", cascade_front_files_path_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'cascade_front_files_path' not found. Using default: " << cascade_front_files_path_ << std::endl;
-
-    if (!config.value("cascade_profile_front_path", cascade_profile_files_path_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'cascade_profile_front_path' not found. Using default: " << cascade_profile_files_path_ << std::endl;
-
-    if (!config.value("debug_mode", debug_mode_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_mode' not found. Using default: " << debug_mode_ << std::endl;
-
-    if (!config.value("debug_folder", debug_folder_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'debug_folder' not found. Using default: " << debug_folder_ << std::endl;
-
-    if (!config.value("classifier_front_scale_factor", classifier_front_scale_factor_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_front_scale_factor' not found. Using default: " << classifier_front_scale_factor_ << std::endl;
-
-    if (!config.value("classifier_front_min_neighbours", classifier_front_min_neighbours_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_front_min_neighbours' not found. Using default: " << classifier_front_min_neighbours_ << std::endl;
-
-    if (!config.value("classifier_profile_scale_factor", classifier_profile_scale_factor_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_profile_scale_factor' not found. Using default: " << classifier_profile_scale_factor_ << std::endl;
-
-    if (!config.value("classifier_profile_min_neighbours", classifier_profile_min_neighbours_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'classifier_profile_min_neighbours' not found. Using default: " << classifier_profile_min_neighbours_ << std::endl;
-
-    if (!config.value("type_positive_score", type_positive_score_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'type_positive_score' not found. Using default: " << type_positive_score_ << std::endl;
-
-    if (!config.value("type_negative_score", type_negative_score_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'type_negative_score' not found. Using default: " << type_negative_score_ << std::endl;
-
-    if (!config.value("type_unknown_score", type_unknown_score_, tue::OPTIONAL))
-        std::cout << "[" << module_name_ << "] " << "Parameter 'type_unknown_score' not found. Using default: " << type_unknown_score_ << std::endl;
-
-    cascade_front_files_path_ = module_path_ + cascade_front_files_path_;
-    cascade_profile_files_path_ = module_path_ + cascade_profile_files_path_;
-
-    if (debug_mode_){
-        // clean the debug folder if debugging is active
-        try {
-            boost::filesystem::path dir(debug_folder_);
-            boost::filesystem::remove_all(dir);
-            boost::filesystem::create_directories(dir);
-        } catch(const boost::filesystem::filesystem_error& e){
-           if(e.code() == boost::system::errc::permission_denied)
-               std::cout << "[" << module_name_ << "] " << "boost::filesystem permission denied" << std::endl;
-           else
-               std::cout << "[" << module_name_ << "] " << "boost::filesystem failed with error: " << e.code().message() << std::endl;
-        }
-
-        // create debug window
-        cv::namedWindow("Face Detector Output", CV_WINDOW_AUTOSIZE);
-    }
-
-
-    // check if the cascade file exist so they can be loaded later
-    if (!boost::filesystem::exists(cascade_front_files_path_) || !boost::filesystem::exists(cascade_profile_files_path_)){
-        init_success_ = false;
-        std::cout << "[" << module_name_ << "] " << "Couldn't find cascade files for detection (" << cascade_profile_files_path_
-                  <<  "). Face dection will not work!" << std::endl;
-    }else{
-        std::cout << "[" << module_name_ << "] " << "Face Detection cascade files found." << std::endl;
-
-        init_success_ = true;
-        std::cout << "[" << module_name_ << "] " << "Ready!" << std::endl;
-    }
-}
-
-
-// ----------------------------------------------------------------------------------------------------
-
-
-void FaceDetector::loadConfig(const std::string& config_path) {
-
-    module_name_ = "face_detector";
-    module_path_ = config_path;
-
+void FaceDetector::configureClassification(tue::Configuration config)
+{
     // default values in case configure(...) is not called!
-    cascade_front_files_path_ = "/cascade_classifiers/haarcascade_frontalface_alt_tree.xml";
-    cascade_profile_files_path_ = "/cascade_classifiers/haarcascade_profileface.xml";
     debug_mode_ = false;
     classifier_front_scale_factor_ = 1.2;
     classifier_front_min_neighbours_ = 3;
@@ -128,37 +49,85 @@ void FaceDetector::loadConfig(const std::string& config_path) {
     classifier_profile_min_neighbours_ = 3;
     classif_profile_min_size_ = cv::Size(20,20);
     debug_folder_ = "/tmp/face_detector/";
-    type_positive_score_ = 0.9;
-    type_negative_score_ = 0.4;
-    type_unknown_score_ = 0.05;
 
+    // load training files for frontal classifier
+    std::string cascade_front_files_path_;
+    if (config.value("cascade_front_files_path", cascade_front_files_path_))
+    {
+        if (!classifier_front_.load(cascade_front_files_path_))
+            config.addError("Unable to load front haar cascade files (" + cascade_front_files_path_ + ")");
+    }
+
+    // load training files for profile classifier
+    std::string cascade_profile_files_path_;
+    if (config.value("cascade_profile_front_path", cascade_profile_files_path_))
+    {
+        if (!classifier_profile_.load(cascade_profile_files_path_))
+            config.addError("Unable to load profile haar cascade files (" + cascade_profile_files_path_ + ")");
+    }
+
+    if (config.hasError())
+        return;
+
+    if (!config.value("debug_mode", debug_mode_, tue::OPTIONAL))
+        ed::log::info() << "Parameter 'debug_mode' not found. Using default: " << debug_mode_ << std::endl;
+
+    if (!config.value("debug_folder", debug_folder_, tue::OPTIONAL))
+        ed::log::info() << "Parameter 'debug_folder' not found. Using default: " << debug_folder_ << std::endl;
+
+    if (!config.value("classifier_front_scale_factor", classifier_front_scale_factor_, tue::OPTIONAL))
+        ed::log::info() << "Parameter 'classifier_front_scale_factor' not found. Using default: " << classifier_front_scale_factor_ << std::endl;
+
+    if (!config.value("classifier_front_min_neighbours", classifier_front_min_neighbours_, tue::OPTIONAL))
+        ed::log::info() << "Parameter 'classifier_front_min_neighbours' not found. Using default: " << classifier_front_min_neighbours_ << std::endl;
+
+    if (!config.value("classifier_profile_scale_factor", classifier_profile_scale_factor_, tue::OPTIONAL))
+        ed::log::info() << "Parameter 'classifier_profile_scale_factor' not found. Using default: " << classifier_profile_scale_factor_ << std::endl;
+
+    if (!config.value("classifier_profile_min_neighbours", classifier_profile_min_neighbours_, tue::OPTIONAL))
+        ed::log::info() << "Parameter 'classifier_profile_min_neighbours' not found. Using default: " << classifier_profile_min_neighbours_ << std::endl;
+
+    if (debug_mode_)
+    {
+        // clean the debug folder if debugging is active
+        try {
+            boost::filesystem::path dir(debug_folder_);
+            boost::filesystem::remove_all(dir);
+            boost::filesystem::create_directories(dir);
+        }
+        catch(const boost::filesystem::filesystem_error& e)
+        {
+            if(e.code() == boost::system::errc::permission_denied)
+                ed::log::error() << "boost::filesystem permission denied" << std::endl;
+            else
+                ed::log::error() << "boost::filesystem failed with error: " << e.code().message() << std::endl;
+        }
+
+        // create debug window
+        cv::namedWindow("Face Detector Output", CV_WINDOW_AUTOSIZE);
+    }
 }
-
 
 // ----------------------------------------------------------------------------------------------------
 
-
-void FaceDetector::process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const
+void FaceDetector::classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior,
+                            ed::perception::ClassificationOutput& output) const
 {
-    ed::ErrorContext errc("Processing entity in FaceDetector");
+    if (property != "type")
+        return;
 
-    const ed::EntityConstPtr& e = input.entity;
-    tue::Configuration& result = output.data;
-
-    if (!init_success_)
+    // If we already know that this is not going to be a human, skip face detection altogether
+    double prior_human;
+    if (prior.getScore("human", prior_human) && prior_human == 0)
         return;
 
     // ---------- Prepare measurement ----------
 
     // Get the best measurement from the entity
-    ed::MeasurementConstPtr msr = e->lastMeasurement();
+    ed::MeasurementConstPtr msr = e.lastMeasurement();
 
-    if (!msr){
-//        output.type_update.setScore("crowd", type_negative_score_);
-        output.type_update.setScore("human", type_negative_score_);
-        output.type_update.setUnknownScore(type_unknown_score_);
+    if (!msr)
         return;
-    }
 
     // get color image
     const cv::Mat& color_image = msr->image()->getRGBImage();
@@ -170,70 +139,33 @@ void FaceDetector::process(const ed::perception::WorkerInput& input, ed::percept
     cv::Rect rgb_roi;
     cv::Mat color_image_masked = ed::perception::maskImage(color_image, msr->imageMask(), rgb_roi);
 
-    // ----------------------- Process and Assert results -----------------------
-
-    // create group if it doesnt exist
-    if (!result.readGroup("perception_result", tue::OPTIONAL))
-    {
-        result.writeGroup("perception_result");
-    }
-
-    result.writeGroup("face_detector");
+    // ---------- Detect faces ----------
 
     std::vector<cv::Rect> faces_front;
     std::vector<cv::Rect> faces_profile;
 
-    int face_counter = 0;
-
     // Detect faces in the measurment and assert the results
-    if(DetectFaces(color_image_masked(rgb_roi), faces_front, faces_profile))
+    if (DetectFaces(color_image_masked(rgb_roi), faces_front, faces_profile))
     {
+        output.likelihood.setScore("human", 1);
+
         // write face information to config if a frontal face was found
+        int face_counter = 0;
         if (faces_front.size() > 0)
         {
-            result.writeArray("faces_front");
-            writeFaceDetectionResult(*msr, rgb_roi, faces_front, face_counter, result);
-            result.endArray();
+            output.data.writeArray("faces_front");
+            writeFaceDetectionResult(*msr, rgb_roi, faces_front, face_counter, output.data);
+            output.data.endArray();
         }
 
         // write face information to config if a profile face was found
         if (faces_profile.size() > 0)
         {
-            result.writeArray("faces_profile");
-            writeFaceDetectionResult(*msr, rgb_roi, faces_profile, face_counter, result);
-            result.endArray();
+            output.data.writeArray("faces_profile");
+            writeFaceDetectionResult(*msr, rgb_roi, faces_profile, face_counter, output.data);
+            output.data.endArray();
         }
-
-        // assert type and score
-        if (faces_front.size() + faces_profile.size() > 1){
-            // multiple faces detected
-            result.setValue("label", "multiple_faces");
-            result.setValue("score", type_positive_score_);
-
-            output.type_update.setScore("human", type_positive_score_);
-        }
-        else{
-            // only one face detected
-            result.setValue("label", "face");
-            result.setValue("score", type_positive_score_);
-
-            output.type_update.setScore("human", type_positive_score_);
-        }
-
-        result.setValue("score", type_positive_score_);
-
-    }else{
-        // no faces detected
-        result.setValue("label", "face");
-        result.setValue("score", type_negative_score_);
-
-        output.type_update.setScore("human", type_negative_score_);
     }
-
-    output.type_update.setUnknownScore(type_unknown_score_);
-
-    result.endGroup();  // close face_detector group
-    result.endGroup();  // close perception_result group
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -245,26 +177,16 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
     cv::Mat cascade_img;
     std::vector<cv::Rect>::iterator face_it;
 
-    // using locally created classifiers because opencv does not support threading
-    cv::CascadeClassifier classifier_front_local;
-    cv::CascadeClassifier classifier_profile_local;
-
     // create a copy of the image
     cropped_img.copyTo(cascade_img);
 
     // increase contrast of the image
     normalize(cascade_img, cascade_img, 0, 255, cv::NORM_MINMAX, CV_8UC1);
 
-    // load training files for frontal classifier
-    if (!classifier_front_local.load(cascade_front_files_path_)) {
-        std::cout << "[" << module_name_ << "] " << "Unable to load front haar cascade files ("
-                  << cascade_front_files_path_ << ")" << std::endl;
 
-        return false;
-    }
 
     // detect frontal faces
-    classifier_front_local.detectMultiScale(cascade_img,
+    classifier_front_.detectMultiScale(cascade_img,
                                             faces_front,
                                             classifier_front_scale_factor_,
                                             classifier_front_min_neighbours_,
@@ -285,16 +207,9 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
     }
 
     // only search profile faces if the frontal face detection failed
-    if (faces_front.empty()){
-        // load training files for profile classifier
-        if (!classifier_profile_local.load(cascade_profile_files_path_)){
-            std::cout << "[" << module_name_ << "] " << "Unable to load profile haar cascade files ("
-                      << cascade_profile_files_path_ << ")" << std::endl;
-
-            return false;
-        }
-
-        classifier_profile_local.detectMultiScale(cascade_img,
+    if (faces_front.empty())
+    {
+        classifier_profile_.detectMultiScale(cascade_img,
                                                   faces_profile,
                                                   classifier_profile_scale_factor_,
                                                   classifier_profile_min_neighbours_,
@@ -317,7 +232,8 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
 
 
     // if debug mode is active and faces were found
-    if (debug_mode_){
+    if (debug_mode_)
+    {
         cv::Mat debugImg(cropped_img);
 
         for (uint j = 0; j < faces_front.size(); j++)
@@ -337,8 +253,9 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
 
 // ----------------------------------------------------------------------------------------------------
 
-void FaceDetector::writeFaceDetectionResult(const ed::Measurement& msr, const cv::Rect& rgb_roi, const std::vector<cv::Rect>& rgb_face_rois,
-                   int& face_counter, tue::Configuration& result) const
+void FaceDetector::writeFaceDetectionResult(const ed::Measurement& msr, const cv::Rect& rgb_roi,
+                                            const std::vector<cv::Rect>& rgb_face_rois,
+                                            int& face_counter, tue::Configuration& result) const
 {
     // get color image
     const cv::Mat& color_image = msr.image()->getRGBImage();
@@ -379,7 +296,7 @@ void FaceDetector::writeFaceDetectionResult(const ed::Measurement& msr, const cv
             ed::perception::saveDebugImage("face_detector-depth", depth_image(depth_face_roi));
 
         cv::Mat face_area = depth_image(depth_face_roi);
-        float avg_depth = ed::perception::getAverageDepth(face_area);
+        float avg_depth = ed::perception::getMedianDepth(face_area);
 
         if (avg_depth > 0)
         {

@@ -24,13 +24,8 @@ class FaceDetector : public ed::perception::Module
 private:
 
     // module configuration
-    mutable bool init_success_;
     bool debug_mode_;            /*!< Enable debug mode */
-    std::string	module_name_;    /*!< Name of the module, for output */
-    std::string	module_path_;    /*!< Name of the module, for output */
     std::string debug_folder_;   /*!< Path of the debug folder */
-    std::string cascade_front_files_path_;  /*!< Path of the cascade training folder */
-    std::string cascade_profile_files_path_;   /*!< Path of the cascade training folder */
 
     // Cascade classifier configuration
     double classifier_front_scale_factor_;  // Parameter specifying how much the image size is reduced at each image scale
@@ -44,10 +39,6 @@ private:
     // Haar cascade classifiers
     mutable cv::CascadeClassifier classifier_front_;
     mutable cv::CascadeClassifier classifier_profile_;
-
-    double type_positive_score_;
-    double type_negative_score_;
-    double type_unknown_score_;
 
     //------------------------------------
 
@@ -72,17 +63,10 @@ public:
 
     virtual ~FaceDetector();
 
-    void loadConfig(const std::string& config_path);
-
-    void process(const ed::perception::WorkerInput& input, ed::perception::WorkerOutput& output) const;
-
-    void configure(tue::Configuration config);
-
-
-    // New interface
+    void configureClassification(tue::Configuration config);
 
     void classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior,
-                  ed::perception::ClassificationOutput& output) const {}
+                  ed::perception::ClassificationOutput& output) const;
 
     void addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value) {}
 
