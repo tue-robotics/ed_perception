@@ -41,6 +41,7 @@ add_service_files(
   FILES
     LearnPerson.srv
     Classify.srv
+    AddTrainingInstance.srv
 )
 
 add_action_files(

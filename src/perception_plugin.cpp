@@ -41,6 +41,7 @@ void PerceptionPlugin::initialize(ed::InitData& init)
     ros::NodeHandle nh("~");
     nh.setCallbackQueue(&cb_queue_);
     srv_classify_ = nh.advertiseService("classify", &PerceptionPlugin::srvClassify, this);
+    srv_add_training_instance_ = nh.advertiseService("add_training_instance", &PerceptionPlugin::srvAddTrainingInstance, this);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -55,14 +56,11 @@ void PerceptionPlugin::process(const ed::PluginInput& data, ed::UpdateRequest& r
 
 // ----------------------------------------------------------------------------------------------------
 
-bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res)
+bool PerceptionPlugin::configureClassifier(const std::string& perception_models_path, std::string& error)
 {
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Configure classifier
-
-    if (perception_models_path_ != req.perception_models_path)
+    if (perception_models_path_ != perception_models_path)
     {
-        std::string config_filename = req.perception_models_path + "/parameters.yaml";
+        std::string config_filename = perception_models_path + "/parameters.yaml";
         tue::Configuration config;
         config.loadFromYAMLFile(config_filename);
 
@@ -71,17 +69,30 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
 
         if (config.hasError())
         {
-            res.error_msg = "Could not load configuration file '" + config_filename + "':\n\n" + config.error();
-            return true;
+            error = "Could not load configuration file '" + config_filename + "':\n\n" + config.error();
+            return false;
         }
 
-        perception_models_path_ = req.perception_models_path;
+        perception_models_path_ = perception_models_path;
     }
-    else if (req.perception_models_path.empty())
+    else if (perception_models_path.empty())
     {
-        res.error_msg = "Please provide perception model path.";
-        return true;
+        error = "Please provide perception model path.";
+        return false;
     }
+
+    return true;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res)
+{
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Configure classifier
+
+    if (!configureClassifier(req.perception_models_path, res.error_msg))
+        return true;
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Convert prior msg to distribution
@@ -154,6 +165,46 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
 
     return true;
 }
+
+// ----------------------------------------------------------------------------------------------------
+
+bool PerceptionPlugin::srvAddTrainingInstance(ed_perception::AddTrainingInstance::Request& req,
+                                              ed_perception::AddTrainingInstance::Response& res)
+{
+    std::cout << "PerceptionPlugin::srvAddTrainingInstance" << std::endl;
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Configure classifier
+
+    if (!configureClassifier(req.perception_models_path, res.error_msg))
+        return true;
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Check if entity and its measurement exist
+
+    ed::EntityConstPtr e = world_->getEntity(req.id);
+    if (!e)
+    {
+        res.error_msg += "Entity '" + req.id + "' does not exist.\n";
+        return true;
+    }
+
+    if (!e->bestMeasurement())
+    {
+        res.error_msg += "Entity '" + req.id + "' does not have a measurement.\n";
+        return true;
+    }
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Add training instance
+
+    aggregator_.addTrainingInstance(*e, req.property, req.value);
+
+    return true;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
 
 } // end namespace perception
 

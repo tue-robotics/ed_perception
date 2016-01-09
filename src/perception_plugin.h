@@ -7,6 +7,7 @@
 
 // Service
 #include <ed_perception/Classify.h>
+#include <ed_perception/AddTrainingInstance.h>
 #include <ros/service_server.h>
 #include <ros/callback_queue.h>
 
@@ -35,6 +36,8 @@ private:
 
     std::string perception_models_path_;
 
+    bool configureClassifier(const std::string& perception_models_path, std::string& error);
+
     // SERVICE
 
     const ed::WorldModel* world_;
@@ -46,6 +49,12 @@ private:
     ros::ServiceServer srv_classify_;
 
     bool srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res);
+
+    ros::ServiceServer srv_add_training_instance_;
+
+    bool srvAddTrainingInstance(ed_perception::AddTrainingInstance::Request& req,
+                                ed_perception::AddTrainingInstance::Response& res);
+
 
 };
 

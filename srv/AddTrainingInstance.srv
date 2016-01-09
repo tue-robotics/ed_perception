@@ -1,0 +1,7 @@
+string perception_models_path  # Path to trained perception models
+
+string id
+string property
+string value
+---
+string error_msg
