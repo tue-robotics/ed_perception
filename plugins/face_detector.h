@@ -68,13 +68,19 @@ public:
     void classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior,
                   ed::perception::ClassificationOutput& output) const;
 
-    void addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value) {}
+    void addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value);
 
     void train() {}
 
     void loadRecognitionData(const std::string& path) {}
 
     void saveRecognitionData(const std::string& path) const {}
+
+private:
+
+    std::set<std::string> face_data_;
+
+    void recognizeFace(const cv::Mat& image, const cv::Rect& roi, ed::perception::ClassificationOutput& output) const;
 
 };
 

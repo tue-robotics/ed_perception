@@ -22,6 +22,7 @@
 FaceDetector::FaceDetector() : ed::perception::Module("face_detector")
 {
     this->registerPropertyServed("type");
+    this->registerPropertyServed("name");
 }
 
 
@@ -113,7 +114,7 @@ void FaceDetector::configureClassification(tue::Configuration config)
 void FaceDetector::classify(const ed::Entity& e, const std::string& property, const ed::perception::CategoricalDistribution& prior,
                             ed::perception::ClassificationOutput& output) const
 {
-    if (property != "type")
+    if (property != "type" && property != "name")
         return;
 
     // If we already know that this is not going to be a human, skip face detection altogether
@@ -147,8 +148,6 @@ void FaceDetector::classify(const ed::Entity& e, const std::string& property, co
     // Detect faces in the measurment and assert the results
     if (DetectFaces(color_image_masked(rgb_roi), faces_front, faces_profile))
     {
-        output.likelihood.setScore("human", 1);
-
         // write face information to config if a frontal face was found
         int face_counter = 0;
         if (faces_front.size() > 0)
@@ -165,7 +164,31 @@ void FaceDetector::classify(const ed::Entity& e, const std::string& property, co
             writeFaceDetectionResult(*msr, rgb_roi, faces_profile, face_counter, output.data);
             output.data.endArray();
         }
+
+        if (property == "type")
+        {
+            output.likelihood.setScore("human", 1);
+        }
+        else if (property == "name")
+        {
+            if (!faces_front.empty())
+            {
+                recognizeFace(color_image_masked(rgb_roi), faces_front[0], output);
+            }
+        }
     }
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void FaceDetector::addTrainingInstance(const ed::Entity& e, const std::string& property, const std::string& value)
+{
+    std::cout << "FaceDetector::addTrainingInstance" << std::endl;
+
+    if (property != "name")
+        return;
+
+    face_data_.insert(value);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -249,6 +272,24 @@ bool FaceDetector::DetectFaces(const cv::Mat& cropped_img,
 
     // return true if a face was found
     return (!faces_front.empty() || !faces_profile.empty());
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void FaceDetector::recognizeFace(const cv::Mat& image, const cv::Rect& roi, ed::perception::ClassificationOutput& output) const
+{
+    if (face_data_.empty())
+        return;
+
+//    cv::Mat img = image.clone();
+//    cv::rectangle(img, roi, cv::Scalar(0, 0, 255), 2);
+//    cv::imshow("person", img);
+//    cv::imshow("face_roi", image(roi));
+//    cv::waitKey();
+
+    // TODO: replace this with real face recognition!
+
+    output.likelihood.setScore(*face_data_.begin(), 1);
 }
 
 // ----------------------------------------------------------------------------------------------------
