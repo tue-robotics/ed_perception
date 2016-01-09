@@ -16,7 +16,6 @@
   <build_depend>ed_sensor_integration</build_depend>
   <build_depend>geolib2</build_depend>
   <build_depend>message_generation</build_depend>
-  <build_depend>pein_srvs</build_depend>
   <build_depend>rgbd</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>roslib</build_depend>
@@ -31,7 +30,6 @@
   <run_depend>ed_sensor_integration</run_depend>
   <run_depend>geolib2</run_depend>
   <run_depend>message_runtime</run_depend>
-  <run_depend>pein_srvs</run_depend>
   <run_depend>rgbd</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>roslib</run_depend>
