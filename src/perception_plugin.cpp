@@ -154,7 +154,10 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
 
             // If the classification property is 'type', set the type of the entity in the world model
             if (req.property == "type")
+            {
                 update_req_->setType(e->id(), max_value);
+                update_req_->addData(e->id(), data.data());
+            }
         }
         else
         {
