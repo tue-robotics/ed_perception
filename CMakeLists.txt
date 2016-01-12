@@ -12,7 +12,6 @@ find_package(catkin REQUIRED COMPONENTS
   genmsg
   geolib2
   message_generation
-  pein_srvs
   rgbd
   roscpp
   roslib
