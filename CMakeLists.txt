@@ -200,6 +200,17 @@ target_link_libraries(test-perception train-and-test-lib ed_perception ${OpenCV_
 add_executable(annotation-gui tools/annotation_gui.cpp)
 target_link_libraries(annotation-gui train-and-test-lib ed_perception ${QT_LIBRARIES} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
+# ------------------------------------------------------------------------------------------------
+#                                                NODES
+# ------------------------------------------------------------------------------------------------
+
+add_executable(face_recognition
+    nodes/face_recognition.cpp
+    nodes/face_recognizer.cpp
+    nodes/face_recognizer.h
+)
+target_link_libraries(face_recognition ${catkin_LIBRARIES})
+
 # Qt Package
 # find_package(Qt4 COMPONENTS QtCore QtGui QtApplication)
 # include(${QT_USE_FILE})
