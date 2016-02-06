@@ -75,7 +75,7 @@ bool srvLearnPerson(ed_perception::LearnPerson::Request& req, ed_perception::Lea
 
     fr.train(image->getRGBImage(), req.person_name);
 
-    visualizeResult(*image);
+//    visualizeResult(*image);
 
     return true;
 }

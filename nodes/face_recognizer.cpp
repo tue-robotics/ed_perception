@@ -48,7 +48,7 @@ void FaceRecognizer::find(const cv::Mat& rgb_image, std::vector<FaceRecognitionR
     cv::cvtColor(rgb_image, image_grayscale, CV_BGR2GRAY);
 
     // Equalize histogram
-    cv::equalizeHist( image_grayscale, image_grayscale );
+//    cv::equalizeHist( image_grayscale, image_grayscale );
 
     // Detect faces. Returns region of interests of the faces
     std::vector<cv::Rect> face_rois;
@@ -62,13 +62,13 @@ void FaceRecognizer::find(const cv::Mat& rgb_image, std::vector<FaceRecognitionR
         det.rgb_roi = face_rois[i];
 
         // - - - - - - - - - - - - - - - - - - - - -
-        // TODO: replace with face recognition
-
-        // For now: simple dummy which always returns the first learned name
-        if (!names_.empty())
-            det.name = *names_.begin();
+        // TODO: face recognition
 
         // - - - - - - - - - - - - - - - - - - - - -
     }
+
+    // For now: simple dummy which always returns the first learned name
+    if (!names_.empty() && !detections.empty())
+        detections.front().name = *names_.begin();
 }
 
