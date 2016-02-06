@@ -34,6 +34,7 @@ find_package(OpenCV REQUIRED)
 add_message_files(
   FILES
     CategoricalDistribution.msg
+    PersonDetection.msg
 )
 
 add_service_files(
@@ -41,6 +42,8 @@ add_service_files(
     LearnPerson.srv
     Classify.srv
     AddTrainingInstance.srv
+    LearnPerson.srv
+    RecognizePerson.srv
 )
 
 add_action_files(
@@ -54,6 +57,7 @@ generate_messages(
   DEPENDENCIES
     std_msgs
     actionlib_msgs
+    geometry_msgs
 )
 
 catkin_package()

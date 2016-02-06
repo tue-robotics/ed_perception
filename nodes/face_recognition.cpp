@@ -2,10 +2,34 @@
 #include "rgbd/View.h"
 #include <opencv2/highgui/highgui.hpp>
 
+#include <geolib/datatypes.h>
+#include <geolib/ros/msg_conversions.h>
+
 #include <rgbd/serialization.h>
 #include <fstream>
 
 #include "face_recognizer.h"
+
+#include "ed_perception/LearnPerson.h"
+#include "ed_perception/RecognizePerson.h"
+
+FaceRecognizer fr;
+rgbd::Client rgbd_client;
+
+// ----------------------------------------------------------------------------------------------------
+
+void visualizeResult(const rgbd::Image& image, const std::vector<FaceRecognitionResult>& detections = std::vector<FaceRecognitionResult>())
+{
+    cv::Mat canvas = image.getRGBImage().clone();
+
+    for(std::vector<FaceRecognitionResult>::const_iterator it = detections.begin(); it != detections.end(); ++it)
+    {
+        cv::rectangle(canvas, it->rgb_roi, cv::Scalar(255, 0, 0), 2);
+    }
+
+    cv::imshow("face_recognition", canvas);
+    cv::waitKey();
+}
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -30,41 +54,121 @@ rgbd::ImagePtr loadImage(const std::string& filename)
 
 // ----------------------------------------------------------------------------------------------------
 
-int main(int argc, char **argv)
+rgbd::ImagePtr imageFromTopic()
 {
-    //ros::init(argc, argv, "face_recognition");
-    //ros::NodeHandle nh;
+    return rgbd_client.nextImage();
+}
 
-    if (argc == 1)
-    {
-        std::cerr << "Please provide image file" << std::endl;
-        return 1;
-    }
+// ----------------------------------------------------------------------------------------------------
 
-    std::string image_filename = argv[1];
+bool srvLearnPerson(ed_perception::LearnPerson::Request& req, ed_perception::LearnPerson::Response& res)
+{
+    std::cout << "Learn person " << req.person_name << std::endl;
 
-    rgbd::ImagePtr image = loadImage(image_filename);
+    rgbd::ImagePtr image = rgbd_client.nextImage();
     if (!image)
     {
-        std::cerr << "Image could not be loaded" << std::endl;
-        return 1;
+        res.error_msg = "Could not capture image";
+        ROS_ERROR("%s", res.error_msg.c_str());
+        return true;
     }
 
-    cv::Mat canvas = image->getRGBImage().clone();
+    fr.train(image->getRGBImage(), req.person_name);
 
-    FaceRecognizer fr;
+//    visualizeResult(*image);
 
-    if (fr.train(image->getRGBImage(), "tim"))
+    return true;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+bool srvRecognizePerson(ed_perception::RecognizePerson::Request& req, ed_perception::RecognizePerson::Response& res)
+{
+    std::cout << "Recognize person" << std::endl;
+
+    rgbd::ImagePtr image = rgbd_client.nextImage();
+    if (!image)
     {
-        cv::Rect roi;
-        if (fr.find(image->getRGBImage(), "tim", &roi))
-        {
-            cv::rectangle(canvas, roi, cv::Scalar(255, 0, 0), 2);
-        }
+        res.error_msg = "Could not capture image";
+        ROS_ERROR("%s", res.error_msg.c_str());
+        return true;
     }
 
-    cv::imshow("face_recognition", canvas);
-    cv::waitKey();
+    std::vector<FaceRecognitionResult> detections;
+    fr.find(image->getRGBImage(), detections);
+
+    res.person_detections.resize(detections.size());
+    for(unsigned int i = 0; i < detections.size(); ++i)
+    {
+        const FaceRecognitionResult& det = detections[i];
+        ed_perception::PersonDetection& det_msg = res.person_detections[i];
+
+        det_msg.name = det.name;
+
+        if (det.gender == MALE)
+            det_msg.gender = ed_perception::PersonDetection::MALE;
+        else if (det.gender == FEMALE)
+            det_msg.gender = ed_perception::PersonDetection::FEMALE;
+
+        det_msg.age = det.age;
+
+        geo::Pose3D pose = geo::Pose3D::identity();
+        pose.t.z = 3;
+        det_msg.pose.header.frame_id = image->getFrameId();
+        geo::convert(pose, det_msg.pose.pose);
+    }
+
+    return true;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+int main(int argc, char **argv)
+{
+    fr.initialize();
+
+    if (argc == 1 || std::string(argv[1]) != "--file")
+    {
+        // No argument, so run as rosnode
+
+        ros::init(argc, argv, "face_recognition");
+        ros::NodeHandle nh;
+
+        rgbd_client.intialize("rgbd");
+
+        ros::ServiceServer srv_learn_person = nh.advertiseService("learn_person", srvLearnPerson);
+        ros::ServiceServer srv_recognize_person = nh.advertiseService("recognize_person", srvRecognizePerson);
+
+        ros::spin();
+    }
+    else
+    {
+        // Filename as argument, so run as test
+
+        if (argc < 3)
+        {
+            std::cout << "Please provide rgbd filename" << std::endl;
+            return 1;
+        }
+
+        std::string image_filename = argv[2];
+
+        rgbd::ImagePtr image = loadImage(image_filename);
+        if (!image)
+        {
+            std::cerr << "Image could not be loaded" << std::endl;
+            return 1;
+        }
+
+//        if (fr.train(image->getRGBImage(), "tim"))
+//        {
+//        }
+
+        std::vector<FaceRecognitionResult> detections;
+        fr.find(image->getRGBImage(), detections);
+
+        visualizeResult(*image, detections);
+    }
 
     return 0;
 }
