@@ -17,7 +17,7 @@ FaceRecognizer::~FaceRecognizer()
 
 // ----------------------------------------------------------------------------------------------------
 
-bool FaceRecognizer::initialize()
+void FaceRecognizer::configure(tue::Configuration& config)
 {
     // Load face classifier model from 'ed_perception_models' package
     std::string data_path = ros::package::getPath("ed_perception_models") + "/general/face/";

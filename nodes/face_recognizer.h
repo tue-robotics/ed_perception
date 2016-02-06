@@ -5,6 +5,7 @@
 #include <opencv2/objdetect/objdetect.hpp>
 
 #include <set>
+#include <tue/config/configuration.h>
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -48,7 +49,7 @@ public:
     ~FaceRecognizer();
 
     // Initialize detector / recognizer
-    bool initialize();
+    void configure(tue::Configuration& config);
 
     // Detect a face in the given image, and train it as being 'name'
     bool train(const cv::Mat& rgb_image, const std::string& name);
