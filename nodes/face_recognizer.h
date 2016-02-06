@@ -19,13 +19,16 @@ enum Gender
 
 struct FaceRecognitionResult
 {
-    FaceRecognitionResult() : age(-1) {}
+    FaceRecognitionResult() : age(-1), name_score(0) {}
 
     // region of interest in the RGB image
     cv::Rect rgb_roi;
 
     // estimated name of the person
     std::string name;
+
+    // the higher, the more probable 'name' is correct
+    double name_score;
 
     // estimated gender
     Gender gender;

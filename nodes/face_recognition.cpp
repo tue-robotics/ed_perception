@@ -107,6 +107,7 @@ bool srvRecognizePerson(ed_perception::RecognizePerson::Request& req, ed_percept
         ed_perception::PersonDetection& det_msg = res.person_detections[i];
 
         det_msg.name = det.name;
+        det_msg.name_score = det.name_score;
 
         if (det.gender == MALE)
             det_msg.gender = ed_perception::PersonDetection::MALE;

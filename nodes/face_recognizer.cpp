@@ -69,6 +69,9 @@ void FaceRecognizer::find(const cv::Mat& rgb_image, std::vector<FaceRecognitionR
 
     // For now: simple dummy which always returns the first learned name
     if (!names_.empty() && !detections.empty())
+    {
         detections.front().name = *names_.begin();
+        detections.front().name_score = 1;
+    }
 }
 
