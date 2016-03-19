@@ -29,26 +29,20 @@ net = openface.TorchNeuralNet(os.path.join(openfaceModelDir, 'nn4.small2.v1.t7')
 
 class FaceRecognizer(object):
     def __init__(self):
-        self.classes = collections.OrderedDict()
+        self.traindata = []
+        self.trainlabels = []
 
         self.classifier = SVC(C=1, kernel='linear', probability=True)
 
     def add_sample(self, name, imagePath):
         representation = self._represent(imagePath)
 
-        if name in self.classes:
-            self.classes[name] += [representation]
-        else:
-            self.classes[name] = [representation]
+        self.traindata += [representation]
+        self.trainlabels += [name]
 
 
     def cluster(self):
-        sample_count = sum([len(value) for value in self.classes.values()])
-        width = len(self.classes[self.classes.keys()[0]][0])
-        sample_data = np.zeros((sample_count, width))
-        sample_labels = np.array(self.classes.keys)
-
-        self.classifier.fit(sample_data, sample_labels)
+        self.classifier.fit(self.traindata, self.trainlabels)
 
     def _represent(self, imagePath):
         bgrImg = cv2.imread(imagePath)
@@ -71,7 +65,7 @@ class FaceRecognizer(object):
 
     def classify(self, imagePath):
         representation = self._represent(imagePath)
-        name = self.classifier.predict(representation)
+        name = self.classifier.predict([representation])
 
         return name
 
@@ -85,7 +79,9 @@ def test():
 
     rec.cluster()
 
-    rec.classify("/home/amigo/git/openface/images/examples/lennon-2.jpg")
+    name = rec.classify("/home/amigo/git/openface/images/examples/lennon-2.jpg")
+    print name[0]
+    assert name == "lennon"
 
 if __name__ == "__main__":
     test()
