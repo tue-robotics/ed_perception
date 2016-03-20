@@ -17,7 +17,7 @@ import openface
 
 
 
-fileDir = os.path.dirname(os.path.expanduser("~/git/openface/demos/"))
+fileDir = os.path.dirname(os.path.expanduser("~/openface/demos/"))
 modelDir = os.path.join(fileDir, '..', 'models')
 dlibModelDir = os.path.join(modelDir, 'dlib')
 openfaceModelDir = os.path.join(modelDir, 'openface')
@@ -71,15 +71,15 @@ class FaceRecognizer(object):
 
 def test():
     rec = FaceRecognizer()
-    rec.add_sample('adams', "/home/amigo/git/openface/images/examples/adams.jpg")
-    rec.add_sample('clapton', "/home/amigo/git/openface/images/examples/clapton-1.jpg")
-    rec.add_sample('clapton', "/home/amigo/git/openface/images/examples/clapton-2.jpg")
-    rec.add_sample('lennon', "/home/amigo/git/openface/images/examples/lennon-1.jpg")
-    rec.add_sample('lennon', "/home/amigo/git/openface/images/examples/lennon-2.jpg")
+    rec.add_sample('adams', os.path.expanduser("~/openface/images/examples/adams.jpg"))
+    rec.add_sample('clapton', os.path.expanduser("~/openface/images/examples/clapton-1.jpg"))
+    rec.add_sample('clapton', os.path.expanduser("~/openface/images/examples/clapton-2.jpg"))
+    rec.add_sample('lennon', os.path.expanduser("~/openface/images/examples/lennon-1.jpg"))
+    rec.add_sample('lennon', os.path.expanduser("~/openface/images/examples/lennon-2.jpg"))
 
     rec.cluster()
 
-    name = rec.classify("/home/amigo/git/openface/images/examples/lennon-2.jpg")
+    name = rec.classify(os.path.expanduser("~/openface/images/examples/lennon-2.jpg"))
     print name[0]
     assert name == "lennon"
 
