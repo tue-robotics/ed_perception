@@ -4,6 +4,10 @@
 #include <ed/update_request.h>
 #include <ed/kinect/updater.h>
 
+//#include <ed/entity.h>
+//#include <rgbd/View.h>
+//#include <opencv2/highgui/highgui.hpp>
+
 // ----------------------------------------------------------------------------------------------------
 
 ImageCrawler::ImageCrawler()
@@ -102,9 +106,23 @@ bool ImageCrawler::reload(AnnotatedImage& image, bool do_segment)
     Updater updater;
     UpdateRequest kinect_update_req;
     kinect_update_req.area_description = image.area_description;
+    kinect_update_req.max_yaw_change = 0.5 * M_PI;
     updater.update(image.world_model, image.image, image.sensor_pose, kinect_update_req, res);
 
     image.world_model.update(update_req);
+
+//    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//    // Visualize fitting
+
+//    ed::EntityConstPtr support = image.world_model.getEntity("support");
+//    if (support && support->shape())
+//    {
+//        cv::Mat depth_vis(480, 640, CV_32FC1, 0.0);
+//        rgbd::View view(*image.image, depth_vis.cols);
+//        view.getRasterizer().rasterize(*support->shape(), image.sensor_pose, support->pose(), depth_vis);
+
+//        cv::imshow("depth", depth_vis / 10);
+//    }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Add entities

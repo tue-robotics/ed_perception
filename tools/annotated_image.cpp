@@ -18,6 +18,26 @@
 #include <ed/kinect/updater.h>
 #include <fstream>
 
+#include <tf/transform_datatypes.h>
+#include <geolib/ros/tf_conversions.h>
+
+// ----------------------------------------------------------------------------------------------------
+
+// Decomposes 'pose' into a (X, Y, YAW) and (Z, ROLL, PITCH) component
+void decomposePose(const geo::Pose3D& pose, geo::Pose3D& pose_xya, geo::Pose3D& pose_zrp)
+{
+    tf::Matrix3x3 m;
+    geo::convert(pose.R, m);
+
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+
+    pose_xya.R.setRPY(0, 0, yaw);
+    pose_xya.t = geo::Vec3(pose.t.x, pose.t.y, 0);
+
+    pose_zrp = pose_xya.inverse() * pose;
+}
+
 // ----------------------------------------------------------------------------------------------------
 
 bool fromFile(const std::string& filename, AnnotatedImage& image)
@@ -125,10 +145,21 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
                 int y = py * image.image->getDepthImage().rows;
                 rgbd::View view(*image.image, image.image->getDepthImage().cols);
 
-                geo::Vec3 pos = image.sensor_pose * (view.getRasterizer().project2Dto3D(x, y) * 3);
-                pos.z = 0;
+                // Decompose the sensor_pose into (x, y, yaw) and (z, roll, pitch)
+                geo::Pose3D sensor_pose_xya, sensor_pose_zrp;
+                decomposePose(image.sensor_pose, sensor_pose_xya, sensor_pose_zrp);
 
-                req.setPose(id, geo::Pose3D(geo::Mat3::identity(), pos));
+                // Estimate based on the pixel of the entity annotation where it is w.r.t.
+                // the sensor
+                geo::Pose3D pose_SENSOR_XYA;
+                pose_SENSOR_XYA.t = geo::Vec3(view.getRasterizer().project2Dto3DX(x), 1, 0);
+                pose_SENSOR_XYA.R.setRPY(0, 0, 0.5 * M_PI);
+
+                // Calculate the entity pose in map frame
+                geo::Pose3D pose_MAP = sensor_pose_xya * pose_SENSOR_XYA;
+                pose_MAP.t.z = 0;
+
+                req.setPose(id, pose_MAP);
 
                 // Update world
                 image.world_model.update(req);
