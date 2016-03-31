@@ -92,6 +92,8 @@ public:
             }
         }
 
+        ss << "    (area: " << image.area_name << ")";
+
         cv::rectangle(draw_img, cv::Point(0,0), cv::Point(img.cols,16), CV_RGB(0,0,0), CV_FILLED);
         cv::putText(draw_img, ss.str().c_str(), cv::Point2i(0, 12), 0, 0.4, cv::Scalar(255,255,255), 1);
 
@@ -164,7 +166,7 @@ public:
             return 1;
         }
 
-        std::string alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-+./";
+        std::string alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-+./:";
 
         //Create a window
         cv::namedWindow(WINDOW_NAME, 1);
@@ -278,9 +280,16 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata)
     double px = (double)x / gui->image.image->getRGBImage().cols;
     double py = (double)y / gui->image.image->getRGBImage().rows;
 
-    if (event == cv::EVENT_LBUTTONDOWN || event == cv::EVENT_RBUTTONDOWN)
+    if (event == cv::EVENT_LBUTTONDOWN && gui->selected_type.size() > 5 && gui->selected_type.substr(0, 5) == "area:")
     {
-        std::cout << px << ", " << py << std::endl;
+        gui->image.area_name = gui->selected_type.substr(5);
+        std::cout << "Setting area to '" << gui->image.area_name << "'" << std::endl;
+        gui->image_changed = true;
+        gui->redraw();
+    }
+    else if (event == cv::EVENT_LBUTTONDOWN || event == cv::EVENT_RBUTTONDOWN)
+    {
+//        std::cout << px << ", " << py << std::endl;
 
         std::vector<Annotation>::iterator it_clicked = gui->image.annotations.end();
 

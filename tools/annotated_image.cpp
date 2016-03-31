@@ -71,6 +71,9 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
 
     image.annotations.clear();
 
+    if (!r.value("area", image.area_name, tue::config::OPTIONAL))
+        image.area_name = "on_top_of";
+
     // Read annotations
     if (r.readArray("annotations"))
     {
@@ -93,10 +96,10 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
             std::stringstream error;
             ed::UUID id = "support";
 
-            bool on_top_of_found = false;
+            bool area_found = false;
             if (model_loader.create(id, type, req, error))
             {
-                // Check if this model has an 'on_top_of' area defined
+                // Check if this model has an the given area
                 if (!req.datas.empty())
                 {
                     tue::config::Reader r(req.datas.begin()->second);
@@ -106,9 +109,9 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
                         while(r.nextArrayItem())
                         {
                             std::string a_name;
-                            if (r.value("name", a_name) && a_name == "on_top_of")
+                            if (r.value("name", a_name) && a_name == image.area_name)
                             {
-                                on_top_of_found = true;
+                                area_found = true;
                                 break;
                             }
                         }
@@ -116,7 +119,7 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
                 }
             }
 
-            if (on_top_of_found)
+            if (area_found)
             {
                 int x = px * image.image->getDepthImage().cols;
                 int y = py * image.image->getDepthImage().rows;
@@ -130,7 +133,7 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
                 // Update world
                 image.world_model.update(req);
 
-                image.area_description = "on_top_of " + id.str();
+                image.area_description = image.area_name + " " + id.str();
 
                 ann.is_supporting = true;
             }
@@ -172,6 +175,9 @@ bool toFile(const std::string& filename, const AnnotatedImage& image)
         w.endArrayItem();
     }
     w.endArray();
+
+    w.setValue("area", image.area_name);
+    std::cout << "Writing area: " << image.area_name << std::endl;
 
     // Add the new annotations to the existing meta data (complete overwriting the annotations array)
 

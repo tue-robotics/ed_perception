@@ -35,7 +35,9 @@ struct AnnotatedImage
 
     geo::Pose3D sensor_pose;
 
-    std::string area_description;
+    std::string area_name; // (e.g. 'on_top_of', 'shelf1', etc)
+
+    std::string area_description; // (e.g. 'on_top_of cabinet', etc)
 
     tue::config::DataPointer meta_data;
 
