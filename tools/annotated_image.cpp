@@ -49,7 +49,7 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
 
         if (!f_rgbd.is_open())
         {
-            std::cerr << "Could not open '" << filename << "'." << std::endl;
+            std::cerr << "Could not open '" << abs_rgbd_filename << "'." << std::endl;
             return false;
         }
 
