@@ -16,6 +16,8 @@
 #include <tue/config/configuration.h>
 #include <tue/config/loaders/yaml.h>
 
+#include <std_srvs/Empty.h>
+
 FaceRecognizer fr;
 rgbd::Client rgbd_client;
 
@@ -79,6 +81,15 @@ bool srvLearnPerson(ed_perception::LearnPerson::Request& req, ed_perception::Lea
     fr.train(image->getRGBImage(), req.person_name);
 
 //    visualizeResult(*image);
+
+    return true;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+bool clearPersons(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+{
+    fr.clear();
 
     return true;
 }
@@ -219,6 +230,7 @@ int main(int argc, char **argv)
 
         ros::ServiceServer srv_learn_person = nh.advertiseService("learn_person", srvLearnPerson);
         ros::ServiceServer srv_recognize_person = nh.advertiseService("recognize_person", srvRecognizePerson);
+        ros::ServiceServer srv_clear_persons = nh.advertiseService("clear_persons", clearPersons);
 
         ros::spin();
     }

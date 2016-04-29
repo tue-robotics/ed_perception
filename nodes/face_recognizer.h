@@ -60,6 +60,9 @@ public:
     // Detect faces in the given image and esimate their name, age, etc.
     void find(const cv::Mat& rgb_image, std::vector<FaceRecognitionResult>& detections);
 
+    // Clear stored names
+    void clear();
+
 private:
 
     // default OpenCV face detector

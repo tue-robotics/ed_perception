@@ -41,6 +41,13 @@ bool FaceRecognizer::train(const cv::Mat& rgb_image, const std::string& name)
 
 // ----------------------------------------------------------------------------------------------------
 
+void FaceRecognizer::clear()
+{
+    names_.clear();
+}
+
+// ----------------------------------------------------------------------------------------------------
+
 void FaceRecognizer::find(const cv::Mat& rgb_image, std::vector<FaceRecognitionResult>& detections)
 {
     // Convert image to grayscale

@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   tue_config
   tue_filesystem
   vocabulary_tree
+  std_srvs
 )
 
 #find_package(PCL REQUIRED)
