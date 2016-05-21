@@ -153,7 +153,7 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
                 // the sensor
                 geo::Pose3D pose_SENSOR_XYA;
                 pose_SENSOR_XYA.t = geo::Vec3(view.getRasterizer().project2Dto3DX(x), 1, 0);
-                pose_SENSOR_XYA.R.setRPY(0, 0, 0.5 * M_PI);
+                pose_SENSOR_XYA.R.setRPY(0, 0, -0.5 * M_PI); // This assumes estimated entity position is with its x-axis towards camera
 
                 // Calculate the entity pose in map frame
                 geo::Pose3D pose_MAP = sensor_pose_xya * pose_SENSOR_XYA;
