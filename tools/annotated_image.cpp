@@ -94,6 +94,10 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
     if (!r.value("area", image.area_name, tue::config::OPTIONAL))
         image.area_name = "on_top_of";
 
+    image.excluded = false;
+    if (!r.value("excluded", image.excluded, tue::config::OPTIONAL))
+        image.excluded = false;
+
     // Read annotations
     if (r.readArray("annotations"))
     {
@@ -209,6 +213,9 @@ bool toFile(const std::string& filename, const AnnotatedImage& image)
 
     w.setValue("area", image.area_name);
     std::cout << "Writing area: " << image.area_name << std::endl;
+
+    w.setValue("excluded", image.excluded);
+    std::cout << "Excluding image" << std::endl;
 
     // Add the new annotations to the existing meta data (complete overwriting the annotations array)
 

@@ -41,6 +41,8 @@ struct AnnotatedImage
 
     tue::config::DataPointer meta_data;
 
+    bool excluded;
+
 };
 
 // ----------------------------------------------------------------------------------------------------

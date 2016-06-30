@@ -280,7 +280,14 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata)
     double px = (double)x / gui->image.image->getRGBImage().cols;
     double py = (double)y / gui->image.image->getRGBImage().rows;
 
-    if (event == cv::EVENT_LBUTTONDOWN && gui->selected_type.size() > 5 && gui->selected_type.substr(0, 5) == "area:")
+    if (event == cv::EVENT_LBUTTONDOWN && gui->selected_type == "exclude")
+    {
+        gui->image.excluded = true;
+        std::cout << "Excluding image" << std::endl;
+        gui->image_changed = true;
+        gui->redraw();
+    }
+    else if (event == cv::EVENT_LBUTTONDOWN && gui->selected_type.size() > 5 && gui->selected_type.substr(0, 5) == "area:")
     {
         gui->image.area_name = gui->selected_type.substr(5);
         std::cout << "Setting area to '" << gui->image.area_name << "'" << std::endl;
