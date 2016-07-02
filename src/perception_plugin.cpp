@@ -92,7 +92,10 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
     // Configure classifier
 
     if (!configureClassifier(req.perception_models_path, res.error_msg))
+    {
+        ROS_ERROR_STREAM(res.error_msg);
         return true;
+    }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Convert prior msg to distribution
@@ -111,12 +114,14 @@ bool PerceptionPlugin::srvClassify(ed_perception::Classify::Request& req, ed_per
         if (!e)
         {
             res.error_msg += "Entity '" + *it + "' does not exist.\n";
+            ROS_ERROR_STREAM(res.error_msg);
             continue;
         }
 
         if (!e->bestMeasurement())
         {
             res.error_msg += "Entity '" + *it + "' does not have a measurement.\n";
+            ROS_ERROR_STREAM(res.error_msg);
             continue;
         }
 
