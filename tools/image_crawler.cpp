@@ -67,7 +67,11 @@ bool ImageCrawler::previous(AnnotatedImage& image, bool do_segment)
     bool res;
     do
     {
+        if ( i_current_ <= 0)
+            return false;
+
         --i_current_;
+
         res = reload(image, do_segment);
         std::cout << "i_current = " << i_current_ << std::endl;
         std::cout << "res = " << res << std::endl;
@@ -84,13 +88,14 @@ bool ImageCrawler::next(AnnotatedImage& image, bool do_segment)
     if (filenames_.empty())
         return false;
 
-    if (i_current_ + 1 == filenames_.size())
-        return false;
-
     bool res;
     do
     {
+        if ( i_current_ + 1 == filenames_.size() )
+            return false;
+
         ++i_current_;
+
         res = reload(image, do_segment);
         std::cout << "i_current = " << i_current_ << std::endl;
         std::cout << "res = " << res << std::endl;
