@@ -66,6 +66,8 @@ Once an image has the supporting entity annotated, segmentation should improve. 
   * Left-click on the (middle of the) object in the image
   * *Tip: type the name of the object, then go through all the images and click on it. In general this is faster then re-typing the name of the object, even with auto-completion*
 
+If you encounter any images that are useless for annotation/training, it is possible to exclude them. If you do that, the image crawler will skip the image in the future, in the GUI as well as while training or testing. Excluding an image is done by typing exclude, pressing enter and clicking in the image.
+
 You can always exit the annotation-gui by pressing ESC. Your progress will be saved (in the json-meta-data files).
 
 ### Training the perception modules
