@@ -2,15 +2,22 @@
 
 #include <iostream>
 
+#include <ros/package.h>
+#include <ros/node_handle.h>
+
 #include <ed/world_model.h>
 #include <ed/entity.h>
 #include <ed/update_request.h>
 #include <ed/error_context.h>
+#include <ed/measurement.h>
+
+#include <rgbd/Image.h>
+#include <rgbd/ros/conversions.h>
 
 #include <tue/filesystem/path.h>
 
-#include <ros/package.h>
-#include <ros/node_handle.h>
+#include <object_recognition_srvs/Recognize.h>
+
 
 namespace ed
 {
@@ -34,14 +41,11 @@ PerceptionPluginTensorflow::~PerceptionPluginTensorflow()
 
 void PerceptionPluginTensorflow::initialize(ed::InitData& init)
 {
-//    tue::Configuration& config = init.config;
-//    aggregator_.configure(config, false);
-
     // Initialize service
     ros::NodeHandle nh("~");
     nh.setCallbackQueue(&cb_queue_);
-    srv_classify_ = nh.advertiseService("classify", &PerceptionPlugin::srvClassify, this);
-    srv_add_training_instance_ = nh.advertiseService("add_training_instance", &PerceptionPlugin::srvAddTrainingInstance, this);
+    srv_classify_ = nh.advertiseService("classify", &PerceptionPluginTensorflow::srvClassify, this);
+    srv_client_ = nh.serviceClient<object_recognition_srvs::Recognize>("recognize");
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -56,54 +60,8 @@ void PerceptionPluginTensorflow::process(const ed::PluginInput& data, ed::Update
 
 // ----------------------------------------------------------------------------------------------------
 
-bool PerceptionPluginTensorflow::configureClassifier(const std::string& perception_models_path, std::string& error)
-{
-    if (perception_models_path_ != perception_models_path)
-    {
-        std::string config_filename = perception_models_path + "/parameters.yaml";
-        tue::Configuration config;
-        config.loadFromYAMLFile(config_filename);
-
-        if (!config.hasError())
-            aggregator_.configure(config, false);
-
-        if (config.hasError())
-        {
-            error = "Could not load configuration file '" + config_filename + "':\n\n" + config.error();
-            return false;
-        }
-
-        perception_models_path_ = perception_models_path;
-    }
-    else if (perception_models_path.empty())
-    {
-        error = "Please provide perception model path.";
-        return false;
-    }
-
-    return true;
-}
-
-// ----------------------------------------------------------------------------------------------------
-
 bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res)
 {
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Configure classifier
-
-    if (!configureClassifier(req.perception_models_path, res.error_msg))
-    {
-        ROS_ERROR_STREAM(res.error_msg);
-        return true;
-    }
-
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Convert prior msg to distribution
-
-    CategoricalDistribution prior;
-    for(unsigned int i = 0; i < req.prior.values.size(); ++i)
-        prior.setScore(req.prior.values[i], req.prior.probabilities[i]);
-    prior.setUnknownScore(req.prior.unknown_probability);
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Classify
@@ -111,6 +69,8 @@ bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& r
     for(std::vector<std::string>::const_iterator it = req.ids.begin(); it != req.ids.end(); ++it)
     {
         ed::EntityConstPtr e = world_->getEntity(*it);
+
+        // Check if the entity exists
         if (!e)
         {
             res.error_msg += "Entity '" + *it + "' does not exist.\n";
@@ -118,101 +78,46 @@ bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& r
             continue;
         }
 
+        // Check if the entity has a measurement associated with it
         if (!e->bestMeasurement())
         {
             res.error_msg += "Entity '" + *it + "' does not have a measurement.\n";
             ROS_ERROR_STREAM(res.error_msg);
             continue;
         }
+        MeasurementConstPtr meas_ptr = e->bestMeasurement();
 
-        tue::Configuration data;
-        ed::perception::ClassificationOutput output(data);
-        aggregator_.classify(*e, req.property, prior, output);
+        // Create the classificationrequest and call the service
+        object_recognition_srvs::Recognize client_srv;
+        rgbd::convert(meas_ptr->image()->getRGBImage(), client_srv.request.image);
+        srv_client_.call(client_srv);
 
-        // TODO: create posterior! (is now just likelihood)
-        ed::perception::CategoricalDistribution posterior = output.likelihood;
-        posterior.normalize();
-
-        // - - - - - - - - - - - - - - - - - - - - - -
-        // Write result to message
-
-        res.ids.push_back(e->id().str());
-
-        res.posteriors.push_back(ed_perception::CategoricalDistribution());
-        ed_perception::CategoricalDistribution& dist_msg = res.posteriors.back();
-
-        for(std::map<std::string, double>::const_iterator it2 = posterior.values().begin(); it2 != posterior.values().end(); ++it2)
+        std::string label;
+        if (client_srv.response.recognitions.size() > 0)
         {
-            dist_msg.values.push_back(it2->first);
-            dist_msg.probabilities.push_back(it2->second);
-        }
-
-        dist_msg.unknown_probability = posterior.getUnknownScore();
-
-
-        std::string max_value;
-        double max_prob;
-        if (posterior.getMaximum(max_value, max_prob) && max_prob > posterior.getUnknownScore())
-        {
-            res.expected_values.push_back(max_value);
-            res.expected_value_probabilities.push_back(max_prob);
-
-            // If the classification property is 'type', set the type of the entity in the world model
-            if (req.property == "type")
-            {
-                update_req_->setType(e->id(), max_value);
-                update_req_->addData(e->id(), data.data());
-            }
+            label = client_srv.response.recognitions[0].label;
+            ROS_INFO_STREAM("Entity " + *it + ": " + label);
         }
         else
         {
-            res.expected_values.push_back("");
-            res.expected_value_probabilities.push_back(posterior.getUnknownScore());
+            ROS_WARN_STREAM("No classification for entity " + *it);
+            continue;
         }
+
+        // Update the world model
+        update_req_->setType(e->id(), label);
+//        update_req_->addData(e->id(), data.data()); // What does this do???
+
+        // Add the result to the response
+        res.expected_values.push_back(label);
+        res.expected_value_probabilities.push_back(1.0);  // ToDo: does this make any sense?
+
     }
 
     return true;
 }
 
 // ----------------------------------------------------------------------------------------------------
-
-bool PerceptionPluginTensorflow::srvAddTrainingInstance(ed_perception::AddTrainingInstance::Request& req,
-                                              ed_perception::AddTrainingInstance::Response& res)
-{
-    std::cout << "PerceptionPlugin::srvAddTrainingInstance" << std::endl;
-
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Configure classifier
-
-    if (!configureClassifier(req.perception_models_path, res.error_msg))
-        return true;
-
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Check if entity and its measurement exist
-
-    ed::EntityConstPtr e = world_->getEntity(req.id);
-    if (!e)
-    {
-        res.error_msg += "Entity '" + req.id + "' does not exist.\n";
-        return true;
-    }
-
-    if (!e->bestMeasurement())
-    {
-        res.error_msg += "Entity '" + req.id + "' does not have a measurement.\n";
-        return true;
-    }
-
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Add training instance
-
-    aggregator_.addTrainingInstance(*e, req.property, req.value);
-
-    return true;
-}
-
-// ----------------------------------------------------------------------------------------------------
-
 
 } // end namespace perception
 

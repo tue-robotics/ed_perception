@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   genmsg
   geolib2
   message_generation
+  object_recognition_srvs
   rgbd
   roscpp
   roslib
