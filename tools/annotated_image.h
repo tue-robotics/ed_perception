@@ -5,6 +5,7 @@
 #include <ed/world_model.h>
 #include <rgbd/types.h>
 #include <tue/config/data_pointer.h>
+#include <cv.h>
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -52,6 +53,8 @@ bool fromFile(const std::string& filename, AnnotatedImage& image);
 bool toFile(const std::string& filename, const AnnotatedImage& image);
 
 void findAnnotationCorrespondences(const AnnotatedImage& img, std::vector<ed::EntityConstPtr>& correspondences);
+
+void findAnnotatedROIs(const AnnotatedImage& img, std::vector<ed::EntityConstPtr>& correspondences, std::vector<cv::Rect>& entity_rects);
 
 // ----------------------------------------------------------------------------------------------------
 

@@ -228,6 +228,46 @@ bool toFile(const std::string& filename, const AnnotatedImage& image)
 
 // ----------------------------------------------------------------------------------------------------
 
+void findAnnotatedROIs(const AnnotatedImage& img, std::vector<ed::EntityConstPtr>& correspondences, std::vector<cv::Rect>& entity_rects)
+{
+    findAnnotationCorrespondences(img, correspondences);
+
+    const cv::Mat& rgb = img.image->getRGBImage();
+
+    entity_rects.resize(correspondences.size());
+
+    for(unsigned int i = 0; i < correspondences.size(); ++i)
+    {
+        if ( !correspondences[i] )
+        {
+            continue;
+        }
+
+        const ed::EntityConstPtr& e = correspondences[i];
+
+        const ed::ImageMask& mask = e->bestMeasurement()->imageMask();
+
+        cv::Point p_min(rgb.cols, rgb.rows);
+        cv::Point p_max(0, 0);
+
+        for(ed::ImageMask::const_iterator it = mask.begin(rgb.cols); it != mask.end(); ++it)
+        {
+            const cv::Point2i& p = *it;
+            p_min.x = std::min(p_min.x, p.x);
+            p_min.y = std::min(p_min.y, p.y);
+            p_max.x = std::max(p_max.x, p.x);
+            p_max.y = std::max(p_max.y, p.y);
+        }
+
+        entity_rects[i] = cv::Rect(std::min(p_min.x+5, rgb.cols),
+                                   std::min(p_min.y+5, rgb.rows),
+                                   std::max(p_max.x - p_min.x - 5, 0),
+                                   std::max(p_max.y - p_min.y - 5, 0));
+    }
+}
+
+// ----------------------------------------------------------------------------------------------------
+
 // Finds which annotations belong to which entities in AnnotatedImage 'image'. Returns a vector which
 // is as long as image.annotations, and has for each index the corresponding entity, or a nullptr if
 // none could be found
@@ -286,3 +326,5 @@ void findAnnotationCorrespondences(const AnnotatedImage& img, std::vector<ed::En
         }
     }
 }
+
+

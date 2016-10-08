@@ -202,6 +202,9 @@ target_link_libraries(color_matcher shared_methods ${catkin_LIBRARIES})
 add_library(train-and-test-lib tools/image_crawler.cpp tools/annotated_image.cpp)
 target_link_libraries(train-and-test-lib ed_perception ${catkin_LIBRARIES})
 
+add_executable(store_segments tools/store_segments.cpp)
+target_link_libraries(store_segments train-and-test-lib ed_perception)
+
 add_executable(train-perception tools/train_perception.cpp)
 target_link_libraries(train-perception train-and-test-lib ed_perception)
 
