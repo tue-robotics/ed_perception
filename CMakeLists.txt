@@ -88,6 +88,11 @@ target_link_libraries(ed_perception_plugin ${catkin_LIBRARIES} ed_perception)
 
 # ------------------------------------------------------------------------------------------------
 
+add_library(ed_perception_plugin_tensorflow src/perception_plugin_tensorflow.cpp)
+target_link_libraries(ed_perception_plugin_tensorflow ${catkin_LIBRARIES} ed_perception)
+
+# ------------------------------------------------------------------------------------------------
+
 include_directories(
   include
   # ${PCL_INCLUDE_DIRS}
