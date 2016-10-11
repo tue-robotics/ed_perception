@@ -11,6 +11,8 @@
 #include <ed/error_context.h>
 #include <ed/measurement.h>
 
+#include "../plugins/shared_methods.h"
+
 #include <rgbd/Image.h>
 #include <rgbd/ros/conversions.h>
 
@@ -91,7 +93,14 @@ bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& r
 
         // Create the classificationrequest and call the service
         object_recognition_srvs::Recognize client_srv;
-        rgbd::convert(meas_ptr->image()->getRGBImage(), client_srv.request.image);
+        cv::Mat image = meas_ptr->image()->getRGBImage();
+
+        // Get the part that is masked
+        ed::ImageMask mask = meas_ptr->imageMask();
+        cv::Rect roi;
+        cv::Mat cropped_image = ed::perception::maskImage( image, mask, roi);
+
+        rgbd::convert(cropped_image, client_srv.request.image);
         srv_client_.call(client_srv);
 
         std::string label;

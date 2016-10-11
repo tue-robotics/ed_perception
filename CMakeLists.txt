@@ -89,11 +89,6 @@ target_link_libraries(ed_perception_plugin ${catkin_LIBRARIES} ed_perception)
 
 # ------------------------------------------------------------------------------------------------
 
-add_library(ed_perception_plugin_tensorflow src/perception_plugin_tensorflow.cpp)
-target_link_libraries(ed_perception_plugin_tensorflow ${catkin_LIBRARIES} ed_perception)
-
-# ------------------------------------------------------------------------------------------------
-
 include_directories(
   include
   # ${PCL_INCLUDE_DIRS}
@@ -125,6 +120,11 @@ add_library(shared_methods
   plugins/shared_methods.h
 )
 target_link_libraries(shared_methods ${catkin_LIBRARIES})
+
+# ------------------------------------------------------------------------------------------------
+
+add_library(ed_perception_plugin_tensorflow src/perception_plugin_tensorflow.cpp)
+target_link_libraries(ed_perception_plugin_tensorflow shared_methods ${catkin_LIBRARIES} ed_perception)
 
 add_library(size_matcher
   plugins/size_matcher.cpp
