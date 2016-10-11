@@ -42,9 +42,11 @@ PerceptionPluginTensorflow::~PerceptionPluginTensorflow()
 void PerceptionPluginTensorflow::initialize(ed::InitData& init)
 {
     // Initialize service
-    ros::NodeHandle nh("~");
-    nh.setCallbackQueue(&cb_queue_);
-    srv_classify_ = nh.advertiseService("classify", &PerceptionPluginTensorflow::srvClassify, this);
+    ros::NodeHandle nh_private("~");
+    nh_private.setCallbackQueue(&cb_queue_);
+    srv_classify_ = nh_private.advertiseService("classify", &PerceptionPluginTensorflow::srvClassify, this);
+
+    ros::NodeHandle nh;
     srv_client_ = nh.serviceClient<object_recognition_srvs::Recognize>("recognize");
 }
 
