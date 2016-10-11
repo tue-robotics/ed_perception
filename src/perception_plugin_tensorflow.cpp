@@ -115,7 +115,7 @@ bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& r
         if (client_srv.response.recognitions.size() > 0)
         {
             p = client_srv.response.recognitions[0].probability;
-            if (p > 0.5)
+            if (p > 0.5)  // ToDo: this threshold is now hardcoded. Should we make this configurable
             {
                 label = client_srv.response.recognitions[0].label;
                 ROS_INFO_STREAM("Entity " + *it + ": " + label);
