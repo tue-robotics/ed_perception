@@ -31,6 +31,11 @@ Start the robot
 
 Position the robot in front of the objects, and let the head look at the objects. Open a robot console (e.g. for AMIGO):
 
+    robot-console
+    inspect hallway_table
+
+or
+
     amigo-console
 
 Now you can capture an image and save it to disk using:
