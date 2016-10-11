@@ -100,14 +100,32 @@ bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& r
         cv::Rect roi;
         cv::Mat cropped_image = ed::perception::maskImage( image, mask, roi);
 
+        // Convert it to the image request and call the service
         rgbd::convert(cropped_image, client_srv.request.image);
-        srv_client_.call(client_srv);
+        if (!srv_client_.call(client_srv))
+        {
+            ROS_ERROR("Service call failed");
+            continue;
+        }
 
+        // If we have recognitions and the highest probability is above a certain
+        // threshold: update the world model
         std::string label;
+        double p;
         if (client_srv.response.recognitions.size() > 0)
         {
-            label = client_srv.response.recognitions[0].label;
-            ROS_INFO_STREAM("Entity " + *it + ": " + label);
+            p = client_srv.response.recognitions[0].probability;
+            if (p > 0.5)
+            {
+                label = client_srv.response.recognitions[0].label;
+                ROS_INFO_STREAM("Entity " + *it + ": " + label);
+            }
+            else
+            {
+                ROS_DEBUG_STREAM("Entity " + *it + " not updated, probability too low (" << p << ")");
+                continue;
+            }
+
         }
         else
         {
@@ -121,7 +139,7 @@ bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& r
 
         // Add the result to the response
         res.expected_values.push_back(label);
-        res.expected_value_probabilities.push_back(1.0);  // ToDo: does this make any sense?
+        res.expected_value_probabilities.push_back(p);  // ToDo: does this make any sense?
 
     }
 
