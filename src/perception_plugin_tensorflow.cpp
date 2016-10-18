@@ -97,8 +97,24 @@ bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& r
 
         // Get the part that is masked
         ed::ImageMask mask = meas_ptr->imageMask();
-        cv::Rect roi;
-        cv::Mat cropped_image = ed::perception::maskImage( image, mask, roi);
+
+        cv::Point p_min(image.cols, image.rows);
+        cv::Point p_max(0, 0);
+
+        for(ed::ImageMask::const_iterator it2 = mask.begin(image.cols); it2 != mask.end(); ++it2)
+        {
+            const cv::Point2i& p = *it2;
+            p_min.x = std::min(p_min.x, p.x);
+            p_min.y = std::min(p_min.y, p.y);
+            p_max.x = std::max(p_max.x, p.x);
+            p_max.y = std::max(p_max.y, p.y);
+        }
+
+        cv::Rect roi = cv::Rect(std::min(p_min.x + 5, image.cols),
+                                std::min(p_min.y + 5, image.rows),
+                                std::max(p_max.x - p_min.x - 5, 0),
+                                std::max(p_max.y - p_min.y - 5, 0));
+        cv::Mat cropped_image = image(roi);
 
         // Convert it to the image request and call the service
         rgbd::convert(cropped_image, client_srv.request.image);
