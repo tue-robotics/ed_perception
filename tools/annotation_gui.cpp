@@ -5,12 +5,15 @@
 //#include <QDialogButtonBox>
 
 #include <ros/ros.h>
+#include <ros/package.h>
 #include "image_crawler.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <rgbd/Image.h>
 #include <ed/entity.h>
 #include <ed/measurement.h>
+#include <tue/config/loaders/yaml.h>
+#include <tue/config/reader_writer.h>
 
 // ---------------------------------------------------------------------------------------------
 
@@ -41,6 +44,22 @@ public:
             types.insert(*iter);
         }
 
+        std::string robot_env = getenv("ROBOT_ENV");
+        std::string path = ros::package::getPath("ed_object_models") + std::string("/models/") + robot_env + std::string("/model.yaml");
+        tue::config::ReaderWriter robot_env_model;
+        tue::config::loadFromYAMLFile(path,robot_env_model);
+
+        robot_env_model.readArray("composition");
+        while ( robot_env_model.nextArrayItem() )
+        {
+            std::string id, type;
+            robot_env_model.value("id",id);
+            robot_env_model.value("type",type);
+            std::cout << "id: " << id << std::endl;
+            std::cout << "type: " << type << std::endl;
+        }
+        std::cout << "bla2" << std::endl;
+
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -57,6 +76,7 @@ public:
     std::vector<std::string> possible_types;
     int i_possible_types;
     std::string selected_type;
+    std::map<std::string,std::string> object_name_to_type_map;
 
     bool image_changed;
 
