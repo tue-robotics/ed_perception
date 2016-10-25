@@ -27,9 +27,6 @@ int main(int argc, char **argv)
         return 1;
     }
 
-//    std::string location = argv[2];
-//    std::cout << location << std::endl;
-
     ImageCrawler crawler;
     crawler.setPath(argv[1]);
 
@@ -52,19 +49,33 @@ int main(int argc, char **argv)
 
             cv::Mat ROI = image.image->getRGBImage()(bbox);
 
-            // Check if path exists and store segment in directory
-            boost::filesystem::path p(getenv("HOME"));
-
-            p += boost::filesystem::path("/training_images/");
-            p += boost::filesystem::path(a.label);
-            p += "/";
+            // Check if path exists and create directories if necessary
+            boost::filesystem::path p = getenv("HOME") / boost::filesystem::path("training_images") / boost::filesystem::path(a.label);
 
             if ( !boost::filesystem::exists(p) )
                 boost::filesystem::create_directories(p);
 
-            p += rgbd_filename.filename();
+            boost::filesystem::path temp_filename = rgbd_filename.filename().replace_extension(".jpg");
 
-            p.replace_extension(boost::filesystem::path(".jpg"));
+            // Check if filename already exists in this directory.
+            if ( boost::filesystem::exists( (p / temp_filename ) ) )
+            {
+                // If it does, add a number to the filename
+                int i = 0;
+
+                do
+                {
+                    i++;
+                    temp_filename = rgbd_filename.filename().replace_extension("");    // Remove extension
+                    std::cout << temp_filename.c_str() << std::endl;
+                    std::stringstream integer;                              // Convert int to string type
+                    integer << i;
+                    temp_filename += integer.str();                         // Add number
+                    temp_filename += ".jpg";                                // put extension back
+                } while ( boost::filesystem::exists( p / temp_filename ) );
+            }
+
+            p = p / temp_filename;
 
             std::cout << "writing to " << p.c_str() << std::endl;
             cv::imwrite( p.c_str(), ROI );
