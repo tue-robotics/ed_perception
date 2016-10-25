@@ -27,16 +27,18 @@ public:
     {
         // Get possible types from the parameter server
         ros::NodeHandle nh;
-        if (!nh.getParam("/object_types", possible_types))
+        std::vector<std::string> object_list;
+        if (!nh.getParam("/object_types", object_list))
         {
             ROS_ERROR("Could not load possible types");
         }
 
         // List possible types in the terminal
         std::cout << "Available object types:" << std::endl;
-        for (std::vector<std::string>::iterator iter = possible_types.begin(); iter != possible_types.end(); ++iter)
+        for (std::vector<std::string>::iterator iter = object_list.begin(); iter != object_list.end(); ++iter)
         {
             std::cout << iter->c_str() << std::endl;
+            types.insert(*iter);
         }
 
     }
@@ -152,6 +154,25 @@ public:
 
     // ---------------------------------------------------------------------------------------------
 
+    void updatePossibleTypes()
+        {
+            i_possible_types = 0;
+
+            possible_types.clear();
+            if (typed.empty())
+                return;
+
+            possible_types.push_back(typed);
+            for(std::set<std::string>::const_iterator it = types.begin(); it != types.end(); ++it)
+            {
+                const std::string& t = *it;
+                if (t.size() >= typed.size() && t.substr(0, typed.size()) == typed)
+                    possible_types.push_back(t);
+            }
+        }
+
+    // ---------------------------------------------------------------------------------------------
+
     int run(const std::string path)
     {
         crawler.setPath(path);
@@ -172,8 +193,8 @@ public:
 
         while(true)
         {
-            for(std::vector<Annotation>::const_iterator it = image.annotations.begin(); it != image.annotations.end(); ++it)
-                types.insert(it->label);
+//            for(std::vector<Annotation>::const_iterator it = image.annotations.begin(); it != image.annotations.end(); ++it)
+//                types.insert(it->label);
 
             redraw();
             char key = cv::waitKey();
@@ -215,6 +236,7 @@ public:
                 if (!typed.empty())
                 {
                     typed = typed.substr(0, typed.size() - 1);
+                    updatePossibleTypes();
                     selected_type.clear();
                 }
             }
@@ -222,6 +244,7 @@ public:
             {
                 selected_type = possible_types[i_possible_types];
                 typed.clear();
+                updatePossibleTypes();
             }
             else if (key == 9) // Tab
             {
@@ -231,8 +254,8 @@ public:
                 while(crawler.next(image, false))
                 {
                     // Add labels
-                    for(std::vector<Annotation>::const_iterator it = image.annotations.begin(); it != image.annotations.end(); ++it)
-                        types.insert(it->label);
+//                    for(std::vector<Annotation>::const_iterator it = image.annotations.begin(); it != image.annotations.end(); ++it)
+//                        types.insert(it->label);
 
                     bool has_support = false;
                     for(std::vector<Annotation>::const_iterator it = image.annotations.begin();
@@ -256,6 +279,7 @@ public:
             else if (alpha.find(key) != std::string::npos)
             {
                 typed += key;
+                updatePossibleTypes();
                 selected_type.clear();
             }
         }
