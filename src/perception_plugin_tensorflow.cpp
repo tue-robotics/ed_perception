@@ -145,7 +145,7 @@ bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& r
         }
         else
         {
-            ROS_WARN_STREAM("No classification for entity " + *it);
+            ROS_ERROR_STREAM("No classification for entity " + *it);
             continue;
         }
 
@@ -154,10 +154,26 @@ bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& r
 //        update_req_->addData(e->id(), data.data()); // What does this do???
 
         // Add the result to the response
-        res.expected_values.push_back(label);
-        res.expected_value_probabilities.push_back(p);  // ToDo: does this make any sense?
 
+        // For some reason we defined the interface this way but this is much too much info for the client .. 
+        // I am now setting all these things because the client expects this for some reason ..
+        // posteriors = [dict(zip(distr.values, distr.probabilities)) for distr in res.posteriors]
+        // return [ClassificationResult(_id, exp_val, exp_prob, distr) for _id, exp_val, exp_prob, distr in zip(res.ids, res.expected_values, res.expected_value_probabilities, posteriors) if exp_val in types]
+        
+        ed_perception::CategoricalDistribution posterior;
+        for (unsigned int i = 0; i < client_srv.response.recognitions.size(); ++i)
+        {
+            posterior.values.push_back(client_srv.response.recognitions[i].label);
+            posterior.probabilities.push_back(client_srv.response.recognitions[i].probability);
+        }
+        
+        res.ids.push_back(e->id().str());
+        res.expected_values.push_back(label);
+        res.expected_value_probabilities.push_back(p);  
+        res.posteriors.push_back(posterior);  
     }
+
+    ROS_ERROR_STREAM("response: return true: " << res << "");
 
     return true;
 }
