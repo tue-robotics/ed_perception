@@ -16,14 +16,14 @@ namespace ed
 namespace perception
 {
 
-class PerceptionPluginTensorflow : public ed::Plugin
+class PerceptionPluginImageRecognition : public ed::Plugin
 {
 
 public:
 
-    PerceptionPluginTensorflow();
+    PerceptionPluginImageRecognition();
 
-    virtual ~PerceptionPluginTensorflow();
+    virtual ~PerceptionPluginImageRecognition();
 
     void initialize(ed::InitData& init);
 

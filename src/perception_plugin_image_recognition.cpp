@@ -1,4 +1,4 @@
-#include "perception_plugin_tensorflow.h"
+#include "perception_plugin_image_recognition.h"
 
 #include <iostream>
 
@@ -18,7 +18,7 @@
 
 #include <tue/filesystem/path.h>
 
-#include <object_recognition_srvs/Recognize.h>
+#include <image_recognition_msgs/Recognize.h>
 
 
 namespace ed
@@ -29,32 +29,32 @@ namespace perception
 
 // ----------------------------------------------------------------------------------------------------
 
-PerceptionPluginTensorflow::PerceptionPluginTensorflow()
+PerceptionPluginImageRecognition::PerceptionPluginImageRecognition()
 {
 }
 
 // ----------------------------------------------------------------------------------------------------
 
-PerceptionPluginTensorflow::~PerceptionPluginTensorflow()
+PerceptionPluginImageRecognition::~PerceptionPluginImageRecognition()
 {
 }
 
 // ----------------------------------------------------------------------------------------------------
 
-void PerceptionPluginTensorflow::initialize(ed::InitData& init)
+void PerceptionPluginImageRecognition::initialize(ed::InitData& init)
 {
     // Initialize service
     ros::NodeHandle nh_private("~");
     nh_private.setCallbackQueue(&cb_queue_);
-    srv_classify_ = nh_private.advertiseService("classify", &PerceptionPluginTensorflow::srvClassify, this);
+    srv_classify_ = nh_private.advertiseService("classify", &PerceptionPluginImageRecognition::srvClassify, this);
 
     ros::NodeHandle nh;
-    srv_client_ = nh.serviceClient<object_recognition_srvs::Recognize>("recognize");
+    srv_client_ = nh.serviceClient<image_recognition_msgs::Recognize>("recognize");
 }
 
 // ----------------------------------------------------------------------------------------------------
 
-void PerceptionPluginTensorflow::process(const ed::PluginInput& data, ed::UpdateRequest& req)
+void PerceptionPluginImageRecognition::process(const ed::PluginInput& data, ed::UpdateRequest& req)
 {
     world_ = &data.world;
     update_req_ = &req;
@@ -64,7 +64,7 @@ void PerceptionPluginTensorflow::process(const ed::PluginInput& data, ed::Update
 
 // ----------------------------------------------------------------------------------------------------
 
-bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res)
+bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res)
 {
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -92,7 +92,7 @@ bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& r
         MeasurementConstPtr meas_ptr = e->bestMeasurement();
 
         // Create the classificationrequest and call the service
-        object_recognition_srvs::Recognize client_srv;
+        image_recognition_msgs::Recognize client_srv;
         cv::Mat image = meas_ptr->image()->getRGBImage();
 
         // Get the part that is masked
@@ -184,4 +184,4 @@ bool PerceptionPluginTensorflow::srvClassify(ed_perception::Classify::Request& r
 
 } // end namespace ed
 
-ED_REGISTER_PLUGIN(ed::perception::PerceptionPluginTensorflow)
+ED_REGISTER_PLUGIN(ed::perception::PerceptionPluginImageRecognition)
