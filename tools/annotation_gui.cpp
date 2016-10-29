@@ -15,6 +15,8 @@
 #include <tue/config/loaders/yaml.h>
 #include <tue/config/reader_writer.h>
 
+#include <boost/filesystem.hpp>
+
 // ---------------------------------------------------------------------------------------------
 
 void mouseCallback(int event, int x, int y, int flags, void* userdata);
@@ -44,21 +46,27 @@ public:
             types.insert(*iter);
         }
 
+        // Parse the world model, extract the furniture and add it to the types that can be annotated
         std::string robot_env = getenv("ROBOT_ENV");
         std::string path = ros::package::getPath("ed_object_models") + std::string("/models/") + robot_env + std::string("/model.yaml");
         tue::config::ReaderWriter robot_env_model;
         tue::config::loadFromYAMLFile(path,robot_env_model);
 
-        robot_env_model.readArray("composition");
+        if (!robot_env_model.readArray("composition"))
+            ROS_ERROR_STREAM("No composition array found in ed_object_model for ROBOT_ENV=" << robot_env << ". Automatic annotation or tab completion for supporting objects will not be available.");
+
         while ( robot_env_model.nextArrayItem() )
         {
             std::string id, type;
             robot_env_model.value("id",id);
             robot_env_model.value("type",type);
-            std::cout << "id: " << id << std::endl;
-            std::cout << "type: " << type << std::endl;
+            if ( type != "waypoint" && type != "room" && type != "floor")
+            {
+                object_name_to_type_map[id] = type;
+                types.insert(type);
+            }
+
         }
-        std::cout << "bla2" << std::endl;
 
     }
 
@@ -193,6 +201,53 @@ public:
 
     // ---------------------------------------------------------------------------------------------
 
+    bool hasAnnotatedSupportingObject(const AnnotatedImage& img)
+    {
+        for ( std::vector<Annotation>::const_iterator it = img.annotations.begin(); it != img.annotations.end(); ++it )
+        {
+            if ( it->is_supporting )
+                return true;
+        }
+        return false;
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
+    bool annotateSupportingObject(AnnotatedImage& img)
+    {
+        // Get image filename from crawler
+        boost::filesystem::path image_filename = crawler.filename(); // date_and_time.yaml
+
+        // Get parent directory from canonical path to image
+        std::string parent_dir = boost::filesystem::canonical(image_filename).remove_filename().leaf().c_str(); // date or area_supporting_object
+
+        // Loop through supporting objects and see if id is in parent directory name
+        for ( std::map<std::string,std::string>::const_iterator it = object_name_to_type_map.begin(); it != object_name_to_type_map.end(); ++it )
+        {
+            const std::string& object_id = it->first;
+
+            // Check if parent dir string is longer than object id string and if its last part is the object id
+            if ( parent_dir.size() > object_id.size() &&
+                 parent_dir.compare( parent_dir.size() - object_id.size(), object_id.size(), object_id) == 0 )
+            {
+                // If img is in dir ending with object id, annotate it with its type
+                Annotation annotation(object_name_to_type_map[object_id], 0.5, 0.8);
+                annotation.is_supporting = true;
+                img.annotations.push_back(annotation);
+
+                // Assign area_name the other substring, but without trailing underscore
+                img.area_name = parent_dir.substr(0, parent_dir.size() - object_id.size() -1);
+
+                return true;
+            }
+        }
+
+        return false;
+
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
     int run(const std::string path)
     {
         crawler.setPath(path);
@@ -225,6 +280,12 @@ public:
                     toFile(crawler.filename(), image);
 
                 crawler.previous(image);
+
+                // If no supporting object is annotated yet, automatically annotate it if possible
+                if ( !hasAnnotatedSupportingObject(image) )
+                {
+                    image_changed = annotateSupportingObject(image);
+                }
             }
             else if (key == 83) // right
             {
@@ -232,6 +293,12 @@ public:
                     toFile(crawler.filename(), image);
 
                 crawler.next(image);
+
+                // If no supporting object is annotated yet, automatically annotate it if possible
+                if ( !hasAnnotatedSupportingObject(image) )
+                {
+                    image_changed = annotateSupportingObject(image);
+                }
             }
             else if (key == 82) // up
             {
