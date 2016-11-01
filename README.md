@@ -50,7 +50,8 @@ This will store the RGBD-image (color + depth) and meta-data (such as the timest
 
 **To streamline the annotation, it is also possible to load the available object types in the GUI and auto-annotate the supporting objects.** For this a number of conditions need to be met:
   * The images must be stored in a folder structure so that the GUI can derive the supporting object from the parent directory, where `on_top_of` is an area defined in the `table` model:
-
+like this:
+  
     images
     |------ on_top_of_table
     |       |   img1.rgbd
