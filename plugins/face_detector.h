@@ -11,7 +11,9 @@
 
 // OpenCV includes
 #include <opencv/cv.h>
-#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
+#include "opencv2/objdetect.hpp"
 
 class FaceDetector : public ed::perception::Module
 {
