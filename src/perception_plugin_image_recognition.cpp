@@ -144,7 +144,7 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
                 }
             }
 
-            if (best_p > 0.5)  // ToDo: this threshold is now hardcoded. Should we make this configurable
+            if (best_p > 0.3)  // ToDo: this threshold is now hardcoded. Should we make this configurable
             {
                 label = best_label;
                 ROS_INFO_STREAM("Entity " + *it + ": " + label);
