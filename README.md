@@ -46,11 +46,39 @@ This will store the RGBD-image (color + depth) and meta-data (such as the timest
 
 ### Annotating the images
 
-**Before you can annotate the images, you need a 3D (ED) model of the supporting furniture (e.g. the table on which the objects are positioned)**. Let's say the name of this model is `my-lab/table`. Start the annotator with the path in which you stored the images:
+**Before you can annotate the images, a 3D (ED) model of the supporting furniture (e.g. the table on which the objects are positioned)**. Let's say the name of this model is `my-lab/table`.
+
+**To streamline the annotation, it is also possible to load the available object types in the GUI and auto-annotate the supporting objects.** For this a number of conditions need to be met:
+  * The images must be stored in a folder structure so that the GUI can derive the supporting object from the parent directory, where `on_top_of` is an area defined in the `table` model:
+
+like this:
+  
+    images
+    |------ on_top_of_table
+    |       |   img1.rgbd
+    |       |   img1.png
+    |       |   ...
+    |
+    |------ shelf3_cabinet
+    |       |   img2.rgbd
+    |       |   img2.png
+    |       |   ...
+    ...
+
+  * The environment variable `ROBOT_ENV` must be set to a world name defined in `ed_object_models` (`my-lab`) and in `robocup_knowledge`. 
+  * The world description must contain a model (`my-lab/table`) in a composition defined in `my-lab/model.yaml` (see the [ED tutorials](https://github.com/tue-robotics/ed_tutorials), specifically tutorials 1-5). This description is automatically loaded when the annotation GUI starts.
+  * `robocup_knowledge/src/robocup_knowledge/my-lab` must contain a python database of the objects that you want to annotate (typically the objects that the robot needs to be able to recognize in `my-lab`).
+  * To load the object labels, run a `roscore`, and run 
+
+    rosrun ed_perception load_object_types
+
+Now you can start the annotator with the path in which you stored the images:
 
     rosrun ed_perception annotation-gui /some/path
 
-No you can cycle through the images using the arrow keys. Note that the segmentation is still pretty bad. This will however change once you add the supporting furniture.
+and cycle through the images using the arrow keys. 
+
+If you don't have auto-annotation of the supporting object, the segmentation is probably pretty bad. This will however change once you add the supporting furniture.
 
   * In the annotation-gui, type the name of the supporting entity, in our case `my-lab/table`. You should see the entity name appearing.
   * Once you typed the name, press enter. The color of the name should change to red. This means that it is selected
@@ -67,15 +95,38 @@ By default, the area that is used for segmentation is `on_top_of`. You can howev
 Once an image has the supporting entity annotated, segmentation should improve. Now you can annotate the rest objects in the images, using the same process:
 
   * Type the name of the object an press enter
-    * **If you already typed the name, you can use auto-completion! Use the up and down arrows to select the object**
+    * **If you loaded the object types, you can use auto-completion! Use the up and down arrows to select the object**
   * Left-click on the (middle of the) object in the image
+  * If segment rectangles overlap, don't annotate in the overlapping region, because it is undefined which of the two rectangles will then be annotated.
   * *Tip: type the name of the object, then go through all the images and click on it. In general this is faster then re-typing the name of the object, even with auto-completion*
 
-If you encounter any images that are useless for annotation/training, it is possible to exclude them. If you do that, the image crawler will skip the image in the future, in the GUI as well as while training or testing. Excluding an image is done by typing exclude, pressing enter and clicking in the image.
+If you encounter any images that are useless for annotation/training, it is possible to exclude them. If you do that, the image crawler will skip the image in the future, in the GUI as well as while training or testing. Excluding an image is done by typing exclude, pressing enter and clicking in the image. This can only be undone by manually opening the json file with the metadata of the excluded image and setting exclude to false.
 
 You can always exit the annotation-gui by pressing ESC. Your progress will be saved (in the json-meta-data files).
 
-### Training the perception modules
+### Segmenting the images for training of the deep learning perception
+
+Once you have a decent number of annotations of all the objects you want your robot to recognize, you might want to train a neural network using the segments containing the annotated objects. Good news! You can do that! By running
+
+    rosrun ed_perception store_segments /path/containing/annotated/images/ /target_directory/
+
+the annotated segments are cut out and stored in the following directory structure:
+
+    target_directory
+    |------ coke
+    |       |   img1.png
+    |       |   img2.png
+    |       |   ...
+    |
+    |------ toilet_paper
+    |       |   img1.png
+    |       |   img11.png
+    |       |   ...
+    ...
+
+### TODO: Training the awesome deep learning peception module
+
+### Training the OLD perception modules (deprecated)
 
 Go to the package in which the perception modules are stored:
 
@@ -104,6 +155,6 @@ So in our case:
 
     rosrun ed_perception train-perception `rospack find ed_perception_models`/models/$ROBOT_ENV/parameters.yaml /path/to/images
 
-### Test the perception models
+### Testing the OLD perception models (deprecated)
 
     rosrun ed_perception test-perception `rospack find ed_perception_models`/models/$ROBOT_ENV/parameters.yaml /path/to/images

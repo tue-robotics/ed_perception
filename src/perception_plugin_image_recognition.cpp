@@ -127,20 +127,34 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
         // If we have recognitions and the highest probability is above a certain
         // threshold: update the world model
         std::string label;
+        std::string best_label;
+        double best_p;
         double p;
         if (client_srv.response.recognitions.size() > 0)
         {
-            p = client_srv.response.recognitions[0].probability;
-            if (p > 0.5)  // ToDo: this threshold is now hardcoded. Should we make this configurable
+            const image_recognition_msgs::Recognition& r = client_srv.response.recognitions[0];  // Assuming that the first recognition is the best one!
+            for ( int i = 0; i < r.categorical_distribution.probabilities.size(); i++ )
             {
-                label = client_srv.response.recognitions[0].label;
+                const image_recognition_msgs::CategoryProbability& p = r.categorical_distribution.probabilities[i];
+
+                if ( best_p < p.probability)
+                {
+                    best_p = p.probability;
+                    best_label = p.label;
+                }
+            }
+
+            if (best_p > 0.3)  // ToDo: this threshold is now hardcoded. Should we make this configurable
+            {
+                label = best_label;
                 ROS_INFO_STREAM("Entity " + *it + ": " + label);
             }
             else
             {
-                ROS_DEBUG_STREAM("Entity " + *it + " not updated, probability too low (" << p << ")");
+                ROS_DEBUG_STREAM("Entity " + *it + " not updated, probability too low (" << best_p << ")");
                 continue;
             }
+
 
         }
         else
@@ -161,15 +175,15 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
         // return [ClassificationResult(_id, exp_val, exp_prob, distr) for _id, exp_val, exp_prob, distr in zip(res.ids, res.expected_values, res.expected_value_probabilities, posteriors) if exp_val in types]
         
         ed_perception::CategoricalDistribution posterior;
-        for (unsigned int i = 0; i < client_srv.response.recognitions.size(); ++i)
+        for (unsigned int i = 0; i < client_srv.response.recognitions[0].categorical_distribution.probabilities.size(); ++i) // Assuming that there is only one recognition!
         {
-            posterior.values.push_back(client_srv.response.recognitions[i].label);
-            posterior.probabilities.push_back(client_srv.response.recognitions[i].probability);
+            posterior.values.push_back(client_srv.response.recognitions[0].categorical_distribution.probabilities[i].label);
+            posterior.probabilities.push_back(client_srv.response.recognitions[0].categorical_distribution.probabilities[i].probability);
         }
         
         res.ids.push_back(e->id().str());
         res.expected_values.push_back(label);
-        res.expected_value_probabilities.push_back(p);  
+        res.expected_value_probabilities.push_back(best_p);
         res.posteriors.push_back(posterior);  
     }
 
