@@ -187,7 +187,7 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
         res.posteriors.push_back(posterior);
     }
 
-    ROS_ERROR_STREAM("response: return true: " << res << "");
+    ROS_DEBUG_STREAM("response: return true: " << res << "");
 
     return true;
 }
