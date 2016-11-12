@@ -1,21 +1,11 @@
 #!/usr/bin/env python
 
 import rospy
-from cv_bridge import CvBridge, CvBridgeError
 
 from image_recognition_msgs.srv import Recognize, Annotate
 from image_recognition_msgs.msg import Recognition, CategoryProbability, CategoricalDistribution
 from sensor_msgs.msg import RegionOfInterest
 from std_srvs.srv import Empty
-
-import cv2
-import os
-from datetime import datetime
-import sys
-import random
-
-from image_recognition_util import image_writer
-from openface_ros.face_recognizer import FaceRecognizer, RecognizedFace
 
 
 class FaceRecognizerDummyROS:

@@ -2,25 +2,16 @@
 
 # System
 import os
-import operator
 import sys
 
 # ROS
 import rospy
 
-# OpenCV
-from cv_bridge import CvBridge, CvBridgeError
-import cv2
-
-# Tensorflow
-import tensorflow as tf
-import numpy as np
 from random import random
 
 # TU/e Robotics
 from image_recognition_msgs.srv import Recognize
 from image_recognition_msgs.msg import Recognition, CategoryProbability
-from image_recognition_util import image_writer
 
 
 class ObjectRecognitionDummyROS:
