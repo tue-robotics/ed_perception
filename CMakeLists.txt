@@ -17,7 +17,6 @@ find_package(catkin REQUIRED COMPONENTS
   roslib
   tue_config
   tue_filesystem
-  vocabulary_tree
   std_srvs
 )
 

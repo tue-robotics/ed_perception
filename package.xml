@@ -21,7 +21,6 @@
   <build_depend>roslib</build_depend>
   <build_depend>tue_config</build_depend>
   <build_depend>tue_filesystem</build_depend>
-  <build_depend>vocabulary_tree</build_depend>
   <build_depend>zbar</build_depend>
   <build_depend>std_srvs</build_depend>
   <build_depend>libgsl</build_depend>
@@ -37,7 +36,6 @@
   <run_depend>roslib</run_depend>
   <run_depend>tue_config</run_depend>
   <run_depend>tue_filesystem</run_depend>
-  <run_depend>vocabulary_tree</run_depend>
   <run_depend>zbar</run_depend>
   <run_depend>std_srvs</run_depend>
   <run_depend>libgsl</run_depend>
