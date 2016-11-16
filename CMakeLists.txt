@@ -5,7 +5,6 @@ project(ed_perception)
 find_package(catkin REQUIRED COMPONENTS
   actionlib
   actionlib_msgs
-  ann2
   ed
   ed_object_models
   ed_sensor_integration
