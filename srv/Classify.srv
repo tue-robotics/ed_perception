@@ -1,10 +1,4 @@
-string perception_models_path  # Path to trained perception models
-
-string[] ids     # ids to classify  
-
-string property  # property to classify (e.g., 'type', 'color')
-
-CategoricalDistribution prior  # prior probability distribution
+string[] ids     # ids to classify
 
 ---
 

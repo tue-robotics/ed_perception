@@ -1,4 +1,0 @@
-bool external_api_request
----
-PersonDetection[] person_detections
-string error_msg

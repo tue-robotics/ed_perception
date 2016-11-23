@@ -126,10 +126,8 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
 
         // If we have recognitions and the highest probability is above a certain
         // threshold: update the world model
+        double best_probability = 0; // We just always update with our best guess
         std::string label;
-        std::string best_label;
-        double best_p;
-        double p;
         if (client_srv.response.recognitions.size() > 0)
         {
             const image_recognition_msgs::Recognition& r = client_srv.response.recognitions[0];  // Assuming that the first recognition is the best one!
@@ -137,25 +135,12 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
             {
                 const image_recognition_msgs::CategoryProbability& p = r.categorical_distribution.probabilities[i];
 
-                if ( best_p < p.probability)
+                if ( p.probability > best_probability )
                 {
-                    best_p = p.probability;
-                    best_label = p.label;
+                    best_probability = p.probability;
+                    label = p.label;
                 }
             }
-
-            if (best_p > 0.3)  // ToDo: this threshold is now hardcoded. Should we make this configurable
-            {
-                label = best_label;
-                ROS_INFO_STREAM("Entity " + *it + ": " + label);
-            }
-            else
-            {
-                ROS_DEBUG_STREAM("Entity " + *it + " not updated, probability too low (" << best_p << ")");
-                continue;
-            }
-
-
         }
         else
         {
@@ -163,11 +148,8 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
             continue;
         }
 
-        // Update the world model
-        update_req_->setType(e->id(), label);
-//        update_req_->addData(e->id(), data.data()); // What does this do???
-
         // Add the result to the response
+        update_req_->setType(e->id(), label);
 
         // For some reason we defined the interface this way but this is much too much info for the client ..
         // I am now setting all these things because the client expects this for some reason ..
@@ -183,7 +165,7 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
 
         res.ids.push_back(e->id().str());
         res.expected_values.push_back(label);
-        res.expected_value_probabilities.push_back(best_p);
+        res.expected_value_probabilities.push_back(best_probability);
         res.posteriors.push_back(posterior);
     }
 

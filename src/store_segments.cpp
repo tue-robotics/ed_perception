@@ -1,5 +1,4 @@
 #include "image_crawler.h"
-#include "ed/perception/aggregator.h"
 
 #include <rgbd/Image.h>
 
