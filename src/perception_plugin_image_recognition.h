@@ -5,7 +5,6 @@
 
 // Service
 #include <ed_perception/Classify.h>
-#include <ed_perception/AddTrainingInstance.h>
 #include <ros/service_server.h>
 #include <ros/service_client.h>
 #include <ros/callback_queue.h>

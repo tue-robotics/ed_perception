@@ -58,6 +58,7 @@ include_directories(
 
 add_library(ed_perception_plugin_image_recognition src/perception_plugin_image_recognition.cpp)
 target_link_libraries(ed_perception_plugin_image_recognition ${catkin_LIBRARIES})
+add_dependencies(ed_perception_plugin_image_recognition ${PACKAGE_NAME}_gencpp)
 
 # ------------------------------------------------------------------------------------------------
 #                                                TOOLS
