@@ -20,7 +20,7 @@ void usage()
 
 int main(int argc, char **argv)
 {
-    if (argc != 2)
+    if (argc != 3)
     {
         usage();
         return 1;
@@ -28,6 +28,8 @@ int main(int argc, char **argv)
 
     ImageCrawler crawler;
     crawler.setPath(argv[1]);
+
+    boost::filesystem::path target_path = argv[2];
 
     AnnotatedImage image;
 
@@ -49,7 +51,7 @@ int main(int argc, char **argv)
             cv::Mat ROI = image.image->getRGBImage()(bbox);
 
             // Check if path exists and create directories if necessary
-            boost::filesystem::path p = getenv("HOME") / boost::filesystem::path("training_images") / boost::filesystem::path(a.label);
+            boost::filesystem::path p = target_path / boost::filesystem::path(a.label);
 
             if ( !boost::filesystem::exists(p) )
                 boost::filesystem::create_directories(p);
