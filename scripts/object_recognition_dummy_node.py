@@ -20,6 +20,11 @@ class ObjectRecognitionDummyROS:
 
         rospy.loginfo("ObjectRecognitionDummyROS initialized:")
         rospy.loginfo(" - labels_path=%s", labels_path)
+        self._labels = []
+        
+        if not os.path.isfile(labels_path):
+			rospy.logerr("Labels path {} does not exist".format(labels_path))
+			return
 
         with open(labels_path, "r") as labels_file:
             labels_str = labels_file.read()
