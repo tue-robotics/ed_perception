@@ -149,7 +149,10 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
         }
 
         // Add the result to the response
-        update_req_->setType(e->id(), label);
+        if (best_probability > req.unknown_probability)
+        {
+          update_req_->setType(e->id(), label);
+        }
 
         // For some reason we defined the interface this way but this is much too much info for the client ..
         // I am now setting all these things because the client expects this for some reason ..

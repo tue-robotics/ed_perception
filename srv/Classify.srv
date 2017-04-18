@@ -1,4 +1,5 @@
 string[] ids     # ids to classify
+float32 unknown_probability # Recognitions with a probability above this theshold will get the corresponding type in the world model
 
 ---
 
