@@ -151,7 +151,11 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
         // Add the result to the response
         if (best_probability > req.unknown_probability)
         {
-          update_req_->setType(e->id(), label);
+            if (label != e->type() && !e->type().empty())
+            {
+                update_req_->removeType(e->id(), e->type());
+            }
+            update_req_->setType(e->id(), label); // no need to set type when label is equal to old type and not empty, but simpler code
         }
 
         // For some reason we defined the interface this way but this is much too much info for the client ..
