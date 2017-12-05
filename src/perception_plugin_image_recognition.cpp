@@ -109,18 +109,22 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
             p_max.x = std::max(p_max.x, p.x);
             p_max.y = std::max(p_max.y, p.y);
         }
-
         cv::Rect roi = cv::Rect(std::min(p_min.x + 5, image.cols),
                                 std::min(p_min.y + 5, image.rows),
                                 std::max(p_max.x - p_min.x - 5, 0),
                                 std::max(p_max.y - p_min.y - 5, 0));
+        if (roi.area() == 0)
+        {
+            ROS_ERROR("[ED Perception] Empty ImageMask, segmentation has probably gone wrong");
+            continue;
+        }
         cv::Mat cropped_image = image(roi);
 
         // Convert it to the image request and call the service
         rgbd::convert(cropped_image, client_srv.request.image);
         if (!srv_client_.call(client_srv))
         {
-            ROS_ERROR("Service call failed");
+            ROS_ERROR("[ED Perception] Classification service call failed");
             continue;
         }
 
