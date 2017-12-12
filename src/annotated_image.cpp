@@ -293,11 +293,7 @@ void findAnnotationCorrespondences(const AnnotatedImage& img, std::vector<ed::En
 
         for(ed::ImageMask::const_iterator it = mask.begin(depth.cols); it != mask.end(); ++it)
         {
-<<<<<<< Updated upstream
-            const cv::Point2i& p = *it;
-=======
             const cv::Point2i p(it());
->>>>>>> Stashed changes
             p_min.x = std::min(p_min.x, p.x);
             p_min.y = std::min(p_min.y, p.y);
             p_max.x = std::max(p_max.x, p.x);
