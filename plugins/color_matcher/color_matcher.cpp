@@ -205,7 +205,7 @@ void ColorMatcher::calculateHistogram(const ed::Entity& e, ColorHistogram& histo
     for(ed::ImageMask::const_iterator it = msr->imageMask().begin(img.cols); it != msr->imageMask().end(); ++it)
     {
         ++pixel_count;
-        const cv::Point2i& p = *it;
+        const cv::Point2i p(it());
 
         // Calculate prob distribution
         const cv::Vec3b& bgr = img.at<cv::Vec3b>(p);
