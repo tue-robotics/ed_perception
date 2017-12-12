@@ -177,10 +177,10 @@ void HumanContourMatcher::process(const ed::perception::WorkerInput& input, ed::
     for(ed::ImageMask::const_iterator it = msr->imageMask().begin(depth_image.cols); it != msr->imageMask().end(); ++it)
     {
         // mask's (x, y) coordinate in the depth image
-        const cv::Point2i& p_2d = *it;
+        const cv::Point2i p_2d(it());
 
         // paint a mask
-        depth_mask.at<unsigned char>(*it) = 255;
+        depth_mask.at<unsigned char>(p_2d) = 255;
 
         // update the boundary coordinates
         if (min_x > p_2d.x) min_x = p_2d.x;

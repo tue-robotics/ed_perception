@@ -112,7 +112,7 @@ public:
             const ed::ImageMask& mask = m->imageMask();
             for(ed::ImageMask::const_iterator it = mask.begin(img.cols); it != mask.end(); ++it)
             {
-                const cv::Point2i& p = *it;
+                const cv::Point2i p(it());
                 segm_img.at<int>(p) = i_entity;
                 p_min.x = std::min(p_min.x, p.x);
                 p_min.y = std::min(p_min.y, p.y);
