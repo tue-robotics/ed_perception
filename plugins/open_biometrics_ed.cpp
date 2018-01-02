@@ -127,10 +127,10 @@ void OpenBrEd::process(const ed::perception::WorkerInput& input, ed::perception:
     for(ed::ImageMask::const_iterator it = msr->imageMask().begin(view.getWidth()); it != msr->imageMask().end(); ++it)
     {
         // mask's (x, y) coordinate in the depth image
-        const cv::Point2i& p_2d = *it;
+        const cv::Point2i p_2d(it());
 
         // paint a mask
-        mask.at<unsigned char>(*it) = 255;
+        mask.at<unsigned char>(p_2d) = 255;
 
         // update the boundary coordinates
         if (min_x > p_2d.x) min_x = p_2d.x;

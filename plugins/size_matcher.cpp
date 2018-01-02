@@ -42,7 +42,7 @@ bool calculateSize(const ed::Entity& e, double& width, double& height)
     rgbd::View view(*msr->image(), depth.cols);
     for(ed::ImageMask::const_iterator it = msr->imageMask().begin(depth.cols); it != msr->imageMask().end(); ++it)
     {
-        const cv::Point2i& p_2d = *it;
+        const cv::Point2i p_2d(it());
         float d = depth.at<float>(p_2d);
 
         if (d == 0 || d != d)
