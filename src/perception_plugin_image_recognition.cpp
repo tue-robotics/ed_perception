@@ -115,7 +115,7 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
                                 std::max(p_max.y - p_min.y - 5, 0));
         if (roi.area() == 0)
         {
-            ROS_ERROR("[ED Perception] Empty ImageMask, segmentation has probably gone wrong");
+            ROS_ERROR_STREAM("[ED Perception] Empty ImageMask of entity: '" << e->id()<< "', segmentation has probably gone wrong");
             continue;
         }
         cv::Mat cropped_image = image(roi);
