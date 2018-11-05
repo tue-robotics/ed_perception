@@ -52,5 +52,5 @@ if __name__ == '__main__':
 
     rospy.init_node("face_recognition_dummy")
 
-    openface_ros = FaceRecognizerDummyROS()
+    image_recognition_openface = FaceRecognizerDummyROS()
     rospy.spin()
