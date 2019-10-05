@@ -160,6 +160,7 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
                 update_req_->removeType(e->id(), e->type());
             }
             update_req_->setType(e->id(), label); // no need to set type when label is equal to old type and not empty, but simpler code
+            update_req_->setExistenceProbability(e->id(), best_probability);
         }
 
         // For some reason we defined the interface this way but this is much too much info for the client ..
