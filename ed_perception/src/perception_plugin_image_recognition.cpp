@@ -11,6 +11,8 @@
 #include <ed/error_context.h>
 #include <ed/measurement.h>
 
+#include <ed_perception_msgs/CategoricalDistribution.h>
+
 #include "../plugins/shared_methods.h"
 
 #include <rgbd/Image.h>
@@ -64,7 +66,7 @@ void PerceptionPluginImageRecognition::process(const ed::PluginInput& data, ed::
 
 // ----------------------------------------------------------------------------------------------------
 
-bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res)
+bool PerceptionPluginImageRecognition::srvClassify(ed_perception_msgs::Classify::Request& req, ed_perception_msgs::Classify::Response& res)
 {
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -167,7 +169,7 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception::Classify::Requ
         // posteriors = [dict(zip(distr.values, distr.probabilities)) for distr in res.posteriors]
         // return [ClassificationResult(_id, exp_val, exp_prob, distr) for _id, exp_val, exp_prob, distr in zip(res.ids, res.expected_values, res.expected_value_probabilities, posteriors) if exp_val in types]
 
-        ed_perception::CategoricalDistribution posterior;
+        ed_perception_msgs::CategoricalDistribution posterior;
         for (unsigned int i = 0; i < client_srv.response.recognitions[0].categorical_distribution.probabilities.size(); ++i) // Assuming that there is only one recognition!
         {
             posterior.values.push_back(client_srv.response.recognitions[0].categorical_distribution.probabilities[i].label);
