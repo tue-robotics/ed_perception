@@ -10,9 +10,6 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
 )
 
-#find_package(PCL REQUIRED)
-find_package(OpenCV REQUIRED)
-
 ###################################
 ## catkin specific configuration ##
 ###################################
