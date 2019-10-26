@@ -1,4 +1,4 @@
-ED Perception [![Build Status](https://travis-ci.org/tue-robotics/ed_perception.svg?branch=master)](https://travis-ci.org/tue-robotics/ed_perception)
+ED Perception [![Build Status](https://travis-ci.com/tue-robotics/ed_perception.svg?branch=master)](https://travis-ci.com/tue-robotics/ed_perception)
 ======
 
 Plugins for classifying entities based on their attached RGBD measurements.
