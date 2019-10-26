@@ -9,7 +9,8 @@ before_install:
   - wget https://raw.githubusercontent.com/tue-robotics/tue-env/master/ci/install-package.sh
   - wget https://raw.githubusercontent.com/tue-robotics/tue-env/master/ci/build-package.sh
   - wget https://raw.githubusercontent.com/tue-robotics/tue-env/master/ci/packages.sh
-  - source packages.sh --pullrequest=$TRAVIS_PULL_REQUEST --branch=$TRAVIS_BRANCH
+  # Determine packages modified in this commit
+  - source packages.sh --commit-range=$TRAVIS_COMMIT_RANGE
 
 env:
   - PACKAGE=ed_perception
