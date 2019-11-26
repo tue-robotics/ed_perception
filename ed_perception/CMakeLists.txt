@@ -8,14 +8,13 @@ add_compile_options(-std=c++11)
 find_package(catkin REQUIRED COMPONENTS
   ed
   ed_object_models
+  ed_perception_msgs
   ed_sensor_integration
-  genmsg
   geolib2
-  message_generation
   image_recognition_msgs
   rgbd
   roscpp
-  roslib
+  rospack
   tue_config
   tue_filesystem
   std_srvs
@@ -24,32 +23,11 @@ find_package(catkin REQUIRED COMPONENTS
 #find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 
-###################################
-## catkin specific configuration ##
-###################################
-
-add_message_files(
-  FILES
-    CategoricalDistribution.msg
-)
-
-add_service_files(
-  FILES
-    Classify.srv
-)
-
-generate_messages(
-  DEPENDENCIES
-    std_msgs
-    geometry_msgs
-)
-
 catkin_package(
-  CATKIN_DEPENDS message_runtime
+  CATKIN_DEPENDS roscpp
 )
 
 include_directories(
-  include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -63,7 +41,7 @@ include_directories(
 
 add_library(ed_perception_plugin_image_recognition src/perception_plugin_image_recognition.cpp)
 target_link_libraries(ed_perception_plugin_image_recognition ${catkin_LIBRARIES})
-add_dependencies(ed_perception_plugin_image_recognition ${${PROJECT_NAME}_EXPORTED_TARGETS})
+add_dependencies(ed_perception_plugin_image_recognition ${catkin_EXPORTED_TARGETS})
 
 # ------------------------------------------------------------------------------------------------
 #                                                TOOLS

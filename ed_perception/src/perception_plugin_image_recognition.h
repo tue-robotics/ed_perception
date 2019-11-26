@@ -4,7 +4,7 @@
 #include <ed/plugin.h>
 
 // Service
-#include <ed_perception/Classify.h>
+#include <ed_perception_msgs/Classify.h>
 #include <ros/service_server.h>
 #include <ros/service_client.h>
 #include <ros/callback_queue.h>
@@ -42,7 +42,7 @@ private:
 
     ros::ServiceServer srv_classify_;
 
-    bool srvClassify(ed_perception::Classify::Request& req, ed_perception::Classify::Response& res);
+    bool srvClassify(ed_perception_msgs::Classify::Request& req, ed_perception_msgs::Classify::Response& res);
 
     /** Service client to pass on services */
     ros::ServiceClient srv_client_;

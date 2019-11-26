@@ -2,9 +2,9 @@
 <package>
   <name>ed_perception</name>
   <version>0.0.0</version>
-  <description>Environment Description (ED)</description>
+  <description>ed_perception</description>
 
-  <maintainer email="reinzor@gmail.com">Luis Ferreira</maintainer>
+  <maintainer email="reinzor@gmail.com">Rein Appeldoorn</maintainer>
 
   <license>BSD</license>
 
@@ -12,32 +12,30 @@
 
   <build_depend>ed</build_depend>
   <build_depend>ed_object_models</build_depend>
+  <build_depend>ed_perception_msgs</build_depend>
   <build_depend>ed_sensor_integration</build_depend>
   <build_depend>geolib2</build_depend>
-  <build_depend>message_generation</build_depend>
   <build_depend>image_recognition_msgs</build_depend>
   <build_depend>rgbd</build_depend>
   <build_depend>roscpp</build_depend>
-  <build_depend>roslib</build_depend>
+  <build_depend>rospack</build_depend>
   <build_depend>tue_config</build_depend>
   <build_depend>tue_filesystem</build_depend>
   <build_depend>zbar</build_depend>
   <build_depend>std_srvs</build_depend>
-  <build_depend>libgsl</build_depend>
 
   <run_depend>ed</run_depend>
   <run_depend>ed_object_models</run_depend>
+  <run_depend>ed_perception_msgs</run_depend>
   <run_depend>ed_sensor_integration</run_depend>
   <run_depend>geolib2</run_depend>
-  <run_depend>message_runtime</run_depend>
   <run_depend>image_recognition_msgs</run_depend>
   <run_depend>rgbd</run_depend>
   <run_depend>roscpp</run_depend>
-  <run_depend>roslib</run_depend>
+  <run_depend>rospack</run_depend>
   <run_depend>tue_config</run_depend>
   <run_depend>tue_filesystem</run_depend>
   <run_depend>zbar</run_depend>
   <run_depend>std_srvs</run_depend>
-  <run_depend>libgsl</run_depend>
 
 </package>
