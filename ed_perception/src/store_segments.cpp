@@ -1,6 +1,6 @@
 #include "image_crawler.h"
 
-#include <rgbd/Image.h>
+#include <rgbd/image.h>
 
 #include <ed/entity.h>
 #include <ed/measurement.h>
