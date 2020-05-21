@@ -5,7 +5,7 @@
 #include <ed/kinect/updater.h>
 
 //#include <ed/entity.h>
-//#include <rgbd/View.h>
+//#include <rgbd/view.h>
 //#include <opencv2/highgui/highgui.hpp>
 
 // ----------------------------------------------------------------------------------------------------

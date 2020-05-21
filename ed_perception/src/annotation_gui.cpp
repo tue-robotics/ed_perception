@@ -9,7 +9,7 @@
 #include "image_crawler.h"
 
 #include <opencv2/highgui/highgui.hpp>
-#include <rgbd/Image.h>
+#include <rgbd/image.h>
 #include <ed/entity.h>
 #include <ed/measurement.h>
 #include <tue/config/loaders/yaml.h>

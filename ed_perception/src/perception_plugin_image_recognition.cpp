@@ -15,7 +15,7 @@
 
 #include "../plugins/shared_methods.h"
 
-#include <rgbd/Image.h>
+#include <rgbd/image.h>
 #include <rgbd/ros/conversions.h>
 
 #include <tue/filesystem/path.h>

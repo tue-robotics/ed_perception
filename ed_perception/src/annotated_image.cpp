@@ -1,8 +1,8 @@
 #include "annotated_image.h"
 
-#include <rgbd/Image.h>
+#include <rgbd/image.h>
 #include <rgbd/serialization.h>
-#include <rgbd/View.h>
+#include <rgbd/view.h>
 #include <tue/config/read.h>
 #include <tue/config/reader.h>
 #include <tue/config/write.h>
