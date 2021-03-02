@@ -1,5 +1,8 @@
 <?xml version="1.0"?>
-<package>
+<?xml-model
+  href="http://download.ros.org/schema/package_format3.xsd"
+  schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
   <name>ed_perception</name>
   <version>0.0.0</version>
   <description>ed_perception</description>
@@ -24,18 +27,18 @@
   <build_depend>zbar</build_depend>
   <build_depend>std_srvs</build_depend>
 
-  <run_depend>ed</run_depend>
-  <run_depend>ed_object_models</run_depend>
-  <run_depend>ed_perception_msgs</run_depend>
-  <run_depend>ed_sensor_integration</run_depend>
-  <run_depend>geolib2</run_depend>
-  <run_depend>image_recognition_msgs</run_depend>
-  <run_depend>rgbd</run_depend>
-  <run_depend>roscpp</run_depend>
-  <run_depend>rospack</run_depend>
-  <run_depend>tue_config</run_depend>
-  <run_depend>tue_filesystem</run_depend>
-  <run_depend>zbar</run_depend>
-  <run_depend>std_srvs</run_depend>
+  <exec_depend>ed</exec_depend>
+  <exec_depend>ed_object_models</exec_depend>
+  <exec_depend>ed_perception_msgs</exec_depend>
+  <exec_depend>ed_sensor_integration</exec_depend>
+  <exec_depend>geolib2</exec_depend>
+  <exec_depend>image_recognition_msgs</exec_depend>
+  <exec_depend>rgbd</exec_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>rospack</exec_depend>
+  <exec_depend>tue_config</exec_depend>
+  <exec_depend>tue_filesystem</exec_depend>
+  <exec_depend>zbar</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
 
 </package>

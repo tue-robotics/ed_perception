@@ -5,7 +5,7 @@
 #include <ed/world_model.h>
 #include <rgbd/types.h>
 #include <tue/config/data_pointer.h>
-#include <cv.h>
+#include <opencv2/opencv.hpp>
 
 // ----------------------------------------------------------------------------------------------------
 
