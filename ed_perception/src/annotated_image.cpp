@@ -223,7 +223,7 @@ bool toFile(const std::string& filename, const AnnotatedImage& image)
     meta_data.add(image.meta_data);
     meta_data.add(data);
 
-    tue::config::toFile(filename, meta_data, tue::config::JSON, 0);
+    return tue::config::toFile(filename, meta_data, tue::config::JSON, 0);
 }
 
 // ----------------------------------------------------------------------------------------------------
