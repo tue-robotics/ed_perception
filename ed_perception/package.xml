@@ -41,4 +41,8 @@
   <exec_depend>zbar</exec_depend>
   <exec_depend>std_srvs</exec_depend>
 
+  <export>
+    <ed plugin="${prefix}/plugins.xml" />
+  </export>
+
 </package>
