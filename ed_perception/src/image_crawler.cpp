@@ -52,6 +52,7 @@ bool ImageCrawler::setPath(const std::string& path_str)
     }
 
     std::sort(filenames_.begin(), filenames_.end());
+    return !filenames_.empty();
 }
 
 // ----------------------------------------------------------------------------------------------------
