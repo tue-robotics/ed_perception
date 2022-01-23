@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<class_libraries>
+  <library path="lib/libed_perception_plugin_image_recognition">
+    <class name="ed_perception/image_recognition" type="ed::perception::PerceptionPluginImageRecognition" base_class_type="ed::Plugin">
+      <description>Plugin to label entities based on image recognition</description>
+    </class>
+  </library>
+</class_libraries>
