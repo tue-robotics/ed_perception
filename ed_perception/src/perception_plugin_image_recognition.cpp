@@ -43,7 +43,7 @@ PerceptionPluginImageRecognition::~PerceptionPluginImageRecognition()
 
 // ----------------------------------------------------------------------------------------------------
 
-void PerceptionPluginImageRecognition::initialize(ed::InitData& init)
+void PerceptionPluginImageRecognition::initialize(ed::InitData& /*init*/)
 {
     // Initialize service
     ros::NodeHandle nh_private("~");
@@ -137,7 +137,7 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception_msgs::Classify:
         if (client_srv.response.recognitions.size() > 0)
         {
             const image_recognition_msgs::Recognition& r = client_srv.response.recognitions[0];  // Assuming that the first recognition is the best one!
-            for ( int i = 0; i < r.categorical_distribution.probabilities.size(); i++ )
+            for (uint i = 0; i < r.categorical_distribution.probabilities.size(); ++i)
             {
                 const image_recognition_msgs::CategoryProbability& p = r.categorical_distribution.probabilities[i];
 

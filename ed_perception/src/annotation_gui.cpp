@@ -307,7 +307,7 @@ public:
             }
             else if (key == 84) // down
             {
-                if (i_possible_types + 1 < possible_types.size())
+                if (i_possible_types + 1 < static_cast<int>(possible_types.size()))
                     ++i_possible_types;
             }
             else if (key == 27) // ESC
@@ -377,7 +377,7 @@ public:
 
 // ---------------------------------------------------------------------------------------------
 
-void mouseCallback(int event, int x, int y, int flags, void* userdata)
+void mouseCallback(int event, int x, int y, int /*flags*/, void* userdata)
 {
     GUI* gui = static_cast<GUI*>(userdata);
 

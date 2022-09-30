@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(ed_perception)
 
+add_compile_options(-Wall -Werror=all)
+add_compile_options(-Wextra -Werror=extra)
+
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
   ed
@@ -25,6 +28,7 @@ catkin_package(
 )
 
 include_directories(
+  SYSTEM
   ${catkin_INCLUDE_DIRS}
 )
 

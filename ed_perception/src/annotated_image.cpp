@@ -104,7 +104,7 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
         while(r.nextArrayItem())
         {
             std::string type;
-            double px, py;
+            double px = 0., py = 0.;
 
             if (!r.value("label", type) || !r.value("px", px) || !r.value("py", py))
                 continue;
@@ -146,7 +146,7 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
             if (area_found)
             {
                 int x = px * image.image->getDepthImage().cols;
-                int y = py * image.image->getDepthImage().rows;
+                // int y = py * image.image->getDepthImage().rows;
                 rgbd::View view(*image.image, image.image->getDepthImage().cols);
 
                 // Decompose the sensor_pose into (x, y, yaw) and (z, roll, pitch)
