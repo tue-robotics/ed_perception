@@ -104,7 +104,7 @@ bool fromFile(const std::string& filename, AnnotatedImage& image)
         while(r.nextArrayItem())
         {
             std::string type;
-            double px, py;
+            double px = 0., py = 0.;
 
             if (!r.value("label", type) || !r.value("px", px) || !r.value("py", py))
                 continue;
