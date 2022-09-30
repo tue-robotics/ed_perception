@@ -92,7 +92,7 @@ bool ImageCrawler::next(AnnotatedImage& image, bool do_segment)
     bool res;
     do
     {
-        if ( i_current_ + 1 == filenames_.size() )
+        if ( i_current_ + 1 == static_cast<int>(filenames_.size()) )
             return false;
 
         ++i_current_;
