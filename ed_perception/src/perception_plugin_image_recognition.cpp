@@ -43,7 +43,7 @@ PerceptionPluginImageRecognition::~PerceptionPluginImageRecognition()
 
 // ----------------------------------------------------------------------------------------------------
 
-void PerceptionPluginImageRecognition::initialize(ed::InitData& init)
+void PerceptionPluginImageRecognition::initialize(ed::InitData& /*init*/)
 {
     // Initialize service
     ros::NodeHandle nh_private("~");

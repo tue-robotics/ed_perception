@@ -377,7 +377,7 @@ public:
 
 // ---------------------------------------------------------------------------------------------
 
-void mouseCallback(int event, int x, int y, int flags, void* userdata)
+void mouseCallback(int event, int x, int y, int /*flags*/, void* userdata)
 {
     GUI* gui = static_cast<GUI*>(userdata);
 
