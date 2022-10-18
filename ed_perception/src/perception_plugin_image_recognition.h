@@ -24,6 +24,12 @@ public:
 
     virtual ~PerceptionPluginImageRecognition();
 
+    /**
+     * @brief Initialize the plugin
+     * @param init
+     *    init.config Configuration object with the following parameters:
+     *        roi_margin (optional, default 5): Pixels around the segmented imageMask, which is used for classification
+     */
     void initialize(ed::InitData& init);
 
     void process(const ed::PluginInput& data, ed::UpdateRequest& req);
@@ -31,6 +37,8 @@ public:
 private:
 
     std::string perception_models_path_;
+
+    int roi_margin_;
 
     // SERVICE
 

@@ -31,7 +31,7 @@ namespace perception
 
 // ----------------------------------------------------------------------------------------------------
 
-PerceptionPluginImageRecognition::PerceptionPluginImageRecognition()
+PerceptionPluginImageRecognition::PerceptionPluginImageRecognition() : roi_margin_(0)
 {
 }
 
@@ -43,7 +43,7 @@ PerceptionPluginImageRecognition::~PerceptionPluginImageRecognition()
 
 // ----------------------------------------------------------------------------------------------------
 
-void PerceptionPluginImageRecognition::initialize(ed::InitData& /*init*/)
+void PerceptionPluginImageRecognition::initialize(ed::InitData& init)
 {
     // Initialize service
     ros::NodeHandle nh_private("~");
@@ -52,6 +52,9 @@ void PerceptionPluginImageRecognition::initialize(ed::InitData& /*init*/)
 
     ros::NodeHandle nh;
     srv_client_ = nh.serviceClient<image_recognition_msgs::Recognize>("object_recognition/recognize");
+
+    roi_margin_ = 5;
+    init.config.value("roi_margin", roi_margin_, tue::config::OPTIONAL);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -111,10 +114,10 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception_msgs::Classify:
             p_max.x = std::max(p_max.x, p.x);
             p_max.y = std::max(p_max.y, p.y);
         }
-        cv::Rect roi = cv::Rect(std::min(p_min.x + 5, image.cols),
-                                std::min(p_min.y + 5, image.rows),
-                                std::max(p_max.x - p_min.x - 5, 0),
-                                std::max(p_max.y - p_min.y - 5, 0));
+        cv::Rect roi = cv::Rect(std::min(p_min.x + roi_margin_, image.cols),
+                                std::min(p_min.y + roi_margin_, image.rows),
+                                std::max(p_max.x - p_min.x - roi_margin_, 0),
+                                std::max(p_max.y - p_min.y - roi_margin_, 0));
         if (roi.area() == 0)
         {
             ROS_ERROR_STREAM("[ED Perception] Empty ImageMask of entity: '" << e->id()<< "', segmentation has probably gone wrong");
