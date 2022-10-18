@@ -140,10 +140,8 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception_msgs::Classify:
         if (client_srv.response.recognitions.size() > 0)
         {
             const image_recognition_msgs::Recognition& r = client_srv.response.recognitions[0];  // Assuming that the first recognition is the best one!
-            for (uint i = 0; i < r.categorical_distribution.probabilities.size(); ++i)
+            for (const image_recognition_msgs::CategoryProbability& p : r.categorical_distribution.probabilities)
             {
-                const image_recognition_msgs::CategoryProbability& p = r.categorical_distribution.probabilities[i];
-
                 if ( p.probability > best_probability )
                 {
                     best_probability = p.probability;
@@ -174,10 +172,10 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception_msgs::Classify:
         // return [ClassificationResult(_id, exp_val, exp_prob, distr) for _id, exp_val, exp_prob, distr in zip(res.ids, res.expected_values, res.expected_value_probabilities, posteriors) if exp_val in types]
 
         ed_perception_msgs::CategoricalDistribution posterior;
-        for (unsigned int i = 0; i < client_srv.response.recognitions[0].categorical_distribution.probabilities.size(); ++i) // Assuming that there is only one recognition!
+        for (const image_recognition_msgs::CategoryProbability& p : client_srv.response.recognitions[0].categorical_distribution.probabilities) // Assuming that there is only one recognition!
         {
-            posterior.values.push_back(client_srv.response.recognitions[0].categorical_distribution.probabilities[i].label);
-            posterior.probabilities.push_back(client_srv.response.recognitions[0].categorical_distribution.probabilities[i].probability);
+            posterior.values.push_back(p.label);
+            posterior.probabilities.push_back(p.probability);
         }
 
         res.ids.push_back(e->id().str());
