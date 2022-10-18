@@ -114,10 +114,10 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception_msgs::Classify:
             p_max.x = std::max(p_max.x, p.x);
             p_max.y = std::max(p_max.y, p.y);
         }
-        cv::Rect roi = cv::Rect(std::min(p_min.x + roi_margin_, image.cols),
-                                std::min(p_min.y + roi_margin_, image.rows),
-                                std::max(p_max.x - p_min.x - roi_margin_, 0),
-                                std::max(p_max.y - p_min.y - roi_margin_, 0));
+        cv::Rect roi = cv::Rect(std::max(p_min.x - roi_margin_, 0),
+                                std::max(p_min.y - roi_margin_, 0),
+                                std::min(p_max.x + p_min.x + roi_margin_, image.cols - std::max(p_min.x - roi_margin_, 0)),
+                                std::min(p_max.y + p_min.y + roi_margin_, image.rows - std::max(p_min.y - roi_margin_, 0)));
         if (roi.area() == 0)
         {
             ROS_ERROR_STREAM("[ED Perception] Empty ImageMask of entity: '" << e->id()<< "', segmentation has probably gone wrong");
