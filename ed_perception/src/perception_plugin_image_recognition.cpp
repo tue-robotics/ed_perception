@@ -108,12 +108,13 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception_msgs::Classify:
 
         for(ed::ImageMask::const_iterator it2 = mask.begin(image.cols); it2 != mask.end(); ++it2)
         {
-            const cv::Point2i& p(it2());
+            const cv::Point& p(it2());
             p_min.x = std::min(p_min.x, p.x);
             p_min.y = std::min(p_min.y, p.y);
             p_max.x = std::max(p_max.x, p.x);
             p_max.y = std::max(p_max.y, p.y);
         }
+        
         cv::Rect roi = cv::Rect(std::max(p_min.x - roi_margin_, 0),
                                 std::max(p_min.y - roi_margin_, 0),
                                 std::min(p_max.x + p_min.x + roi_margin_, image.cols - std::max(p_min.x - roi_margin_, 0)),
