@@ -14,18 +14,16 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <build_depend>ed</build_depend>
-  <build_depend>ed_object_models</build_depend>
   <build_depend>ed_perception_msgs</build_depend>
   <build_depend>ed_sensor_integration</build_depend>
   <build_depend>geolib2</build_depend>
   <build_depend>image_recognition_msgs</build_depend>
   <build_depend>rgbd</build_depend>
   <build_depend>roscpp</build_depend>
-  <build_depend>rospack</build_depend>
+  <!--<build_depend>rospack</build_depend>-->
   <build_depend>tue_config</build_depend>
   <build_depend>tue_filesystem</build_depend>
-  <build_depend>zbar</build_depend>
-  <build_depend>std_srvs</build_depend>
+  <!--<build_depend>zbar</build_depend>-->
 
   <exec_depend>ed</exec_depend>
   <exec_depend>ed_object_models</exec_depend>
@@ -35,11 +33,13 @@
   <exec_depend>image_recognition_msgs</exec_depend>
   <exec_depend>rgbd</exec_depend>
   <exec_depend>roscpp</exec_depend>
-  <exec_depend>rospack</exec_depend>
+  <!--<exec_depend>rospack</exec_depend>-->
   <exec_depend>tue_config</exec_depend>
   <exec_depend>tue_filesystem</exec_depend>
-  <exec_depend>zbar</exec_depend>
+  <!--<exec_depend>zbar</exec_depend>-->
   <exec_depend>std_srvs</exec_depend>
+
+  <test_depend>catkin_lint_cmake</test_depend>
 
   <doc_depend>doxygen</doc_depend>
 
