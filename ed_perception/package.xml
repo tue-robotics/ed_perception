@@ -19,6 +19,7 @@
   <build_depend>geolib2</build_depend>
   <build_depend>image_recognition_msgs</build_depend>
   <build_depend>rgbd</build_depend>
+  <build_depend>rosconsole_bridge</build_depend>
   <build_depend>roscpp</build_depend>
   <!--<build_depend>rospack</build_depend>-->
   <build_depend>tue_config</build_depend>
@@ -32,6 +33,7 @@
   <exec_depend>geolib2</exec_depend>
   <exec_depend>image_recognition_msgs</exec_depend>
   <exec_depend>rgbd</exec_depend>
+  <exec_depend>rosconsole_bridge</exec_depend>
   <exec_depend>roscpp</exec_depend>
   <!--<exec_depend>rospack</exec_depend>-->
   <exec_depend>tue_config</exec_depend>

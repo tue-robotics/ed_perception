@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   geolib2
   image_recognition_msgs
   rgbd
+  rosconsole_bridge
   roscpp
   tue_config
   tue_filesystem
@@ -33,12 +34,17 @@ include_directories(
 ## Build ##
 ###########
 
+add_library(${PROJECT_NAME}_console_bridge
+  # Foward geolib2 and tue_filesystem logging to rosconsole
+  src/rosconsole_bridge.cpp
+)
+
 # ------------------------------------------------------------------------------------------------
 #                                                PLUGIN
 # ------------------------------------------------------------------------------------------------
 
 add_library(${PROJECT_NAME}_plugin_image_recognition src/perception_plugin_image_recognition.cpp)
-target_link_libraries(${PROJECT_NAME}_plugin_image_recognition ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_plugin_image_recognition ${PROJECT_NAME}_console_bridge ${catkin_LIBRARIES})
 add_dependencies(${PROJECT_NAME}_plugin_image_recognition ${catkin_EXPORTED_TARGETS})
 
 # ------------------------------------------------------------------------------------------------
@@ -46,13 +52,13 @@ add_dependencies(${PROJECT_NAME}_plugin_image_recognition ${catkin_EXPORTED_TARG
 # ------------------------------------------------------------------------------------------------
 
 add_library(train-and-test-lib src/annotated_image.cpp src/image_crawler.cpp)
-target_link_libraries(train-and-test-lib ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(train-and-test-lib ${PROJECT_NAME}_console_bridge ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(store_segments src/store_segments.cpp)
-target_link_libraries(store_segments train-and-test-lib)
+target_link_libraries(store_segments ${PROJECT_NAME}_console_bridge train-and-test-lib)
 
 add_executable(annotation-gui src/annotation_gui.cpp)
-target_link_libraries(annotation-gui train-and-test-lib)
+target_link_libraries(annotation-gui ${PROJECT_NAME}_console_bridge train-and-test-lib)
 
 #############
 ## Install ##
@@ -73,6 +79,7 @@ install(
 
 install(
   TARGETS
+    ${PROJECT_NAME}_console_bridge
     ${PROJECT_NAME}_plugin_image_recognition
     train-and-test-lib
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
