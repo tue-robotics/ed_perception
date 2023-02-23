@@ -31,7 +31,7 @@ namespace perception
 
 // ----------------------------------------------------------------------------------------------------
 
-PerceptionPluginImageRecognition::PerceptionPluginImageRecognition()
+PerceptionPluginImageRecognition::PerceptionPluginImageRecognition() : roi_margin_(0)
 {
 }
 
@@ -43,7 +43,7 @@ PerceptionPluginImageRecognition::~PerceptionPluginImageRecognition()
 
 // ----------------------------------------------------------------------------------------------------
 
-void PerceptionPluginImageRecognition::initialize(ed::InitData& /*init*/)
+void PerceptionPluginImageRecognition::initialize(ed::InitData& init)
 {
     // Initialize service
     ros::NodeHandle nh_private("~");
@@ -52,6 +52,9 @@ void PerceptionPluginImageRecognition::initialize(ed::InitData& /*init*/)
 
     ros::NodeHandle nh;
     srv_client_ = nh.serviceClient<image_recognition_msgs::Recognize>("object_recognition/recognize");
+
+    roi_margin_ = 5;
+    init.config.value("roi_margin", roi_margin_, tue::config::OPTIONAL);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -105,16 +108,20 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception_msgs::Classify:
 
         for(ed::ImageMask::const_iterator it2 = mask.begin(image.cols); it2 != mask.end(); ++it2)
         {
-            const cv::Point2i p(it2());
+            const cv::Point& p(it2());
             p_min.x = std::min(p_min.x, p.x);
             p_min.y = std::min(p_min.y, p.y);
             p_max.x = std::max(p_max.x, p.x);
             p_max.y = std::max(p_max.y, p.y);
         }
-        cv::Rect roi = cv::Rect(std::min(p_min.x + 5, image.cols),
-                                std::min(p_min.y + 5, image.rows),
-                                std::max(p_max.x - p_min.x - 5, 0),
-                                std::max(p_max.y - p_min.y - 5, 0));
+        
+        int x = std::max(std::min(p_min.x - roi_margin_, image.cols), 0);
+        int y = std::max(std::min(p_min.y - roi_margin_, image.rows), 0);
+        
+        cv::Rect roi = cv::Rect(x,
+                                y,
+                                std::max(std::min(p_max.x - p_min.x + 2*roi_margin_, image.cols - x), 0),
+                                std::max(std::min(p_max.y - p_min.y + 2*roi_margin_, image.rows - y), 0));
         if (roi.area() == 0)
         {
             ROS_ERROR_STREAM("[ED Perception] Empty ImageMask of entity: '" << e->id()<< "', segmentation has probably gone wrong");
@@ -137,10 +144,8 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception_msgs::Classify:
         if (client_srv.response.recognitions.size() > 0)
         {
             const image_recognition_msgs::Recognition& r = client_srv.response.recognitions[0];  // Assuming that the first recognition is the best one!
-            for (uint i = 0; i < r.categorical_distribution.probabilities.size(); ++i)
+            for (const image_recognition_msgs::CategoryProbability& p : r.categorical_distribution.probabilities)
             {
-                const image_recognition_msgs::CategoryProbability& p = r.categorical_distribution.probabilities[i];
-
                 if ( p.probability > best_probability )
                 {
                     best_probability = p.probability;
@@ -171,10 +176,10 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception_msgs::Classify:
         // return [ClassificationResult(_id, exp_val, exp_prob, distr) for _id, exp_val, exp_prob, distr in zip(res.ids, res.expected_values, res.expected_value_probabilities, posteriors) if exp_val in types]
 
         ed_perception_msgs::CategoricalDistribution posterior;
-        for (unsigned int i = 0; i < client_srv.response.recognitions[0].categorical_distribution.probabilities.size(); ++i) // Assuming that there is only one recognition!
+        for (const image_recognition_msgs::CategoryProbability& p : client_srv.response.recognitions[0].categorical_distribution.probabilities) // Assuming that there is only one recognition!
         {
-            posterior.values.push_back(client_srv.response.recognitions[0].categorical_distribution.probabilities[i].label);
-            posterior.probabilities.push_back(client_srv.response.recognitions[0].categorical_distribution.probabilities[i].probability);
+            posterior.values.push_back(p.label);
+            posterior.probabilities.push_back(p.probability);
         }
 
         res.ids.push_back(e->id().str());
