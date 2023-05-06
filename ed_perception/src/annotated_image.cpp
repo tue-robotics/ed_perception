@@ -280,7 +280,7 @@ void findAnnotationCorrespondences(const AnnotatedImage& img, std::vector<ed::En
     for(unsigned int i = 0; i < img.entities.size(); ++i)
     {
         const ed::EntityConstPtr& e = img.entities[i];
-        if (!e->has_pose() || e->shape() || !e->bestMeasurement())
+        if (!e->has_pose() || e->visual() || !e->bestMeasurement())
         {
             entity_rects[i].x = -1; // flag that this entity is not to be associated
             continue;

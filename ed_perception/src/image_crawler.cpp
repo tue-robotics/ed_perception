@@ -139,11 +139,11 @@ bool ImageCrawler::reload(AnnotatedImage& image, bool do_segment)
 //    // Visualize fitting
 
 //    ed::EntityConstPtr support = image.world_model.getEntity("support");
-//    if (support && support->shape())
+//    if (support && support->visual())
 //    {
 //        cv::Mat depth_vis(480, 640, CV_32FC1, 0.0);
 //        rgbd::View view(*image.image, depth_vis.cols);
-//        view.getRasterizer().rasterize(*support->shape(), image.sensor_pose, support->pose(), depth_vis);
+//        view.getRasterizer().rasterize(*support->visual(), image.sensor_pose, support->pose(), depth_vis);
 
 //        cv::imshow("depth", depth_vis / 10);
 //    }
