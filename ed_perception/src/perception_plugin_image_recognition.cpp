@@ -183,6 +183,8 @@ bool PerceptionPluginImageRecognition::srvClassify(ed_perception_msgs::Classify:
         }
 
         res.ids.push_back(e->id().str());
+        res.images.emplace_back();
+        rgbd::convert(cropped_image, res.images.back());
         res.expected_values.push_back(label);
         res.expected_value_probabilities.push_back(best_probability);
         res.posteriors.push_back(posterior);
