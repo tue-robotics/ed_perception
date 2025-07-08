@@ -1,5 +1,5 @@
 #include "image_crawler.h"
-
+#include "tue/config/configuration.h"
 #include <tue/filesystem/crawler.h>
 #include <ed/update_request.h>
 #include <ed/kinect/updater.h>
@@ -127,11 +127,27 @@ bool ImageCrawler::reload(AnnotatedImage& image, bool do_segment)
     ed::UpdateRequest update_req;
     UpdateResult res(update_req);
 
-    Updater updater;
+
+    // Initialize configuration for segmentation
+    // Those come from ed_sensor_integration and initialized on repo:
+    //     ./ros/noetic/repos/github.com/tue-robotics/hero_bringup/parameters/world_modeling/world_model_plugin_rgbd.yaml
+    // Please update them according to the yaml file (this is not part of ed so we cannot add them from the config/yaml file)
+    tue::Configuration config;
+    config.setValue("alpha", 1.0);
+    config.setValue("kappa0", 0);
+    config.setValue("psi0", 0.002);
+    config.setValue("nu0", 4.0);
+    config.setValue("eps", 0.02);
+    config.setValue("min_samples", 60);
+
+    // Create local updater
+    std::unique_ptr<Updater> updater_ = std::make_unique<Updater>(config);
+
+    //Updater updater;
     UpdateRequest kinect_update_req;
     kinect_update_req.area_description = image.area_description;
     kinect_update_req.max_yaw_change = 0.5 * M_PI;
-    updater.update(image.world_model, image.image, image.sensor_pose, kinect_update_req, res);
+    updater_->update(image.world_model, image.image, image.sensor_pose, kinect_update_req, res);
 
     image.world_model.update(update_req);
 
