@@ -11,5 +11,7 @@ CategoricalDistribution[] posteriors   # Posterior probability distribution per 
 string[] expected_values                # Expected values based on posteriors, per id (empty is unknown)
 float32[] expected_value_probabilities  # Expected value probabilities, per id
 
+sensor_msgs/Image[] images # Cropped image per uuid, matchting the order of ids
+
 string error_msg
 
